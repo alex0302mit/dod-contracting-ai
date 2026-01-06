@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment variables
+.env
+.env.local
+
+# Generated outputs - IMPORTANT: Don't commit generated files
+outputs/
+
+# Vector database files (generated, can be rebuilt)
+**/vector_db/
+*.faiss
+*.pkl
+
+# Large data files (PDFs, documents - should be stored separately)
+backend/data/documents/*.pdf
+backend/data/documents/*.docx
+data/
+
+# Organization scripts (remove after using)
+organize_project.py
+update_imports.py
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+.git_backup/

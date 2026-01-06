@@ -1,0 +1,322 @@
+{
+  "dependencies": {
+    "Section A - Solicitation/Contract Form": {
+      "depends_on": [],
+      "references": [],
+      "priority": 1,
+      "description": "Foundation document - no dependencies"
+    },
+    "Section B - Supplies/Services and Prices": {
+      "depends_on": [
+        "Section C - Performance Work Statement",
+        "Independent Government Cost Estimate (IGCE)"
+      ],
+      "references": ["pricing structure", "CLIN breakdown"],
+      "priority": 5,
+      "description": "Requires PWS for scope and IGCE for pricing"
+    },
+    "Section C - Performance Work Statement": {
+      "depends_on": [],
+      "references": [],
+      "priority": 1,
+      "description": "Foundation document - defines requirements"
+    },
+    "Section D - Packaging and Marking": {
+      "depends_on": ["Section C - Performance Work Statement"],
+      "references": ["deliverable specifications"],
+      "priority": 3,
+      "description": "Requires PWS for deliverable details"
+    },
+    "Section E - Inspection and Acceptance": {
+      "depends_on": [
+        "Section C - Performance Work Statement",
+        "Quality Assurance Surveillance Plan (QASP)"
+      ],
+      "references": ["quality standards", "acceptance criteria"],
+      "priority": 5,
+      "description": "Requires PWS and QASP for quality criteria"
+    },
+    "Section F - Delivery/Performance Schedule": {
+      "depends_on": ["Section C - Performance Work Statement"],
+      "references": ["performance timeline", "deliverable schedule"],
+      "priority": 3,
+      "description": "Requires PWS for timeline requirements"
+    },
+    "Section G - Contract Administration": {
+      "depends_on": ["Section C - Performance Work Statement"],
+      "references": ["management requirements", "reporting"],
+      "priority": 4,
+      "description": "Requires PWS for admin procedures"
+    },
+    "Section H - Special Contract Requirements": {
+      "depends_on": [
+        "Section C - Performance Work Statement",
+        "Section L - Instructions to Offerors",
+        "Section M - Evaluation Factors"
+      ],
+      "references": ["security requirements", "compliance obligations", "special terms"],
+      "priority": 7,
+      "description": "Requires PWS, L, and M for comprehensive requirements"
+    },
+    "Section I - Contract Clauses": {
+      "depends_on": ["Section H - Special Contract Requirements"],
+      "references": ["required clauses", "FAR/DFARS provisions"],
+      "priority": 8,
+      "description": "Requires Section H for special clauses"
+    },
+    "Section J - List of Attachments": {
+      "depends_on": [],
+      "references": [],
+      "priority": 9,
+      "description": "Generated last - lists all attachments"
+    },
+    "Section K - Representations and Certifications": {
+      "depends_on": ["Section H - Special Contract Requirements"],
+      "references": ["certification requirements"],
+      "priority": 8,
+      "description": "Requires Section H for special certifications"
+    },
+    "Section L - Instructions to Offerors": {
+      "depends_on": [
+        "Section C - Performance Work Statement",
+        "Acquisition Plan"
+      ],
+      "references": ["technical requirements", "evaluation approach", "proposal instructions"],
+      "priority": 5,
+      "description": "Requires PWS and Acquisition Plan for proposal structure"
+    },
+    "Section M - Evaluation Factors": {
+      "depends_on": [
+        "Section C - Performance Work Statement",
+        "Section L - Instructions to Offerors",
+        "Acquisition Plan"
+      ],
+      "references": ["evaluation criteria", "technical factors", "scoring methodology"],
+      "priority": 6,
+      "description": "Requires PWS, L, and Acq Plan for evaluation framework"
+    },
+    "Independent Government Cost Estimate (IGCE)": {
+      "depends_on": ["Section C - Performance Work Statement"],
+      "references": ["cost breakdown", "pricing assumptions"],
+      "priority": 3,
+      "description": "Requires PWS for cost estimation"
+    },
+    "Quality Assurance Surveillance Plan (QASP)": {
+      "depends_on": ["Section C - Performance Work Statement"],
+      "references": ["performance standards", "monitoring methods"],
+      "priority": 3,
+      "description": "Requires PWS for quality metrics"
+    },
+    "Market Research Report": {
+      "depends_on": [],
+      "references": [],
+      "priority": 1,
+      "description": "Foundation document - conducted independently"
+    },
+    "Acquisition Plan": {
+      "depends_on": ["Market Research Report"],
+      "references": ["market analysis", "acquisition strategy"],
+      "priority": 2,
+      "description": "Requires market research for strategy"
+    },
+    "Source Selection Plan": {
+      "depends_on": [
+        "Section L - Instructions to Offerors",
+        "Section M - Evaluation Factors"
+      ],
+      "references": ["evaluation procedures", "team structure"],
+      "priority": 7,
+      "description": "Requires L and M for selection process"
+    },
+    "Small Business Subcontracting Plan": {
+      "depends_on": ["Section C - Performance Work Statement"],
+      "references": ["subcontracting requirements"],
+      "priority": 4,
+      "description": "Requires PWS for subcontracting opportunities"
+    },
+    "Presolicitation Notice": {
+      "depends_on": ["Market Research Report"],
+      "references": ["market interest"],
+      "priority": 2,
+      "description": "Requires market research for notice"
+    },
+    "Sources Sought Notice": {
+      "depends_on": ["Market Research Report"],
+      "references": ["capability assessment"],
+      "priority": 2,
+      "description": "Requires market research for sourcing"
+    },
+    "Draft RFP": {
+      "depends_on": [
+        "Section C - Performance Work Statement",
+        "Section L - Instructions to Offerors",
+        "Section M - Evaluation Factors"
+      ],
+      "references": ["preliminary requirements"],
+      "priority": 6,
+      "description": "Requires PWS, L, and M for draft solicitation"
+    }
+  },
+
+  "generation_batches": {
+    "description": "Predefined generation batches for common scenarios",
+    "solicitation_package": [
+      {
+        "name": "Foundation Documents",
+        "priority": 1,
+        "documents": [
+          "Section C - Performance Work Statement",
+          "Market Research Report",
+          "Acquisition Plan"
+        ],
+        "can_parallelize": true
+      },
+      {
+        "name": "Cost & Quality Planning",
+        "priority": 2,
+        "documents": [
+          "Independent Government Cost Estimate (IGCE)",
+          "Quality Assurance Surveillance Plan (QASP)"
+        ],
+        "can_parallelize": true
+      },
+      {
+        "name": "Solicitation Instructions",
+        "priority": 3,
+        "documents": [
+          "Section L - Instructions to Offerors"
+        ],
+        "can_parallelize": false
+      },
+      {
+        "name": "Evaluation Framework",
+        "priority": 4,
+        "documents": [
+          "Section M - Evaluation Factors"
+        ],
+        "can_parallelize": false
+      },
+      {
+        "name": "Contract Requirements",
+        "priority": 5,
+        "documents": [
+          "Section B - Supplies/Services and Prices",
+          "Section F - Delivery/Performance Schedule",
+          "Section G - Contract Administration",
+          "Small Business Subcontracting Plan"
+        ],
+        "can_parallelize": true
+      },
+      {
+        "name": "Special Requirements",
+        "priority": 6,
+        "documents": [
+          "Section H - Special Contract Requirements",
+          "Section E - Inspection and Acceptance"
+        ],
+        "can_parallelize": true
+      },
+      {
+        "name": "Clauses & Certifications",
+        "priority": 7,
+        "documents": [
+          "Section I - Contract Clauses",
+          "Section K - Representations and Certifications",
+          "Source Selection Plan"
+        ],
+        "can_parallelize": true
+      },
+      {
+        "name": "Administrative",
+        "priority": 8,
+        "documents": [
+          "Section A - Solicitation/Contract Form",
+          "Section J - List of Attachments"
+        ],
+        "can_parallelize": true
+      }
+    ],
+    "pre_solicitation_package": [
+      {
+        "name": "Market Research",
+        "priority": 1,
+        "documents": [
+          "Market Research Report"
+        ],
+        "can_parallelize": false
+      },
+      {
+        "name": "Strategy & Planning",
+        "priority": 2,
+        "documents": [
+          "Acquisition Plan",
+          "Section C - Performance Work Statement"
+        ],
+        "can_parallelize": true
+      },
+      {
+        "name": "Industry Engagement",
+        "priority": 3,
+        "documents": [
+          "Presolicitation Notice",
+          "Sources Sought Notice"
+        ],
+        "can_parallelize": true
+      }
+    ]
+  },
+
+  "validation_rules": {
+    "require_pws_for_sections": [
+      "Section B",
+      "Section D",
+      "Section E",
+      "Section F",
+      "Section G",
+      "Section L"
+    ],
+    "require_section_l_for": [
+      "Section M"
+    ],
+    "warn_if_missing": {
+      "Section M": ["Section L", "Section C"],
+      "Section H": ["Section L", "Section M", "Section C"],
+      "Source Selection Plan": ["Section L", "Section M"]
+    }
+  },
+
+  "cross_reference_patterns": {
+    "Section L references PWS": {
+      "from": "Section L - Instructions to Offerors",
+      "to": "Section C - Performance Work Statement",
+      "keywords": ["technical requirements", "deliverables", "performance standards"],
+      "reference_format": "As specified in the Performance Work Statement (PWS), Section {section}"
+    },
+    "Section M references Section L": {
+      "from": "Section M - Evaluation Factors",
+      "to": "Section L - Instructions to Offerors",
+      "keywords": ["proposal format", "submission requirements", "instructions"],
+      "reference_format": "In accordance with Section L, offerors shall {requirement}"
+    },
+    "Section H references PWS": {
+      "from": "Section H - Special Contract Requirements",
+      "to": "Section C - Performance Work Statement",
+      "keywords": ["security", "compliance", "special requirements"],
+      "reference_format": "To meet the requirements of PWS Section {section}"
+    },
+    "Section B references IGCE": {
+      "from": "Section B - Supplies/Services and Prices",
+      "to": "Independent Government Cost Estimate (IGCE)",
+      "keywords": ["pricing", "CLIN structure", "cost breakdown"],
+      "reference_format": "Based on cost analysis"
+    }
+  },
+
+  "metadata": {
+    "version": "1.0",
+    "last_updated": "2025-11-07",
+    "created_for": "Phase 4: Agent Collaboration",
+    "configurable_per_project": true,
+    "notes": "Dependencies can be customized per project. This is the default DoD acquisition configuration."
+  }
+}

@@ -1,0 +1,302 @@
+# DoD Procurement Phase Definitions
+#
+# Defines the three main phases of DoD acquisition with required/optional
+# documents, dependencies, and orchestration requirements.
+
+phases:
+  pre_solicitation:
+    name: "Pre-Solicitation"
+    description: "Market research, acquisition planning, and requirement definition phase"
+    phase_order: 1
+    estimated_duration_days: 30
+
+    required_documents:
+      - "Market Research Report"
+      - "Acquisition Plan"
+      - "Performance Work Statement (PWS)"  # Or SOW/SOO
+      - "Independent Government Cost Estimate (IGCE)"
+
+    recommended_documents:
+      - "Sources Sought Notice"
+      - "Quality Assurance Surveillance Plan (QASP)"
+
+    optional_documents:
+      - "Pre-Solicitation Notice"
+      - "Industry Day Materials"
+      - "Request for Information (RFI)"
+
+    orchestrator: "PreSolicitationOrchestrator"
+
+    # Document dependencies within this phase
+    dependencies:
+      "Acquisition Plan": ["Market Research Report"]
+      "Sources Sought Notice": ["Market Research Report"]
+      "Industry Day Materials": ["Market Research Report"]
+      "Independent Government Cost Estimate (IGCE)": ["Performance Work Statement (PWS)"]
+      "Quality Assurance Surveillance Plan (QASP)": ["Performance Work Statement (PWS)"]
+
+    # Key deliverables
+    deliverables:
+      - "Approved Acquisition Plan"
+      - "Market Research Documentation"
+      - "Requirements Definition (PWS/SOW/SOO)"
+      - "Cost Estimate"
+
+    # Common assumptions for this phase
+    typical_assumptions:
+      - "BVTO evaluation approach"
+      - "Contract type determined (FFP, IDIQ, etc.)"
+      - "Small business considerations documented"
+      - "Funding availability confirmed"
+
+    # Compliance checkpoints
+    compliance_requirements:
+      - "FAR Part 7 (Acquisition Planning)"
+      - "FAR Part 10 (Market Research)"
+      - "FAR Part 11 (Describing Agency Needs)"
+
+  solicitation:
+    name: "Solicitation"
+    description: "RFP/RFQ package development and release phase"
+    phase_order: 2
+    estimated_duration_days: 45
+
+    required_documents:
+      - "SF33 - Solicitation, Offer and Award"
+      - "Section B - Supplies/Services and Prices"
+      - "Section C - Performance Work Statement"  # From pre-sol phase
+      - "Section H - Special Contract Requirements"
+      - "Section I - Contract Clauses"
+      - "Section K - Representations and Certifications"
+      - "Section L - Instructions to Offerors"
+      - "Section M - Evaluation Factors"
+
+    recommended_documents:
+      - "Quality Assurance Surveillance Plan (QASP)"
+      - "Independent Government Cost Estimate (IGCE)"  # From pre-sol
+
+    optional_documents:
+      - "Draft RFP for Industry Review"
+      - "Q&A Document"
+      - "Site Visit Materials"
+
+    orchestrator: "SolicitationPackageOrchestrator"
+
+    # Document dependencies within this phase
+    dependencies:
+      "Section L - Instructions to Offerors": ["Section C - Performance Work Statement"]
+      "Section M - Evaluation Factors": ["Section L - Instructions to Offerors", "Section C - Performance Work Statement"]
+      "SF33 - Solicitation, Offer and Award": ["Section B - Supplies/Services and Prices"]
+
+    # Key deliverables
+    deliverables:
+      - "Complete RFP Package (Sections A-M)"
+      - "Approved Solicitation Documents"
+      - "Synopsis Posted to SAM.gov"
+
+    # Typical assumptions for this phase
+    typical_assumptions:
+      - "Evaluation factors aligned with requirements"
+      - "Instructions clear and compliant with FAR"
+      - "All required clauses incorporated"
+      - "Page limits and format requirements specified"
+
+    # Compliance requirements
+    compliance_requirements:
+      - "FAR Part 15 (Contracting by Negotiation)"
+      - "FAR 15.304 (Evaluation Factors)"
+      - "FAR 15.204 (Proposal Contents)"
+      - "DFARS requirements for applicable contracts"
+
+  post_solicitation:
+    name: "Post-Solicitation / Evaluation"
+    description: "Proposal evaluation and source selection phase"
+    phase_order: 3
+    estimated_duration_days: 60
+
+    required_documents:
+      - "Source Selection Plan"
+      - "Evaluation Scorecard"
+      - "Source Selection Decision Document (SSDD)"
+
+    recommended_documents:
+      - "Past Performance Questionnaire (PPQ)"
+      - "Technical Evaluation Report"
+      - "Cost/Price Analysis Report"
+
+    optional_documents:
+      - "Competitive Range Determination Memo"
+      - "Discussion Question Set"
+      - "Clarification Requests"
+
+    orchestrator: "PostSolicitationOrchestrator"
+
+    # Document dependencies
+    dependencies:
+      "Evaluation Scorecard": ["Section M - Evaluation Factors"]
+      "Source Selection Plan": ["Section M - Evaluation Factors"]
+      "Source Selection Decision Document (SSDD)": ["Evaluation Scorecard"]
+
+    # Key deliverables
+    deliverables:
+      - "Completed Evaluation"
+      - "Source Selection Decision"
+      - "Award Recommendation"
+
+    # Typical assumptions
+    typical_assumptions:
+      - "Evaluation team assigned and trained"
+      - "Conflict of interest checks completed"
+      - "Past performance evaluated per plan"
+      - "Cost realism analysis performed"
+
+    # Compliance requirements
+    compliance_requirements:
+      - "FAR 15.3 (Source Selection)"
+      - "FAR 15.304 (Evaluation)"
+      - "FAR 15.305 (Proposal Evaluation)"
+      - "FAR 15.308 (Source Selection Decision)"
+
+  award:
+    name: "Award"
+    description: "Contract award and notification phase"
+    phase_order: 4
+    estimated_duration_days: 15
+
+    required_documents:
+      - "SF26 - Award/Contract"
+      - "Award Notification"
+
+    recommended_documents:
+      - "Debriefing Letter"
+
+    optional_documents:
+      - "Public Award Announcement"
+      - "Post-Award Orientation Materials"
+
+    orchestrator: null  # Simple phase, no orchestrator needed
+
+    # Document dependencies
+    dependencies:
+      "SF26 - Award/Contract": ["Evaluation Scorecard"]
+      "Award Notification": ["SF26 - Award/Contract"]
+      "Debriefing Letter": ["Evaluation Scorecard"]
+
+    # Key deliverables
+    deliverables:
+      - "Executed Contract"
+      - "Award Notice to Awardee"
+      - "Debriefings (if requested)"
+
+    # Typical assumptions
+    typical_assumptions:
+      - "Award decision approved"
+      - "Funding obligated"
+      - "Debriefing requests handled within 3 days"
+
+    # Compliance requirements
+    compliance_requirements:
+      - "FAR 15.503 (Notifications)"
+      - "FAR 15.505 (Preaward Debriefing)"
+      - "FAR 15.506 (Postaward Debriefing)"
+
+# Phase Transition Rules
+phase_transitions:
+  pre_solicitation_to_solicitation:
+    required_completions:
+      - "Acquisition Plan approved"
+      - "Requirements defined (PWS/SOW/SOO)"
+      - "IGCE completed"
+
+    gatekeeper: "Contracting Officer"
+
+    validation_checks:
+      - "All pre-solicitation documents approved"
+      - "Funding availability confirmed"
+      - "Market research adequate"
+
+  solicitation_to_post_solicitation:
+    required_completions:
+      - "RFP released"
+      - "Proposal due date passed"
+      - "Proposals received"
+
+    gatekeeper: "Contracting Officer"
+
+    validation_checks:
+      - "Synopsis posted"
+      - "Amendments (if any) published"
+      - "Minimum proposal count met"
+
+  post_solicitation_to_award:
+    required_completions:
+      - "Evaluations complete"
+      - "Source selection decision made"
+      - "Award approval obtained"
+
+    gatekeeper: "Source Selection Authority"
+
+    validation_checks:
+      - "All evaluations documented"
+      - "SSDD approved"
+      - "Funding confirmed"
+
+# Phase-Specific Quality Standards
+quality_standards:
+  pre_solicitation:
+    minimum_quality_score: 75
+    required_citations: ["FAR Part 7", "FAR Part 10", "FAR Part 11"]
+    hallucination_tolerance: "LOW"
+    cross_reference_validation: false
+
+  solicitation:
+    minimum_quality_score: 85
+    required_citations: ["FAR Part 15", "FAR 15.304", "FAR 15.204"]
+    hallucination_tolerance: "NONE"
+    cross_reference_validation: true  # Critical for RFP package consistency
+
+  post_solicitation:
+    minimum_quality_score: 90
+    required_citations: ["FAR 15.3", "FAR 15.304", "FAR 15.305"]
+    hallucination_tolerance: "NONE"
+    cross_reference_validation: true
+
+  award:
+    minimum_quality_score: 85
+    required_citations: ["FAR 15.503", "FAR 15.505"]
+    hallucination_tolerance: "NONE"
+    cross_reference_validation: false
+
+# Estimated Timelines by Document Count
+timeline_estimates:
+  small_acquisition:
+    document_count: "5-8"
+    estimated_hours: "4-8"
+    complexity: "low"
+
+  medium_acquisition:
+    document_count: "10-15"
+    estimated_hours: "12-20"
+    complexity: "medium"
+
+  large_acquisition:
+    document_count: "20+"
+    estimated_hours: "30-50"
+    complexity: "high"
+
+# Agent Parallelization Rules
+parallelization_rules:
+  max_parallel_agents: 5
+
+  can_run_parallel:
+    - ["Market Research Report", "Sources Sought Notice", "Pre-Solicitation Notice"]
+    - ["Section B - Supplies/Services and Prices", "Section H - Special Contract Requirements", "Section I - Contract Clauses"]
+
+  must_run_sequential:
+    - ["Market Research Report", "Acquisition Plan"]  # Acq Plan needs MRR
+    - ["Section C - Performance Work Statement", "Section L - Instructions to Offerors"]  # Section L needs PWS
+    - ["Section L - Instructions to Offerors", "Section M - Evaluation Factors"]  # Section M needs L
+
+  always_last:
+    - "Quality Assurance Surveillance Plan (QASP)"  # Needs complete PWS
+    - "Independent Government Cost Estimate (IGCE)"  # Needs all pricing inputs

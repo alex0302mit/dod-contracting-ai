@@ -1,0 +1,490 @@
+/**
+ * Guided Flow Animations & Styles
+ *
+ * CSS for DocuSign-style field highlighting, transitions, and animations
+ */
+
+/* ============================================================================
+   FIELD HIGHLIGHTING
+   ============================================================================ */
+
+.guided-flow-highlight {
+  /* Glowing blue outline */
+  outline: 3px solid #3b82f6 !important;
+  outline-offset: 4px;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1),
+              0 0 20px rgba(59, 130, 246, 0.2) !important;
+  border-radius: 6px;
+  transition: all 0.2s ease-out;
+  position: relative;
+  z-index: 10;
+}
+
+.guided-flow-pulse {
+  animation: guided-pulse 2s ease-in-out infinite;
+}
+
+@keyframes guided-pulse {
+  0%, 100% {
+    outline-color: #3b82f6;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1),
+                0 0 20px rgba(59, 130, 246, 0.2);
+  }
+  50% {
+    outline-color: #60a5fa;
+    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.15),
+                0 0 30px rgba(59, 130, 246, 0.3);
+  }
+}
+
+/* ============================================================================
+   FIELD STATUS INDICATORS
+   ============================================================================ */
+
+.guided-field-pending {
+  border-left: 4px solid #94a3b8; /* Slate-400 */
+}
+
+.guided-field-complete {
+  border-left: 4px solid #22c55e; /* Green-500 */
+}
+
+.guided-field-invalid {
+  border-left: 4px solid #ef4444; /* Red-500 */
+}
+
+.guided-field-locked {
+  border-left: 4px solid #f59e0b; /* Amber-500 */
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.guided-field-hidden {
+  display: none;
+}
+
+/* ============================================================================
+   VALIDATION ANIMATIONS
+   ============================================================================ */
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-4px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(4px);
+  }
+}
+
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes success-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+.animate-success-pulse {
+  animation: success-pulse 0.6s ease-out;
+}
+
+/* ============================================================================
+   PROGRESS INDICATORS
+   ============================================================================ */
+
+.guided-progress-bar {
+  height: 4px;
+  background: #e2e8f0; /* Slate-200 */
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.guided-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #2563eb); /* Blue gradient */
+  border-radius: 2px;
+  transition: width 0.3s ease-out;
+  position: relative;
+}
+
+.guided-progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: progress-shimmer 2s infinite;
+}
+
+@keyframes progress-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ============================================================================
+   FIELD NAVIGATION TRANSITIONS
+   ============================================================================ */
+
+.guided-field-enter {
+  animation: field-enter 0.3s ease-out;
+}
+
+@keyframes field-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.guided-field-exit {
+  animation: field-exit 0.2s ease-in;
+}
+
+@keyframes field-exit {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+/* ============================================================================
+   GUIDANCE PANEL
+   ============================================================================ */
+
+.guided-panel-slide-in {
+  animation: panel-slide-in 0.3s ease-out;
+}
+
+@keyframes panel-slide-in {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.guided-panel-slide-out {
+  animation: panel-slide-out 0.2s ease-in;
+}
+
+@keyframes panel-slide-out {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+/* ============================================================================
+   AI SUGGESTION ANIMATIONS
+   ============================================================================ */
+
+.ai-suggestion-appear {
+  animation: suggestion-appear 0.4s ease-out;
+}
+
+@keyframes suggestion-appear {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.ai-thinking-pulse {
+  animation: thinking-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes thinking-pulse {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Sparkle effect for AI suggestions */
+.ai-sparkle {
+  position: relative;
+}
+
+.ai-sparkle::before {
+  content: '✨';
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  font-size: 12px;
+  animation: sparkle-rotate 3s linear infinite;
+}
+
+@keyframes sparkle-rotate {
+  0%, 100% {
+    transform: rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: rotate(180deg) scale(1.2);
+    opacity: 0.7;
+  }
+}
+
+/* ============================================================================
+   COLLABORATION INDICATORS
+   ============================================================================ */
+
+.collaborator-cursor {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.collaborator-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: #3b82f6;
+  color: white;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  animation: badge-bounce 0.5s ease-out;
+}
+
+@keyframes badge-bounce {
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.field-locked-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: not-allowed;
+  z-index: 5;
+}
+
+/* ============================================================================
+   SCROLL INDICATORS
+   ============================================================================ */
+
+.scroll-indicator {
+  position: fixed;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 100;
+}
+
+.scroll-indicator-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #cbd5e1; /* Slate-300 */
+  transition: all 0.2s ease-out;
+  cursor: pointer;
+}
+
+.scroll-indicator-dot:hover {
+  background: #94a3b8; /* Slate-400 */
+  transform: scale(1.2);
+}
+
+.scroll-indicator-dot.active {
+  background: #3b82f6; /* Blue-500 */
+  width: 12px;
+  height: 12px;
+}
+
+.scroll-indicator-dot.complete {
+  background: #22c55e; /* Green-500 */
+}
+
+/* ============================================================================
+   COMPLETION CELEBRATION
+   ============================================================================ */
+
+@keyframes completion-confetti {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+.completion-confetti {
+  position: fixed;
+  width: 10px;
+  height: 10px;
+  background: #3b82f6;
+  top: -20px;
+  animation: completion-confetti 3s ease-in;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.completion-badge {
+  animation: completion-zoom 0.6s ease-out;
+}
+
+@keyframes completion-zoom {
+  0% {
+    transform: scale(0) rotate(-180deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2) rotate(0deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+/* ============================================================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  .guided-flow-highlight {
+    outline-width: 2px;
+    outline-offset: 2px;
+  }
+
+  .scroll-indicator {
+    display: none;
+  }
+
+  .guided-panel-slide-in {
+    animation: panel-slide-up 0.3s ease-out;
+  }
+
+  @keyframes panel-slide-up {
+    0% {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+}
+
+/* ============================================================================
+   ACCESSIBILITY
+   ============================================================================ */
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .guided-flow-highlight,
+  .guided-flow-pulse,
+  .guided-progress-fill,
+  .guided-field-enter,
+  .guided-field-exit,
+  .guided-panel-slide-in,
+  .guided-panel-slide-out,
+  .ai-suggestion-appear,
+  .ai-thinking-pulse,
+  .ai-sparkle::before,
+  .collaborator-badge,
+  .completion-badge,
+  .animate-shake,
+  .animate-success-pulse {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .guided-progress-fill::after {
+    display: none;
+  }
+}
+
+/* Focus visible for keyboard navigation */
+.guided-flow-highlight:focus-visible {
+  outline: 3px solid #3b82f6;
+  outline-offset: 4px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .guided-flow-highlight {
+    outline-width: 4px;
+    outline-color: currentColor;
+  }
+
+  .guided-field-complete {
+    border-left-width: 6px;
+  }
+
+  .guided-field-invalid {
+    border-left-width: 6px;
+  }
+}

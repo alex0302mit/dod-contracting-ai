@@ -1,0 +1,80 @@
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║            ALMS COMPLETE ACQUISITION PACKAGE GENERATION                    ║
+║                                                                            ║
+║  Program: Advanced Logistics Management System (ALMS)                     ║
+║  Contract Value: $2.5M (Development) / $6.4M (Lifecycle)                  ║
+║  Users: 2,800 across 15 Army installations                                ║
+║                                                                            ║
+║  Generates ALL acquisition documents using actual ALMS requirements       ║
+║  from program document files:                                             ║
+║                                                                            ║
+║  Phase 1: Pre-Solicitation (Market Research)                              ║
+║    • Sources Sought, RFI, Pre-Solicitation Notice, Industry Day           ║
+║                                                                            ║
+║  Phase 2: Solicitation/RFP                                                ║
+║    • IGCE, Acquisition Plan, PWS, QASP                                    ║
+║    • Sections B, H, I, K, L, M                                            ║
+║    • Forms: SF-33                                                         ║
+║                                                                            ║
+║  Phase 3: Evaluation & Award                                              ║
+║    • Source Selection Plan, Evaluation Scorecards                         ║
+║    • SSDD, SF-26, Award Letters, Debriefings                              ║
+║                                                                            ║
+║  All documents use REAL ALMS data and are cross-referenced!               ║
+║                                                                            ║
+║  Runtime: Approximately 10-15 minutes                                     ║
+╚════════════════════════════════════════════════════════════════════════════╝
+    
+✅ Anthropic API Key found
+✅ Tavily API Key found - Web search enabled for market research
+================================================================================
+INITIALIZING DOCUMENT PROCESSOR
+================================================================================
+
+Enhancements enabled:
+  ✅ PDF generation for all documents
+  ✅ Quality evaluation reports
+  ✅ Source document citations
+
+[2025-10-19 14:49:22] [QualityAgent] [INFO] Initialized with DoD citation validation
+✅ Document Processor initialized
+
+================================================================================
+LOADING ALMS REQUIREMENTS
+================================================================================
+
+📚 Loading ALMS requirements from documents...
+  ✅ Loaded alms-kpp-ksa-complete.md
+  ✅ Loaded 13_CDD_ALMS.md
+  ✅ Loaded 9_acquisition_strategy_ALMS.md
+
+✅ Loaded 3 ALMS documents
+   Combined length: 31,520 characters
+
+================================================================================
+ALMS PROGRAM CONFIGURATION
+================================================================================
+
+Program: Advanced Logistics Management System (ALMS)
+Solicitation: W56KGU-25-R-0042
+Development Cost: $2.5M
+Lifecycle Cost: $6.4M (10 years)
+Users: 2,800 across 15 installations
+Timeline: IOC Jun 2026, FOC Dec 2026
+
+Using REAL ALMS requirements from program documents
+================================================================================
+
+📁 Output Directory: output/alms_complete_acquisition_20251019_144922
+
+This will generate ~22 ALMS acquisition documents using actual ALMS requirements.
+This includes Market Research Report (generated FIRST to reduce TBDs).
+Estimated time: 12-18 minutes.
+
+Proceed? (y/n): Traceback (most recent call last):
+  File "/Users/alejandromaldonado/Desktop/AI_Phantom_Fellow_Course/Basic use case market research LLM automation/scripts/generate_all_phases_alms.py", line 954, in <module>
+    main()
+  File "/Users/alejandromaldonado/Desktop/AI_Phantom_Fellow_Course/Basic use case market research LLM automation/scripts/generate_all_phases_alms.py", line 262, in main
+    response = input("Proceed? (y/n): ").strip().lower()
+EOFError: EOF when reading a line

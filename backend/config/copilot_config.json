@@ -1,0 +1,60 @@
+{
+  "model": "claude-sonnet-4-20250514",
+  "max_tokens": 2000,
+  "temperature": 0.7,
+
+  "system_prompt_template": "You are an expert AI assistant for DoD acquisition document editing and contracting.\nYou help users improve, analyze, and enhance government procurement documents.\nYou are familiar with FAR (Federal Acquisition Regulation), DFARS (Defense Federal Acquisition Regulation Supplement), DOD contracting regulations, and DoD acquisition best practices.\n\nToday's date is: {current_date}\n\nAlways be precise, professional, and compliant with government standards.",
+
+  "dynamic_variables": {
+    "current_date": {
+      "type": "date",
+      "format": "%B %d, %Y"
+    }
+  },
+
+  "actions": {
+    "answer": {
+      "description": "Answer questions about the highlighted text",
+      "can_apply_to_editor": false,
+      "prompt_template": "The user has selected the following text from a {section} section:\n\nSELECTED TEXT:\n{selected_text}\n\n{context_block}\n\nPlease explain this text and answer any questions the user might have about it. What does it mean? What are the implications? Are there any important considerations?\n\nProvide a clear, helpful answer."
+    },
+
+    "rewrite": {
+      "description": "Improve and rewrite the selected text",
+      "can_apply_to_editor": true,
+      "prompt_template": "The user wants to improve the following text from a {section} section:\n\nSELECTED TEXT (this is EXACTLY what the user highlighted - rewrite ONLY this):\n{selected_text}\n\n{context_block}\n\nPlease rewrite ONLY the selected text to be:\n- Clearer and more professional\n- More precise in government acquisition terminology\n- Better structured\n- Compliant with FAR/DFARS standards\n\nIMPORTANT: Return ONLY the improved version of the selected text. Do not include any explanations, context, or surrounding text. The output will directly replace the user's selection.\n\nFORMATTING: Return plain text only. Do NOT use markdown formatting (no **bold**, *italic*, _ or __ markers). The text will be inserted directly into a document editor."
+    },
+
+    "expand": {
+      "description": "Add more detail and elaboration",
+      "can_apply_to_editor": true,
+      "prompt_template": "The user wants to expand the following text from a {section} section:\n\nSELECTED TEXT (this is EXACTLY what the user highlighted - expand ONLY this):\n{selected_text}\n\n{context_block}\n\nPlease expand ONLY the selected text by:\n- Adding more detail and specificity\n- Including relevant considerations\n- Ensuring FAR/DFARS compliance language where appropriate\n- Maintaining professional government procurement tone\n\nIMPORTANT: Return ONLY the expanded version of the selected text. Do not include any explanations or surrounding context. The output will directly replace the user's selection.\n\nFORMATTING: Return plain text only. Do NOT use markdown formatting (no **bold**, *italic*, _ or __ markers). The text will be inserted directly into a document editor."
+    },
+
+    "summarize": {
+      "description": "Create a concise summary",
+      "can_apply_to_editor": false,
+      "prompt_template": "The user wants a summary of the following text from a {section} section:\n\nSELECTED TEXT:\n{selected_text}\n\nProvide a concise summary that captures the key points.\nKeep it brief but comprehensive."
+    },
+
+    "citations": {
+      "description": "Add FAR/DFARS citations",
+      "can_apply_to_editor": true,
+      "prompt_template": "The user wants to add appropriate FAR/DFARS citations to the following text from a {section} section:\n\nSELECTED TEXT (this is EXACTLY what the user highlighted - add citations to ONLY this):\n{selected_text}\n\n{context_block}\n\nPlease:\n1. Identify which FAR/DFARS clauses are relevant to the selected text\n2. Rewrite the selected text with proper citations included inline (e.g., [FAR 15.304], [DFARS 252.204-7012])\n3. Only cite clauses that genuinely apply\n\nIMPORTANT: Return ONLY the selected text with citations added. Do not include any explanations or surrounding context. The output will directly replace the user's selection.\n\nFORMATTING: Return plain text only. Do NOT use markdown formatting (no **bold**, *italic*, _ or __ markers). The text will be inserted directly into a document editor."
+    },
+
+    "compliance": {
+      "description": "Check for compliance issues",
+      "can_apply_to_editor": false,
+      "prompt_template": "Review the following text from a {section} section for compliance issues:\n\nSELECTED TEXT:\n{selected_text}\n\n{context_block}\n\nPlease analyze this text for:\n1. FAR/DFARS compliance issues\n2. Missing required language or clauses\n3. Potential legal or regulatory concerns\n4. Ambiguities that could cause issues\n5. Best practice violations\n\nProvide a compliance assessment with specific recommendations for improvements."
+    },
+
+    "custom": {
+      "description": "Execute custom user prompt",
+      "can_apply_to_editor": true,
+      "prompt_template": "The user has selected the following text from a {section} section:\n\nSELECTED TEXT (this is EXACTLY what the user highlighted):\n{selected_text}\n\n{context_block}\n\nUSER REQUEST:\n{custom_prompt}\n\nPlease respond to the user's request. If the request involves modifying the text, return ONLY the modified version of the selected text (no explanations) as it will directly replace the user's selection.\n\nFORMATTING: Return plain text only. Do NOT use markdown formatting (no **bold**, *italic*, _ or __ markers). The text will be inserted directly into a document editor."
+    }
+  },
+
+  "context_block_template": "SURROUNDING CONTEXT (for reference only, do NOT include in output): {context}"
+}

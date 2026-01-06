@@ -1,0 +1,384 @@
+# Document to Agent Mapping Configuration
+#
+# Defines which specialized agents handle which document types,
+# including dependencies, phases, and orchestration requirements.
+
+# Solicitation Package Sections
+solicitation_sections:
+  section_a:
+    name: "SF33 - Solicitation, Offer and Award"
+    agent: "SF33GeneratorAgent"
+    orchestrator: null
+    phase: "solicitation"
+    category: "required"
+    dependencies: ["section_b", "section_c"]
+    estimated_complexity: "moderate"
+    estimated_duration_minutes: 15
+
+  section_b:
+    name: "Section B - Supplies/Services and Prices"
+    agent: "SectionBGeneratorAgent"
+    orchestrator: null
+    phase: "solicitation"
+    category: "required"
+    dependencies: []
+    estimated_complexity: "moderate"
+    estimated_duration_minutes: 20
+
+  section_c_pws:
+    name: "Section C - Performance Work Statement"
+    agent: "PWSWriterAgent"
+    orchestrator: "PWSOrchestrator"
+    phase: "pre_solicitation"
+    category: "required"
+    dependencies: []
+    estimated_complexity: "high"
+    estimated_duration_minutes: 30
+
+  section_c_sow:
+    name: "Section C - Statement of Work"
+    agent: "SOWWriterAgent"
+    orchestrator: "SOWOrchestrator"
+    phase: "pre_solicitation"
+    category: "required"
+    dependencies: []
+    estimated_complexity: "high"
+    estimated_duration_minutes: 30
+
+  section_c_soo:
+    name: "Section C - Statement of Objectives"
+    agent: "SOOWriterAgent"
+    orchestrator: "SOOOrchestrator"
+    phase: "pre_solicitation"
+    category: "required"
+    dependencies: []
+    estimated_complexity: "moderate"
+    estimated_duration_minutes: 20
+
+  section_h:
+    name: "Section H - Special Contract Requirements"
+    agent: "SectionHGeneratorAgent"
+    orchestrator: null
+    phase: "solicitation"
+    category: "required"
+    dependencies: []
+    estimated_complexity: "moderate"
+    estimated_duration_minutes: 25
+
+  section_i:
+    name: "Section I - Contract Clauses"
+    agent: "SectionIGeneratorAgent"
+    orchestrator: null
+    phase: "solicitation"
+    category: "required"
+    dependencies: []
+    estimated_complexity: "simple"
+    estimated_duration_minutes: 10
+
+  section_k:
+    name: "Section K - Representations and Certifications"
+    agent: "SectionKGeneratorAgent"
+    orchestrator: null
+    phase: "solicitation"
+    category: "required"
+    dependencies: []
+    estimated_complexity: "simple"
+    estimated_duration_minutes: 10
+
+  section_l:
+    name: "Section L - Instructions to Offerors"
+    agent: "SectionLGeneratorAgent"
+    orchestrator: null
+    phase: "solicitation"
+    category: "required"
+    dependencies: ["section_c_pws", "section_c_sow", "section_c_soo"]
+    estimated_complexity: "moderate"
+    estimated_duration_minutes: 20
+
+  section_m:
+    name: "Section M - Evaluation Factors"
+    agent: "SectionMGeneratorAgent"
+    orchestrator: null
+    phase: "solicitation"
+    category: "required"
+    dependencies: ["section_l", "section_c_pws"]
+    estimated_complexity: "high"
+    estimated_duration_minutes: 25
+
+# Pre-Solicitation Documents
+pre_solicitation_documents:
+  market_research:
+    name: "Market Research Report"
+    agent: "MarketResearchReportGeneratorAgent"
+    orchestrator: null
+    phase: "pre_solicitation"
+    category: "required"
+    dependencies: []
+    estimated_complexity: "high"
+    estimated_duration_minutes: 40
+
+  acquisition_plan:
+    name: "Acquisition Plan"
+    agent: "AcquisitionPlanGeneratorAgent"
+    orchestrator: null
+    phase: "pre_solicitation"
+    category: "required"
+    dependencies: ["market_research"]
+    estimated_complexity: "high"
+    estimated_duration_minutes: 50
+
+  sources_sought:
+    name: "Sources Sought Notice"
+    agent: "SourcesSoughtGeneratorAgent"
+    orchestrator: null
+    phase: "pre_solicitation"
+    category: "recommended"
+    dependencies: ["market_research"]
+    estimated_complexity: "simple"
+    estimated_duration_minutes: 10
+
+  presolicitation_notice:
+    name: "Pre-Solicitation Notice"
+    agent: "PreSolicitationNoticeGeneratorAgent"
+    orchestrator: null
+    phase: "pre_solicitation"
+    category: "optional"
+    dependencies: []
+    estimated_complexity: "simple"
+    estimated_duration_minutes: 8
+
+  industry_day:
+    name: "Industry Day Materials"
+    agent: "IndustryDayGeneratorAgent"
+    orchestrator: null
+    phase: "pre_solicitation"
+    category: "optional"
+    dependencies: ["market_research"]
+    estimated_complexity: "moderate"
+    estimated_duration_minutes: 20
+
+  rfi:
+    name: "Request for Information (RFI)"
+    agent: "RFIGeneratorAgent"
+    orchestrator: null
+    phase: "pre_solicitation"
+    category: "optional"
+    dependencies: []
+    estimated_complexity: "simple"
+    estimated_duration_minutes: 12
+
+# Supporting Documents
+supporting_documents:
+  qasp:
+    name: "Quality Assurance Surveillance Plan (QASP)"
+    agent: "QASPGeneratorAgent"
+    orchestrator: null
+    phase: "solicitation"
+    category: "recommended"
+    dependencies: ["section_c_pws", "section_c_sow"]
+    estimated_complexity: "moderate"
+    estimated_duration_minutes: 25
+
+  igce:
+    name: "Independent Government Cost Estimate (IGCE)"
+    agent: "IGCEGeneratorAgent"
+    orchestrator: null
+    phase: "pre_solicitation"
+    category: "required"
+    dependencies: ["section_c_pws", "section_c_sow", "section_c_soo"]
+    estimated_complexity: "high"
+    estimated_duration_minutes: 35
+
+# Complete Package Documents
+complete_packages:
+  rfp:
+    name: "Request for Proposal (RFP)"
+    agent: "RFPWriterAgent"
+    orchestrator: "RFPOrchestrator"
+    phase: "solicitation"
+    category: "complete_package"
+    dependencies: ["all_sections"]
+    estimated_complexity: "very_high"
+    estimated_duration_minutes: 120
+
+  solicitation_package:
+    name: "Complete Solicitation Package"
+    agent: null
+    orchestrator: "SolicitationPackageOrchestrator"
+    phase: "solicitation"
+    category: "complete_package"
+    dependencies: ["section_a", "section_b", "section_c_pws", "section_h", "section_i", "section_k", "section_l", "section_m"]
+    estimated_complexity: "very_high"
+    estimated_duration_minutes: 150
+
+# Evaluation Documents
+evaluation_documents:
+  source_selection_plan:
+    name: "Source Selection Plan"
+    agent: "SourceSelectionPlanGeneratorAgent"
+    orchestrator: null
+    phase: "post_solicitation"
+    category: "required"
+    dependencies: ["section_m"]
+    estimated_complexity: "high"
+    estimated_duration_minutes: 30
+
+  evaluation_scorecard:
+    name: "Evaluation Scorecard"
+    agent: "EvaluationScorecardGeneratorAgent"
+    orchestrator: null
+    phase: "post_solicitation"
+    category: "required"
+    dependencies: ["section_m"]
+    estimated_complexity: "moderate"
+    estimated_duration_minutes: 20
+
+  ppq:
+    name: "Past Performance Questionnaire (PPQ)"
+    agent: "PPQGeneratorAgent"
+    orchestrator: null
+    phase: "post_solicitation"
+    category: "optional"
+    dependencies: []
+    estimated_complexity: "simple"
+    estimated_duration_minutes: 10
+
+  ssdd:
+    name: "Source Selection Decision Document (SSDD)"
+    agent: "SSDDGeneratorAgent"
+    orchestrator: null
+    phase: "post_solicitation"
+    category: "required"
+    dependencies: ["evaluation_scorecard"]
+    estimated_complexity: "high"
+    estimated_duration_minutes: 30
+
+# Forms
+standard_forms:
+  sf33:
+    name: "SF33 - Standard Form 33"
+    agent: "SF33GeneratorAgent"
+    orchestrator: null
+    phase: "solicitation"
+    category: "required"
+    dependencies: ["section_b"]
+    estimated_complexity: "moderate"
+    estimated_duration_minutes: 15
+
+  sf26:
+    name: "SF26 - Award/Contract"
+    agent: "SF26GeneratorAgent"
+    orchestrator: null
+    phase: "award"
+    category: "required"
+    dependencies: ["evaluation_scorecard"]
+    estimated_complexity: "moderate"
+    estimated_duration_minutes: 15
+
+# Post-Award Documents
+post_award_documents:
+  amendment:
+    name: "Contract Amendment"
+    agent: "AmendmentGeneratorAgent"
+    orchestrator: null
+    phase: "award"
+    category: "as_needed"
+    dependencies: []
+    estimated_complexity: "moderate"
+    estimated_duration_minutes: 20
+
+  award_notification:
+    name: "Award Notification"
+    agent: "AwardNotificationGeneratorAgent"
+    orchestrator: null
+    phase: "award"
+    category: "required"
+    dependencies: ["sf26"]
+    estimated_complexity: "simple"
+    estimated_duration_minutes: 10
+
+  debriefing:
+    name: "Debriefing Letter"
+    agent: "DebriefingGeneratorAgent"
+    orchestrator: null
+    phase: "award"
+    category: "as_needed"
+    dependencies: ["evaluation_scorecard"]
+    estimated_complexity: "moderate"
+    estimated_duration_minutes: 15
+
+# Agent Capabilities and Features
+agent_capabilities:
+  SectionLGeneratorAgent:
+    features:
+      - cross_reference_validation
+      - page_limit_enforcement
+      - proposal_format_specification
+    quality_checks:
+      - far_compliance
+      - completeness
+      - clarity
+
+  SectionMGeneratorAgent:
+    features:
+      - evaluation_factor_weighting
+      - far_15_304_compliance
+      - cross_reference_to_section_l
+    quality_checks:
+      - far_compliance
+      - evaluation_criteria_clarity
+      - relative_importance_stated
+
+  PWSWriterAgent:
+    features:
+      - performance_based_language
+      - quality_standards
+      - deliverable_specification
+    quality_checks:
+      - measurable_outcomes
+      - inspection_acceptance_criteria
+      - performance_standards
+
+  IGCEGeneratorAgent:
+    features:
+      - cost_breakdown_structure
+      - pricing_assumptions
+      - risk_analysis
+    quality_checks:
+      - completeness
+      - reasonableness_justification
+      - supporting_documentation
+
+  MarketResearchReportGeneratorAgent:
+    features:
+      - market_analysis
+      - vendor_capability_assessment
+      - pricing_data
+    quality_checks:
+      - data_sources_cited
+      - analysis_depth
+      - conclusions_supported
+
+  AcquisitionPlanGeneratorAgent:
+    features:
+      - far_part_7_compliance
+      - strategy_justification
+      - risk_mitigation
+    quality_checks:
+      - completeness
+      - far_compliance
+      - stakeholder_coordination
+
+# Quality Thresholds
+quality_thresholds:
+  minimum_acceptable_score: 70
+  requires_refinement_below: 80
+  excellent_threshold: 90
+  hallucination_risk_threshold: "MEDIUM"
+
+# Performance Targets
+performance_targets:
+  max_generation_time_minutes: 10
+  max_parallel_agents: 5
+  cache_ttl_seconds: 3600
+  agent_timeout_seconds: 300

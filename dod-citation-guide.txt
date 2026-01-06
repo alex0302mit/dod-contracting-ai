@@ -1,0 +1,375 @@
+# DoD Acquisition Documentation: Citation & Best Practices Guide
+
+## Purpose
+This guide provides standardized citation formats and best practices for Department of Defense acquisition documentation across Marine Corps and Air Force/Space Force programs.
+
+---
+
+## I. PRIMARY REGULATORY SOURCES
+
+### A. Federal Acquisition Regulation (FAR)
+**Format:** FAR [Part].[Subpart].[Section]
+
+**Examples:**
+- FAR 15.203 (Requests for proposals)
+- FAR 52.215-2 (Audit and Records—Negotiation)
+
+**In-text usage:**
+- "Per FAR 15.203, the contracting officer shall provide..."
+- "As outlined in FAR Part 15, the competitive negotiation process requires..."
+
+### B. Defense Federal Acquisition Regulation Supplement (DFARS)
+**Format:** DFARS [Part].[Subpart].[Section]
+
+**Examples:**
+- DFARS 225.872 (Contracting with qualifying country sources)
+- DFARS 252.225-7001 (Buy American and Balance of Payments Program clause)
+
+**In-text usage:**
+- "DFARS 252.225-7001 implements the requirement for..."
+- "In accordance with DFARS 225.872..."
+
+### C. DoD Instructions and Directives
+**Format:** [Type] [Number], [Title] ([Date])
+
+**Types:**
+- DoDI = DoD Instruction
+- DoDD = DoD Directive
+- DoDM = DoD Manual
+
+**Examples:**
+- DoDI 5000.02, Operation of the Adaptive Acquisition Framework (January 23, 2020)
+- DoDD 5000.01, The Defense Acquisition System (September 9, 2020)
+- DoDI 5000.85, Major Capability Acquisition (August 6, 2020)
+
+**In-text usage:**
+- "DoDI 5000.02 establishes policies and procedures for..."
+- "Per DoDD 5000.01, the defense acquisition system shall..."
+
+---
+
+## II. SERVICE-SPECIFIC REGULATIONS
+
+### A. Marine Corps Orders (MCO)
+**Format:** MCO [Number].[Series], [Title] ([Date])
+
+**Examples:**
+- MCO 4400.177, Marine Corps Acquisition Procedures Supplement (August 1, 2019)
+- MCO 5200.38, Marine Corps Acquisition Security Manual (June 30, 2023)
+
+**In-text usage:**
+- "MCO 4400.177 provides Marine Corps-specific acquisition guidance for..."
+- "In accordance with MCO 5200.38..."
+
+### B. Air Force/Space Force Instructions
+**Format:** [Type] [Number], [Title] ([Date])
+
+**Types:**
+- AFI = Air Force Instruction (legacy)
+- DAFI = Department of the Air Force Instruction (current standard)
+- SPFI = Space Force Instruction
+- AFMAN = Air Force Manual
+- DAFMAN = Department of the Air Force Manual
+
+**Examples:**
+- DAFI 63-101/20, Integrated Life Cycle Management (April 7, 2020)
+- DAFI 63-138, Acquisition of Services (October 5, 2022)
+- SPFI 63-101, Space Acquisition Procedures (if applicable)
+
+**In-text usage:**
+- "DAFI 63-101/20 establishes the framework for..."
+- "Per DAFI 63-138, services acquisitions require..."
+
+---
+
+## III. ACQUISITION PATHWAY-SPECIFIC GUIDANCE
+
+### A. Major Capability Acquisition (MCA)
+**Primary References:**
+- DoDI 5000.85, Major Capability Acquisition
+- DoDI 5000.88, Engineering of Defense Systems
+- DoD Manual 5000.04, Cost and Software Data Reporting (CSDR) Manual
+
+### B. Middle Tier of Acquisition (MTA)
+**Primary References:**
+- 10 U.S.C. § 2302 note (Middle Tier Acquisition statutory authority)
+- DoDI 5000.80, Operation of the Middle Tier of Acquisition (MTA)
+
+**In-text usage:**
+- "Per 10 U.S.C. § 2302 note and DoDI 5000.80..."
+
+### C. Software Acquisition
+**Primary References:**
+- DoDI 5000.87, Operation of the Software Acquisition Pathway
+- Defense Innovation Board, Software Acquisition and Practices (SWAP) Study
+
+### D. Rapid Acquisition
+**Primary References:**
+- 10 U.S.C. § 2359a (Rapid Acquisition Authority)
+- Service-specific rapid acquisition guidance
+
+---
+
+## IV. CITATION FORMATTING BY DOCUMENT TYPE
+
+### A. Acquisition Strategy Documents
+**Required elements:**
+1. Regulation/policy designation
+2. Specific paragraph or section
+3. Date (for policies that update frequently)
+
+**Example:**
+"This acquisition strategy is structured in accordance with DoDI 5000.02 (January 23, 2020), paragraph 3.3, which requires..."
+
+### B. Justification & Approval (J&A) Documents
+**Format:**
+- Direct citation with specific FAR/DFARS authority
+- Include both the authority and the specific circumstance
+
+**Example:**
+"This J&A is submitted per FAR 6.302-2, Unusual and Compelling Urgency, as the requirement meets the criteria established in FAR 6.302-2(c)..."
+
+### C. Source Selection Documents
+**Key references:**
+- FAR Part 15, Subpart 15.3 (Source Selection)
+- FAR 15.305 (Proposal evaluation)
+
+**Example:**
+"The Source Selection Evaluation Board (SSEB) will evaluate proposals in accordance with FAR 15.305 using the following criteria..."
+
+### D. Memoranda and Decision Documents
+**Format:** Less formal, but must include:
+- Policy reference
+- Brief context if needed
+
+**Example:**
+"IAW DoDI 5000.85, the Milestone Decision Authority has approved..."
+
+### E. Contract Documents
+**Format:** Precise clause identification required
+
+**Example:**
+- "This contract incorporates by reference FAR 52.215-2, Audit and Records—Negotiation (JUN 2020)."
+- "DFARS 252.225-7001, Buy American and Balance of Payments Program (NOV 2023), applies to this procurement."
+
+---
+
+## V. STATUTORY CITATIONS
+
+### Format: [U.S. Code Title] U.S.C. § [Section]
+
+**Common Acquisition Statutes:**
+- 10 U.S.C. § 3201 (Full and Open Competition)
+- 10 U.S.C. § 3451 (Cost or Pricing Data)
+- 10 U.S.C. § 4321 (Competition Advocates)
+- 41 U.S.C. § 1707 (Publication of Proposed Regulations)
+
+**In-text usage:**
+"Per 10 U.S.C. § 3201, this procurement will be conducted using full and open competition..."
+
+---
+
+## VI. BEST PRACTICES
+
+### A. Currency and Version Control
+✓ **Always verify you're using the current version** of regulations  
+✓ Include incorporation/change dates for FAR/DFARS clauses  
+✓ Check for Federal Acquisition Circulars (FACs) and DFARS changes  
+✓ Note when using interim rules vs. final rules
+
+**Example:**
+"FAR 52.204-25 (OCT 2024)" [Always include the date in parentheses]
+
+### B. Precision in Citations
+✓ **Cite to the most specific level possible**
+- Good: "FAR 15.203-1"
+- Better: "FAR 15.203-1(a)(2)"
+
+✓ **Use "see" or "see also" for supporting references**
+- "The government may limit sources (see FAR 6.302-1, Only One Responsible Source)..."
+
+✓ **Use "cf." for comparison**
+- "Unlike commercial item procedures (cf. FAR Part 12), this acquisition requires..."
+
+### C. Consistency
+✓ Use consistent abbreviations throughout documents  
+✓ Define acronyms on first use  
+✓ Maintain parallel citation structure
+
+**Example of first use:**
+"The Federal Acquisition Regulation (FAR) requires... Later in the document, FAR 15.203 states..."
+
+### D. Layered Approach
+✓ **Primary authority first, then implementing guidance**
+
+**Example:**
+"Per 10 U.S.C. § 3201 and implemented by FAR 6.102, this acquisition will use competitive procedures..."
+
+### E. Documentation Hierarchy
+When multiple sources address the same topic, cite in this order:
+1. Statute (10 U.S.C., 41 U.S.C.)
+2. FAR
+3. DFARS
+4. DoD Instructions/Directives
+5. Service-specific regulations
+6. Local/command policies
+
+---
+
+## VII. COMMON CITATION ERRORS TO AVOID
+
+❌ **Vague references**
+- Wrong: "Per FAR Part 15..."
+- Right: "Per FAR 15.203..."
+
+❌ **Outdated versions**
+- Wrong: Using old clause dates without verification
+- Right: Verify current date at acquisition.gov
+
+❌ **Missing statutory authority**
+- Wrong: Only citing the regulation
+- Right: Citing both statute and implementing regulation when applicable
+
+❌ **Inconsistent formatting**
+- Wrong: Mixing "FAR 15.203" and "Federal Acquisition Regulation Part 15.203" randomly
+- Right: Choose one format and use consistently
+
+❌ **Over-citation in briefings**
+- Wrong: Cluttering slides with full regulatory text
+- Right: Use footnotes or backup slides for detailed citations
+
+---
+
+## VIII. QUICK REFERENCE: COMMON DOCUMENTS
+
+### Acquisition Planning
+- FAR Part 7 (Acquisition Planning)
+- FAR 7.105 (Contents of Written Acquisition Plans)
+- DFARS 207.103 (Agency-head responsibilities)
+
+### Market Research
+- FAR 10.001 (Policy)
+- FAR 10.002 (Procedures)
+
+### Sole Source/Limited Competition
+- FAR Part 6 (Competition Requirements)
+- FAR 6.302 (Circumstances permitting other than full and open competition)
+- FAR 6.303 (J&A)
+
+### Commercial Items
+- FAR Part 12 (Acquisition of Commercial Products and Commercial Services)
+- DFARS Part 212 (Supplement)
+
+### Source Selection
+- FAR Part 15, Subpart 15.3
+- FAR 15.305 (Proposal evaluation)
+
+### Contract Types
+- FAR Part 16 (Types of Contracts)
+- FAR 16.301 (Fixed-price types)
+- FAR 16.401 (Cost-reimbursement types)
+
+---
+
+## IX. ONLINE RESOURCES
+
+**Primary Sources:**
+- **acquisition.gov** - Current FAR
+- **acq.osd.mil** - DoD acquisition policy
+- **dau.edu** - Defense Acquisition University resources
+- **marines.mil** - Marine Corps orders
+- **e-publishing.af.mil** - Air Force/Space Force publications
+
+**Version Control:**
+- Federal Acquisition Circulars (FACs) - Issued at acquisition.gov
+- DFARS changes - Posted at acq.osd.mil/dpap/dars/dfarspgi/current/
+
+---
+
+## X. FORMATTING TEMPLATES
+
+### For Formal References Section:
+
+**Regulations:**
+Federal Acquisition Regulation, Part [X], [Title]. Current through FAC [Number], [Date].
+
+Defense Federal Acquisition Regulation Supplement, Part [X], [Title]. Current through DFARS Change Notice [Date].
+
+**DoD Policy:**
+Department of Defense Instruction [Number], *[Title]*, [Date].
+
+**Service Regulations:**
+[Service] [Type] [Number], *[Title]*, [Date].
+
+**Example References Section:**
+```
+REFERENCES
+
+1. Federal Acquisition Regulation, Part 15, Contracting by Negotiation. 
+   Current through FAC 2024-03, October 2024.
+
+2. Defense Federal Acquisition Regulation Supplement, Subpart 225.8, 
+   Other International Agreements and Coordination. Current through 
+   DFARS Change 10/1/2024.
+
+3. Department of Defense Instruction 5000.85, Major Capability 
+   Acquisition, August 6, 2020.
+
+4. Marine Corps Order 4400.177, Marine Corps Acquisition Procedures 
+   Supplement, August 1, 2019.
+
+5. Department of the Air Force Instruction 63-101/20, Integrated Life 
+   Cycle Management, April 7, 2020.
+
+6. 10 U.S.C. § 3201, Full and Open Competition.
+```
+
+---
+
+## SUMMARY CHECKLIST
+
+Before submitting any acquisition document, verify:
+
+- [ ] All citations include specific section/paragraph numbers
+- [ ] FAR/DFARS clause dates are current
+- [ ] DoD Instructions include publication dates
+- [ ] Statutory citations use proper U.S.C. format
+- [ ] Service-specific regulations are cited correctly
+- [ ] Citation format is consistent throughout
+- [ ] References section (if required) is complete
+- [ ] All acronyms defined on first use
+- [ ] Most specific authority level is cited
+- [ ] Version control information included where applicable
+
+---
+
+**Questions?** Contact your servicing acquisition office or legal counsel for document-specific guidance.
+
+**Document Control:**
+- **Version:** 1.0
+- **Last Updated:** October 2025
+- **POC:** [Your Office/Name]
+- **Distribution:** Approved for distribution to acquisition personnel
+
+---
+
+## APPENDIX: QUICK CITATION EXAMPLES BY DOCUMENT TYPE
+
+### Acquisition Strategy
+"This acquisition strategy supports the requirements outlined in the Capabilities Development Document (CDD) and complies with DoDI 5000.85, paragraph 3.4.b. The program will utilize a competitive procurement strategy per FAR 6.102 to achieve best value for the Government."
+
+### Justification & Approval (J&A)
+"This J&A is submitted pursuant to FAR 6.302-1, Only One Responsible Source, and DFARS 206.302-1. The contracting officer has determined that only [Contractor Name] can meet the urgent operational requirement due to [specific technical capability], as required by FAR 6.302-1(a)(2)(i)."
+
+### Source Selection Plan
+"The Source Selection Authority (SSA) will conduct this source selection in accordance with FAR 15.303. Proposals will be evaluated per FAR 15.305 using the following evaluation factors: technical approach (most important), past performance, and cost (least important). The best-value determination will follow FAR 15.308."
+
+### Contract Modification
+"This modification is issued pursuant to FAR 52.243-1, Changes—Fixed Price (AUG 1987), and incorporates the following changes to the contract scope..."
+
+### Market Research Report
+"Market research was conducted IAW FAR 10.001 and 10.002 to determine the availability of commercial solutions. Research included: (1) consultation with DAU resources, (2) review of GSA schedules, and (3) industry engagement through a Request for Information (RFI)."
+
+---
+
+*End of Guide*

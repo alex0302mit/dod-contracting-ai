@@ -1,0 +1,344 @@
+"""
+Export Formatter Utility
+
+Functions for formatting and assembling documents for export
+"""
+
+import re
+from datetime import datetime
+from typing import Dict, List, Optional
+
+
+def generate_anchor_id(text: str) -> str:
+    """
+    Generate a URL-safe anchor ID from text
+
+    Args:
+        text: Section name or heading text
+
+    Returns:
+        Lowercase, hyphenated anchor ID
+    """
+    # Convert to lowercase
+    anchor = text.lower()
+    # Replace spaces and special chars with hyphens
+    anchor = re.sub(r'[^a-z0-9]+', '-', anchor)
+    # Remove leading/trailing hyphens
+    anchor = anchor.strip('-')
+    return anchor
+
+
+def html_to_markdown(html: str) -> str:
+    """
+    Convert HTML content to markdown format
+
+    Args:
+        html: HTML string with formatting tags
+
+    Returns:
+        Markdown formatted string
+    """
+    # Remove HTML tags while preserving structure
+    text = html
+
+    # Convert headings - demote all by one level to avoid duplicate H1s
+    # Section headers are added as H1, so content headings become H2+
+    text = re.sub(r'<h1[^>]*>(.*?)</h1>', r'## \1\n\n', text, flags=re.DOTALL)
+    text = re.sub(r'<h2[^>]*>(.*?)</h2>', r'### \1\n\n', text, flags=re.DOTALL)
+    text = re.sub(r'<h3[^>]*>(.*?)</h3>', r'#### \1\n\n', text, flags=re.DOTALL)
+
+    # Convert bold
+    text = re.sub(r'<strong[^>]*>(.*?)</strong>', r'**\1**', text, flags=re.DOTALL)
+    text = re.sub(r'<b[^>]*>(.*?)</b>', r'**\1**', text, flags=re.DOTALL)
+
+    # Convert italic
+    text = re.sub(r'<em[^>]*>(.*?)</em>', r'*\1*', text, flags=re.DOTALL)
+    text = re.sub(r'<i[^>]*>(.*?)</i>', r'*\1*', text, flags=re.DOTALL)
+
+    # Convert underline (markdown doesn't support natively, use bold)
+    text = re.sub(r'<u[^>]*>(.*?)</u>', r'**\1**', text, flags=re.DOTALL)
+
+    # Convert lists
+    text = re.sub(r'<ul[^>]*>', '', text)
+    text = re.sub(r'</ul>', '\n', text)
+    text = re.sub(r'<ol[^>]*>', '', text)
+    text = re.sub(r'</ol>', '\n', text)
+    text = re.sub(r'<li[^>]*>(.*?)</li>', r'- \1\n', text, flags=re.DOTALL)
+
+    # Convert paragraphs
+    text = re.sub(r'<p[^>]*>(.*?)</p>', r'\1\n\n', text, flags=re.DOTALL)
+
+    # Convert line breaks
+    text = re.sub(r'<br\s*/?>', '\n', text)
+
+    # Remove remaining HTML tags
+    text = re.sub(r'<[^>]+>', '', text)
+
+    # Clean up extra whitespace
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    text = text.strip()
+
+    return text
+
+
+def assemble_document(
+    sections: Dict[str, str],
+    section_order: Optional[List[str]] = None,
+    include_toc: bool = True,
+    include_title_page: bool = True,
+    metadata: Optional[Dict] = None
+) -> str:
+    """
+    Assemble multiple sections into a complete document
+
+    Args:
+        sections: Dictionary of section name -> content
+        section_order: Optional list specifying section order
+        include_toc: Whether to include table of contents
+        include_title_page: Whether to include title page
+        metadata: Document metadata for title page
+
+    Returns:
+        Complete markdown document string
+    """
+    parts = []
+
+    # Add title page
+    if include_title_page and metadata:
+        parts.append(create_title_page(metadata))
+        parts.append("\n\n---\n\n")  # Page break
+
+    # Add table of contents
+    if include_toc:
+        # Determine section order
+        if section_order is None:
+            section_order = sorted(sections.keys())
+
+        parts.append(create_table_of_contents(section_order))
+        parts.append("\n\n---\n\n")  # Page break
+
+    # Add sections
+    if section_order is None:
+        section_order = sorted(sections.keys())
+
+    for i, section_name in enumerate(section_order):
+        if section_name in sections:
+            # Convert HTML to markdown
+            content = html_to_markdown(sections[section_name])
+
+            # Add section header (using H1) - no anchor ID needed
+            # ReportLab doesn't support markdown anchor syntax
+            parts.append(f"# {section_name}\n\n")
+
+            # Add content
+            parts.append(content)
+
+            # Add page break between sections (except last)
+            if i < len(section_order) - 1:
+                parts.append("\n\n---\n\n")
+
+    return ''.join(parts)
+
+
+def create_title_page(metadata: Dict) -> str:
+    """
+    Generate title page markdown
+
+    Args:
+        metadata: Dictionary with project_name, date, version, etc.
+
+    Returns:
+        Title page markdown
+    """
+    title = metadata.get('project_name', 'Procurement Document')
+    subtitle = metadata.get('subtitle', 'Request for Proposal (RFP)')
+    date = metadata.get('date', datetime.now().strftime('%B %d, %Y'))
+    version = metadata.get('version', '1.0')
+    organization = metadata.get('organization', 'Department of Defense')
+
+    title_page = f"""
+<div style="text-align: center; margin-top: 200px;">
+
+# {title}
+
+## {subtitle}
+
+---
+
+**Version:** {version}
+
+**Date:** {date}
+
+**Prepared by:** {organization}
+
+**Generated by AI Contracting Platform**
+
+</div>
+"""
+    return title_page.strip()
+
+
+def create_table_of_contents(section_names: List[str]) -> str:
+    """
+    Generate table of contents markdown as a simple numbered list
+
+    Args:
+        section_names: List of section names in order
+
+    Returns:
+        Table of contents markdown
+    """
+    toc = ["# Table of Contents\n"]
+
+    for i, name in enumerate(section_names, start=1):
+        # Simple numbered list - no links (ReportLab doesn't support markdown links)
+        toc.append(f"{i}. {name}")
+
+    return '\n'.join(toc)
+
+
+def create_citations_section(citations: List[Dict]) -> str:
+    """
+    Format citations list as markdown
+
+    Args:
+        citations: List of citation dictionaries with id, source, page, text
+
+    Returns:
+        Citations section markdown
+    """
+    if not citations:
+        return ""
+
+    parts = ["# References and Citations\n\n"]
+
+    # Group citations by source
+    sources = {}
+    for citation in citations:
+        source = citation.get('source', 'Unknown Source')
+        if source not in sources:
+            sources[source] = []
+        sources[source].append(citation)
+
+    # Format by source
+    for source in sorted(sources.keys()):
+        parts.append(f"## {source}\n\n")
+
+        for citation in sources[source]:
+            cit_id = citation.get('id', '?')
+            page = citation.get('page', '')
+            text = citation.get('text', '')
+
+            page_info = f", p. {page}" if page else ""
+
+            parts.append(f"**[{cit_id}]** {source}{page_info}\n")
+            if text:
+                parts.append(f"> {text}\n")
+            parts.append("\n")
+
+    return ''.join(parts)
+
+
+def create_metadata_section(metadata: Dict) -> str:
+    """
+    Format metadata as markdown appendix
+    Only includes sections that have actual content
+
+    Args:
+        metadata: Dictionary with various metadata fields
+
+    Returns:
+        Metadata section markdown (empty string if no metadata)
+    """
+    content_parts = []
+
+    # Agent metadata - only if present and has content
+    if 'agent_metadata' in metadata and metadata['agent_metadata']:
+        agent_meta = metadata['agent_metadata']
+        agent_lines = []
+
+        for section_name, agent_info in agent_meta.items():
+            agent_name = agent_info.get('agent', 'Unknown')
+            method = agent_info.get('method', 'unknown')
+            agent_lines.append(f"**{section_name}:** Generated by {agent_name} ({method})\n\n")
+
+        if agent_lines:
+            content_parts.append("## Generation Information\n\n")
+            content_parts.extend(agent_lines)
+
+    # Assumptions - only if present and has items
+    assumptions = metadata.get('assumptions', [])
+    if assumptions and len(assumptions) > 0:
+        content_parts.append("## Project Assumptions\n\n")
+        for assumption in assumptions:
+            text = assumption.get('text', '')
+            source = assumption.get('source', 'N/A')
+            if text:  # Only add if there's actual text
+                content_parts.append(f"- {text} (Source: {source})\n")
+        content_parts.append("\n")
+
+    # Collaboration metadata (Phase 4) - only if enabled and has content
+    if 'collaboration_metadata' in metadata:
+        collab = metadata['collaboration_metadata']
+        if collab.get('enabled'):
+            gen_order = collab.get('generation_order', [])
+            batch_count = collab.get('batch_count', 0)
+            cross_refs = collab.get('cross_references', [])
+
+            # Only show if there's meaningful data
+            if gen_order or batch_count > 0 or cross_refs:
+                content_parts.append("## Collaboration Details\n\n")
+                if gen_order:
+                    content_parts.append(f"**Generation Order:** {', '.join(gen_order)}\n\n")
+                if batch_count > 0:
+                    content_parts.append(f"**Batch Count:** {batch_count}\n\n")
+                if cross_refs:
+                    content_parts.append(f"**Cross-references:** {len(cross_refs)}\n\n")
+
+    # Only return Document Metadata section if there's content
+    if content_parts:
+        return "# Document Metadata\n\n" + ''.join(content_parts)
+    else:
+        return ""
+
+
+def calculate_document_size(sections: Dict[str, str]) -> int:
+    """
+    Calculate approximate document size in bytes
+
+    Args:
+        sections: Dictionary of section name -> content
+
+    Returns:
+        Approximate size in bytes
+    """
+    # Convert to markdown and estimate size
+    total_chars = 0
+
+    for content in sections.values():
+        markdown = html_to_markdown(content)
+        total_chars += len(markdown)
+
+    # Add overhead for title page, TOC, formatting
+    overhead = 5000  # bytes
+
+    # Estimate: 1 char ≈ 1 byte for markdown
+    # PDF is roughly 3x larger, DOCX is roughly 2x larger
+    return total_chars + overhead
+
+
+def format_file_size(size_bytes: int) -> str:
+    """
+    Format file size in human-readable format
+
+    Args:
+        size_bytes: Size in bytes
+
+    Returns:
+        Formatted string (e.g., "2.4 MB")
+    """
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if size_bytes < 1024.0:
+            return f"{size_bytes:.1f} {unit}"
+        size_bytes /= 1024.0
+    return f"{size_bytes:.1f} TB"

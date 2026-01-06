@@ -1,0 +1,1174 @@
+/**
+ * TipTap Editor Custom Styles
+ *
+ * Styles for quality issues, citations, and general editor appearance
+ */
+
+/* Editor Container */
+.ProseMirror {
+  outline: none;
+  min-height: 300px;
+  padding: 1rem;
+}
+
+/* Prevent browser extensions (Grammarly, etc.) from interfering */
+.ProseMirror[data-gramm="false"],
+.ProseMirror[data-gramm_editor="false"],
+.ProseMirror[data-enable-grammarly="false"] {
+  /* Force disable extension overlays */
+  position: relative;
+  z-index: 1;
+}
+
+/* Hide any Grammarly or extension artifacts */
+.ProseMirror grammarly-extension,
+.ProseMirror grammarly-card {
+  display: none !important;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  color: #adb5bd;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Quality Issue Highlighting */
+.quality-issue {
+  position: relative;
+  border-bottom: 2px wavy;
+  cursor: help;
+  transition: all 0.2s;
+}
+
+.quality-issue-error {
+  border-bottom-color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+.quality-issue-warning {
+  border-bottom-color: #f59e0b;
+  background-color: rgba(245, 158, 11, 0.1);
+}
+
+.quality-issue-info {
+  border-bottom-color: #3b82f6;
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+/* Compliance-specific styling (purple theme) */
+.quality-issue-compliance {
+  border-bottom-color: #a855f7;
+  background-color: rgba(168, 85, 247, 0.1);
+}
+
+/* Hallucination-specific styling (orange theme) */
+/* For potentially unsourced or fabricated claims */
+.quality-issue-hallucination {
+  border-bottom-color: #f97316;
+  background-color: rgba(249, 115, 22, 0.1);
+}
+
+.quality-issue:hover {
+  background-color: rgba(0, 0, 0, 0.08);
+  border-bottom-width: 3px;
+}
+
+/* Tooltip styling for quality issues */
+.quality-issue::before {
+  content: attr(data-issue-label);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  padding: 8px 12px;
+  background-color: #1e293b;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 1000;
+  max-width: 300px;
+  white-space: normal;
+}
+
+.quality-issue::after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-2px);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid #1e293b;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  z-index: 1000;
+}
+
+.quality-issue:hover::before,
+.quality-issue:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-4px);
+}
+
+/* Specific compliance issue icons/markers */
+.quality-issue-compliance::before {
+  background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);
+  border: 1px solid #c084fc;
+}
+
+.quality-issue-compliance::after {
+  border-top-color: #a855f7;
+}
+
+/* Hallucination issue tooltip styling (orange theme) */
+.quality-issue-hallucination::before {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  border: 1px solid #fb923c;
+}
+
+.quality-issue-hallucination::after {
+  border-top-color: #f97316;
+}
+
+/* ==================== ACTIVE ISSUE HIGHLIGHTING (Highlighter Style) ==================== */
+/* Applied when user clicks an issue card - solid background like a highlighter */
+
+.issue-highlight {
+  border-radius: 2px;
+  padding: 1px 2px;
+  margin: 0 -2px;
+  border-bottom: none !important;
+  transition: background-color 0.2s ease;
+}
+
+/* Error highlight (Red) */
+.issue-highlight-error {
+  background-color: rgba(239, 68, 68, 0.35);
+}
+
+/* Warning highlight (Amber) */
+.issue-highlight-warning {
+  background-color: rgba(245, 158, 11, 0.35);
+}
+
+/* Info highlight (Blue) */
+.issue-highlight-info {
+  background-color: rgba(59, 130, 246, 0.35);
+}
+
+/* Compliance highlight (Purple) */
+.issue-highlight-compliance {
+  background-color: rgba(168, 85, 247, 0.35);
+}
+
+/* Hallucination highlight (Orange) - for unsourced/fabricated claims */
+.issue-highlight-hallucination {
+  background-color: rgba(249, 115, 22, 0.35);
+}
+
+/* Target occurrence - the specific instance that was clicked */
+/* Gets extra emphasis with darker background + border */
+.issue-highlight-target {
+  position: relative;
+}
+
+.issue-highlight-target.issue-highlight-error {
+  background-color: rgba(239, 68, 68, 0.5);
+  box-shadow: 0 0 0 2px #ef4444;
+}
+
+.issue-highlight-target.issue-highlight-warning {
+  background-color: rgba(245, 158, 11, 0.5);
+  box-shadow: 0 0 0 2px #f59e0b;
+}
+
+.issue-highlight-target.issue-highlight-info {
+  background-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 0 2px #3b82f6;
+}
+
+.issue-highlight-target.issue-highlight-compliance {
+  background-color: rgba(168, 85, 247, 0.5);
+  box-shadow: 0 0 0 2px #a855f7;
+}
+
+/* Hallucination target highlight (Orange) - emphasized for the clicked instance */
+.issue-highlight-target.issue-highlight-hallucination {
+  background-color: rgba(249, 115, 22, 0.5);
+  box-shadow: 0 0 0 2px #f97316;
+}
+
+.quality-issue-error::before {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.quality-issue-error::after {
+  border-top-color: #ef4444;
+}
+
+.quality-issue-warning::before {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.quality-issue-warning::after {
+  border-top-color: #f59e0b;
+}
+
+/* Citation Styling - Chip/Badge Style */
+.citation {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  margin: 0 3px;
+  height: 20px;
+  min-width: 24px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.75em;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.3);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.citation:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  transform: translateY(-1px) scale(1.05);
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.4);
+}
+
+.citation:active {
+  transform: translateY(0) scale(1);
+  box-shadow: 0 1px 2px rgba(59, 130, 246, 0.3);
+}
+
+/* Heading Styles */
+.ProseMirror h1 {
+  font-size: 2em;
+  font-weight: 700;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  line-height: 1.2;
+  color: #1e293b;
+}
+
+.ProseMirror h2 {
+  font-size: 1.5em;
+  font-weight: 600;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  line-height: 1.3;
+  color: #334155;
+}
+
+.ProseMirror h3 {
+  font-size: 1.25em;
+  font-weight: 600;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  line-height: 1.4;
+  color: #475569;
+}
+
+/* Paragraph Styles */
+.ProseMirror p {
+  margin-bottom: 1em;
+  line-height: 1.6;
+}
+
+/* List Styles */
+.ProseMirror ul,
+.ProseMirror ol {
+  padding-left: 1.5rem;
+  margin-bottom: 1em;
+}
+
+.ProseMirror ul li {
+  list-style-type: disc;
+}
+
+.ProseMirror ol li {
+  list-style-type: decimal;
+}
+
+.ProseMirror li {
+  margin-bottom: 0.5em;
+}
+
+.ProseMirror li p {
+  margin-bottom: 0.5em;
+}
+
+/* Blockquote Styles */
+.ProseMirror blockquote {
+  border-left: 4px solid #cbd5e1;
+  padding-left: 1rem;
+  margin-left: 0;
+  margin-right: 0;
+  margin-bottom: 1em;
+  color: #64748b;
+  font-style: italic;
+}
+
+/* Code Styles */
+.ProseMirror code {
+  background-color: #f1f5f9;
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+  color: #dc2626;
+}
+
+.ProseMirror pre {
+  background-color: #1e293b;
+  color: #e2e8f0;
+  padding: 1rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin-bottom: 1em;
+}
+
+.ProseMirror pre code {
+  background: none;
+  color: inherit;
+  padding: 0;
+}
+
+/* Bold, Italic, Underline */
+.ProseMirror strong {
+  font-weight: 700;
+}
+
+.ProseMirror em {
+  font-style: italic;
+}
+
+.ProseMirror u {
+  text-decoration: underline;
+}
+
+/* Selection */
+.ProseMirror ::selection {
+  background-color: #bfdbfe;
+}
+
+/* Focus State */
+.ProseMirror:focus {
+  outline: none;
+}
+
+/* Horizontal Rule */
+.ProseMirror hr {
+  border: none;
+  border-top: 2px solid #e2e8f0;
+  margin: 2rem 0;
+}
+
+/* Link Styles (if you add link support later) */
+.ProseMirror a {
+  color: #2563eb;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.ProseMirror a:hover {
+  color: #1d4ed8;
+}
+
+/* Text Alignment */
+.ProseMirror [style*="text-align: left"] {
+  text-align: left;
+}
+
+.ProseMirror [style*="text-align: center"] {
+  text-align: center;
+}
+
+.ProseMirror [style*="text-align: right"] {
+  text-align: right;
+}
+
+.ProseMirror [style*="text-align: justify"] {
+  text-align: justify;
+}
+
+/* Highlighting */
+.ProseMirror mark {
+  background-color: #fef08a;
+  padding: 0.1em 0.2em;
+  border-radius: 2px;
+}
+
+.ProseMirror mark[data-color="yellow"] {
+  background-color: #fef08a;
+}
+
+.ProseMirror mark[data-color="green"] {
+  background-color: #bbf7d0;
+}
+
+.ProseMirror mark[data-color="blue"] {
+  background-color: #bfdbfe;
+}
+
+.ProseMirror mark[data-color="red"] {
+  background-color: #fecaca;
+}
+
+.ProseMirror mark[data-color="purple"] {
+  background-color: #e9d5ff;
+}
+
+/* Better document-like appearance */
+.ProseMirror {
+  font-family: 'Times New Roman', Georgia, serif;
+  font-size: 12pt;
+  line-height: 1.8;
+  color: #000000;
+  background-color: #ffffff;
+  padding: 2rem;
+  max-width: 8.5in; /* Letter size width */
+  margin: 0 auto;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Page-like container */
+.ProseMirror-focused {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Improve readability */
+.ProseMirror p {
+  text-align: justify;
+  margin-bottom: 12pt;
+}
+
+/* Professional heading styles */
+.ProseMirror h1 {
+  font-size: 16pt;
+  font-weight: bold;
+  text-align: center;
+  margin-top: 24pt;
+  margin-bottom: 12pt;
+  text-transform: uppercase;
+}
+
+.ProseMirror h2 {
+  font-size: 14pt;
+  font-weight: bold;
+  margin-top: 18pt;
+  margin-bottom: 12pt;
+}
+
+.ProseMirror h3 {
+  font-size: 12pt;
+  font-weight: bold;
+  margin-top: 12pt;
+  margin-bottom: 6pt;
+}
+
+/* Smart Tags - Colored inline badges for metadata categorization */
+.ProseMirror span[data-smart-tag] {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  margin: 0 0.125rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid;
+  white-space: nowrap;
+}
+
+.ProseMirror span[data-smart-tag]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Smart Tag Type Colors */
+.ProseMirror .smart-tag-requirement {
+  background-color: #dbeafe;
+  /* blue-100 */
+  color: #1e40af;
+  /* blue-800 */
+  border-color: #93c5fd;
+  /* blue-300 */
+}
+
+.ProseMirror .smart-tag-assumption {
+  background-color: #e9d5ff;
+  /* purple-100 */
+  color: #6b21a8;
+  /* purple-800 */
+  border-color: #d8b4fe;
+  /* purple-300 */
+}
+
+.ProseMirror .smart-tag-risk {
+  background-color: #fee2e2;
+  /* red-100 */
+  color: #991b1b;
+  /* red-800 */
+  border-color: #fca5a5;
+  /* red-300 */
+}
+
+.ProseMirror .smart-tag-decision {
+  background-color: #d1fae5;
+  /* green-100 */
+  color: #065f46;
+  /* green-800 */
+  border-color: #6ee7b7;
+  /* green-300 */
+}
+
+.ProseMirror .smart-tag-action-item {
+  background-color: #fed7aa;
+  /* orange-100 */
+  color: #9a3412;
+  /* orange-800 */
+  border-color: #fdba74;
+  /* orange-300 */
+}
+
+.ProseMirror .smart-tag-note {
+  background-color: #f3f4f6;
+  /* gray-100 */
+  color: #374151;
+  /* gray-700 */
+  border-color: #d1d5db;
+  /* gray-300 */
+}
+
+/* Tooltips - Dotted underline with hover text */
+.ProseMirror span[data-tooltip] {
+  position: relative;
+  border-bottom: 2px dotted #3b82f6;
+  /* blue-500 */
+  cursor: help;
+  padding-bottom: 1px;
+}
+
+.ProseMirror .tooltip-definition {
+  border-bottom-color: #3b82f6;
+  /* blue-500 */
+}
+
+.ProseMirror .tooltip-acronym {
+  border-bottom-color: #8b5cf6;
+  /* violet-500 */
+}
+
+.ProseMirror .tooltip-reference {
+  border-bottom-color: #10b981;
+  /* green-500 */
+}
+
+.ProseMirror .tooltip-help {
+  border-bottom-color: #6b7280;
+  /* gray-500 */
+}
+
+/* Tooltip hover content - CSS-based tooltip */
+.ProseMirror span[data-tooltip]::before {
+  content: attr(data-tooltip-text);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  background-color: #1f2937;
+  /* gray-800 */
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: normal;
+  line-height: 1.4;
+  white-space: normal;
+  max-width: 250px;
+  width: max-content;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s, transform 0.2s;
+  pointer-events: none;
+  z-index: 50;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Tooltip arrow */
+.ProseMirror span[data-tooltip]::after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-2px);
+  border: 5px solid transparent;
+  border-top-color: #1f2937;
+  /* gray-800 */
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s, transform 0.2s;
+  pointer-events: none;
+  z-index: 50;
+}
+
+/* Show tooltip on hover */
+.ProseMirror span[data-tooltip]:hover::before,
+.ProseMirror span[data-tooltip]:hover::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ==================== CALLOUT STYLES ==================== */
+
+/* Base callout styles */
+.ProseMirror div[data-callout] {
+  margin: 1rem 0;
+  padding: 1rem;
+  border-left: 4px solid;
+  border-radius: 0.375rem;
+  background-color: #f9fafb;
+  position: relative;
+}
+
+.ProseMirror .callout-title {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ProseMirror .callout-content {
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.ProseMirror .callout-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* Info callout */
+.ProseMirror .callout-info {
+  border-left-color: #3b82f6;
+  background-color: #eff6ff;
+}
+
+.ProseMirror .callout-info .callout-title {
+  color: #1e40af;
+}
+
+.ProseMirror .callout-info .callout-content {
+  color: #1e3a8a;
+}
+
+/* Warning callout */
+.ProseMirror .callout-warning {
+  border-left-color: #f59e0b;
+  background-color: #fffbeb;
+}
+
+.ProseMirror .callout-warning .callout-title {
+  color: #92400e;
+}
+
+.ProseMirror .callout-warning .callout-content {
+  color: #78350f;
+}
+
+/* Danger/Critical callout */
+.ProseMirror .callout-danger {
+  border-left-color: #ef4444;
+  background-color: #fef2f2;
+}
+
+.ProseMirror .callout-danger .callout-title {
+  color: #991b1b;
+}
+
+.ProseMirror .callout-danger .callout-content {
+  color: #7f1d1d;
+}
+
+/* Success callout */
+.ProseMirror .callout-success {
+  border-left-color: #10b981;
+  background-color: #f0fdf4;
+}
+
+.ProseMirror .callout-success .callout-title {
+  color: #065f46;
+}
+
+.ProseMirror .callout-success .callout-content {
+  color: #064e3b;
+}
+
+/* Tip callout */
+.ProseMirror .callout-tip {
+  border-left-color: #8b5cf6;
+  background-color: #faf5ff;
+}
+
+.ProseMirror .callout-tip .callout-title {
+  color: #6b21a8;
+}
+
+.ProseMirror .callout-tip .callout-content {
+  color: #581c87;
+}
+
+/* Note callout */
+.ProseMirror .callout-note {
+  border-left-color: #6b7280;
+  background-color: #f9fafb;
+}
+
+.ProseMirror .callout-note .callout-title {
+  color: #374151;
+}
+
+.ProseMirror .callout-note .callout-content {
+  color: #1f2937;
+}
+
+/* Important callout */
+.ProseMirror .callout-important {
+  border-left-color: #ec4899;
+  background-color: #fdf2f8;
+}
+
+.ProseMirror .callout-important .callout-title {
+  color: #9f1239;
+}
+
+.ProseMirror .callout-important .callout-content {
+  color: #831843;
+}
+
+/* Caution callout */
+.ProseMirror .callout-caution {
+  border-left-color: #eab308;
+  background-color: #fefce8;
+}
+
+.ProseMirror .callout-caution .callout-title {
+  color: #854d0e;
+}
+
+.ProseMirror .callout-caution .callout-content {
+  color: #713f12;
+}
+
+/* ==================== COMMENT ANNOTATION STYLES ==================== */
+
+/* Base comment mark */
+.ProseMirror span[data-comment] {
+  background-color: rgba(59, 130, 246, 0.15);
+  border-bottom: 2px solid #3b82f6;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.ProseMirror span[data-comment]:hover {
+  background-color: rgba(59, 130, 246, 0.25);
+}
+
+/* Comment type specific styles */
+.ProseMirror .comment-suggestion {
+  background-color: rgba(139, 92, 246, 0.15);
+  border-bottom-color: #8b5cf6;
+}
+
+.ProseMirror .comment-suggestion:hover {
+  background-color: rgba(139, 92, 246, 0.25);
+}
+
+.ProseMirror .comment-question {
+  background-color: rgba(245, 158, 11, 0.15);
+  border-bottom-color: #f59e0b;
+}
+
+.ProseMirror .comment-question:hover {
+  background-color: rgba(245, 158, 11, 0.25);
+}
+
+.ProseMirror .comment-issue {
+  background-color: rgba(239, 68, 68, 0.15);
+  border-bottom-color: #ef4444;
+}
+
+.ProseMirror .comment-issue:hover {
+  background-color: rgba(239, 68, 68, 0.25);
+}
+
+/* Active comment highlight */
+.ProseMirror span[data-comment].active {
+  background-color: rgba(59, 130, 246, 0.35);
+  border-bottom-width: 3px;
+}
+
+/* ==================== TABLE STYLES ==================== */
+
+/* TipTap Table Styles - Professional government document tables */
+.ProseMirror table,
+.ProseMirror .tiptap-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-family: 'Times New Roman', Georgia, serif;
+  font-size: 11pt;
+  table-layout: fixed;
+}
+
+.ProseMirror table th,
+.ProseMirror table td,
+.ProseMirror .tiptap-table th,
+.ProseMirror .tiptap-table td {
+  border: 1px solid #374151;
+  padding: 0.5rem 0.75rem;
+  vertical-align: top;
+  min-width: 100px;
+}
+
+/* Table header cells */
+.ProseMirror table th,
+.ProseMirror .tiptap-table th {
+  background-color: #f3f4f6;
+  font-weight: 700;
+  text-align: left;
+  color: #1f2937;
+}
+
+/* Alternate row coloring for readability */
+.ProseMirror table tbody tr:nth-child(even),
+.ProseMirror .tiptap-table tbody tr:nth-child(even) {
+  background-color: #f9fafb;
+}
+
+/* Hover effect for rows */
+.ProseMirror table tbody tr:hover,
+.ProseMirror .tiptap-table tbody tr:hover {
+  background-color: #e5e7eb;
+}
+
+/* Cell content paragraphs - remove default margins inside table cells */
+.ProseMirror table p,
+.ProseMirror .tiptap-table p {
+  margin-bottom: 0;
+  text-align: left;
+}
+
+/* Selected cell highlighting (TipTap feature) */
+.ProseMirror .selectedCell:after {
+  z-index: 2;
+  position: absolute;
+  content: "";
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(59, 130, 246, 0.15);
+  pointer-events: none;
+}
+
+/* Table cell relative positioning for selection overlay */
+.ProseMirror table td,
+.ProseMirror table th,
+.ProseMirror .tiptap-table td,
+.ProseMirror .tiptap-table th {
+  position: relative;
+}
+
+/* Column resize handle (TipTap feature) */
+.ProseMirror .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: -2px;
+  width: 4px;
+  background-color: #3b82f6;
+  pointer-events: none;
+}
+
+/* Table resize cursor */
+.ProseMirror.resize-cursor {
+  cursor: col-resize;
+}
+
+/* Table cell minimum height */
+.ProseMirror table td:empty::before,
+.ProseMirror table th:empty::before,
+.ProseMirror .tiptap-table td:empty::before,
+.ProseMirror .tiptap-table th:empty::before {
+  content: '\00a0'; /* Non-breaking space to ensure cell has height */
+}
+
+/* Professional table caption (if used) */
+.ProseMirror table caption {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  text-align: left;
+  font-size: 10pt;
+  color: #374151;
+}
+
+/* Table wrapper for overflow handling */
+.ProseMirror .tableWrapper {
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+/* Compact table variant */
+.ProseMirror table.compact th,
+.ProseMirror table.compact td {
+  padding: 0.25rem 0.5rem;
+  font-size: 10pt;
+}
+
+/* Currency/number alignment in tables */
+.ProseMirror table td[style*="text-align: right"],
+.ProseMirror .tiptap-table td[style*="text-align: right"] {
+  font-family: 'Courier New', monospace;
+}
+
+/* Total row styling */
+.ProseMirror table tr:last-child td,
+.ProseMirror .tiptap-table tr:last-child td {
+  font-weight: 600;
+  border-top: 2px solid #374151;
+}
+
+/* ==================== LINK STYLES ==================== */
+/* Styled links within the editor - using the editor-link class from Link extension */
+
+.ProseMirror .editor-link,
+.ProseMirror a.editor-link {
+  color: #2563eb;
+  text-decoration: underline;
+  text-decoration-color: #93c5fd;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+.ProseMirror .editor-link:hover,
+.ProseMirror a.editor-link:hover {
+  color: #1d4ed8;
+  background-color: #eff6ff;
+  text-decoration-color: #2563eb;
+}
+
+/* Link indicator icon (optional - shows external link icon) */
+.ProseMirror .editor-link[href^="http"]::after {
+  content: '';
+  display: inline-block;
+  width: 0.75em;
+  height: 0.75em;
+  margin-left: 0.25em;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'%3E%3C/path%3E%3Cpolyline points='15 3 21 3 21 9'%3E%3C/polyline%3E%3Cline x1='10' y1='14' x2='21' y2='3'%3E%3C/line%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  vertical-align: middle;
+  opacity: 0.7;
+}
+
+/* ==================== SEARCH/FIND HIGHLIGHT STYLES ==================== */
+/* Styles for Find & Replace functionality */
+
+/* Search result highlight - all matches */
+.ProseMirror .search-result {
+  background-color: #fef08a;
+  border-radius: 2px;
+  padding: 1px 0;
+  box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.5);
+}
+
+/* Current/active search result - the one currently focused */
+.ProseMirror .search-result-current,
+.ProseMirror .search-result.current {
+  background-color: #fbbf24;
+  box-shadow: 0 0 0 2px #f59e0b;
+  animation: search-pulse 1s ease-in-out infinite;
+}
+
+/* Subtle pulse animation for current match */
+@keyframes search-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 2px #f59e0b;
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.4);
+  }
+}
+
+/* Selection when navigating search results */
+.ProseMirror ::selection {
+  background-color: #bfdbfe;
+}
+
+/* ==================== STRIKETHROUGH STYLES ==================== */
+/* Enhanced strikethrough styling */
+
+.ProseMirror s,
+.ProseMirror del,
+.ProseMirror strike {
+  text-decoration: line-through;
+  text-decoration-color: #9ca3af;
+  color: #6b7280;
+}
+
+/* ==================== TEXT ALIGNMENT CLASSES ==================== */
+/* Explicit alignment classes for better control */
+
+.ProseMirror .text-left,
+.ProseMirror [style*="text-align: left"] {
+  text-align: left !important;
+}
+
+.ProseMirror .text-center,
+.ProseMirror [style*="text-align: center"] {
+  text-align: center !important;
+}
+
+.ProseMirror .text-right,
+.ProseMirror [style*="text-align: right"] {
+  text-align: right !important;
+}
+
+.ProseMirror .text-justify,
+.ProseMirror [style*="text-align: justify"] {
+  text-align: justify !important;
+}
+
+/* ==================== TEXT COLOR STYLES ==================== */
+/* Support for custom text colors via the Color extension */
+
+.ProseMirror span[style*="color:"] {
+  transition: color 0.2s ease;
+}
+
+/* ==================== HIGHLIGHT/MARK COLOR SUPPORT ==================== */
+/* Support for custom highlight colors via Highlight extension */
+
+.ProseMirror mark {
+  padding: 0.1em 0.2em;
+  border-radius: 2px;
+  transition: background-color 0.2s ease;
+}
+
+/* Named highlight colors */
+.ProseMirror mark[style*="background-color: rgb(254, 240, 138)"],
+.ProseMirror mark[data-color="#fef08a"] {
+  background-color: #fef08a !important;
+}
+
+.ProseMirror mark[style*="background-color: rgb(187, 247, 208)"],
+.ProseMirror mark[data-color="#bbf7d0"] {
+  background-color: #bbf7d0 !important;
+}
+
+.ProseMirror mark[style*="background-color: rgb(191, 219, 254)"],
+.ProseMirror mark[data-color="#bfdbfe"] {
+  background-color: #bfdbfe !important;
+}
+
+.ProseMirror mark[style*="background-color: rgb(251, 207, 232)"],
+.ProseMirror mark[data-color="#fbcfe8"] {
+  background-color: #fbcfe8 !important;
+}
+
+.ProseMirror mark[style*="background-color: rgb(254, 215, 170)"],
+.ProseMirror mark[data-color="#fed7aa"] {
+  background-color: #fed7aa !important;
+}
+
+/* ==================== CODE BLOCK ENHANCEMENTS ==================== */
+/* Better code block styling */
+
+.ProseMirror pre {
+  background-color: #1e293b;
+  color: #e2e8f0;
+  padding: 1rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 1rem 0;
+  font-family: 'Fira Code', 'Consolas', 'Monaco', monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  border: 1px solid #334155;
+}
+
+.ProseMirror pre code {
+  background: none;
+  color: inherit;
+  padding: 0;
+  font-size: inherit;
+  font-family: inherit;
+}
+
+/* ==================== HORIZONTAL RULE STYLES ==================== */
+/* Enhanced divider/horizontal rule styling */
+
+.ProseMirror hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #cbd5e1, transparent);
+  margin: 2rem 0;
+}
+
+.ProseMirror hr::before {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 1px;
+  background-color: #e2e8f0;
+}
+
+/* ==================== TOOLBAR RESPONSIVE STYLES ==================== */
+/* Ensure toolbar works well at various screen sizes */
+
+@media (max-width: 768px) {
+  .ProseMirror {
+    padding: 1rem;
+    font-size: 11pt;
+  }
+  
+  /* Allow toolbar items to wrap */
+  .editor-toolbar {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .ProseMirror {
+    padding: 0.75rem;
+    font-size: 10pt;
+  }
+}

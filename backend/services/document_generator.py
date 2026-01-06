@@ -1,0 +1,422 @@
+"""
+Document Generator Service
+
+Bridges the ProjectDocument model with the GenerationCoordinator to enable
+AI-powered document generation from the document checklist.
+
+Key responsibilities:
+1. Map document names to appropriate agent types
+2. Retrieve project context (other approved docs, assumptions)
+3. Check and enforce document dependencies
+4. Call GenerationCoordinator for content generation
+5. Save results to ProjectDocument.generated_content
+"""
+
+import os
+import yaml
+import asyncio
+from typing import List, Dict, Optional, Tuple
+from datetime import datetime
+from sqlalchemy.orm import Session
+
+from backend.models.document import ProjectDocument, GenerationStatus
+from backend.models.procurement import ProcurementProject, PhaseName
+from backend.services.generation_coordinator import GenerationCoordinator, GenerationTask, get_generation_coordinator
+
+
+# Document dependencies - documents that must exist/be approved before generating others
+# Loaded from phase_definitions.yaml
+DOCUMENT_DEPENDENCIES: Dict[str, List[str]] = {}
+
+
+def load_document_dependencies() -> Dict[str, List[str]]:
+    """Load document dependencies from phase_definitions.yaml"""
+    global DOCUMENT_DEPENDENCIES
+    
+    if DOCUMENT_DEPENDENCIES:
+        return DOCUMENT_DEPENDENCIES
+    
+    try:
+        config_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "config",
+            "phase_definitions.yaml"
+        )
+        
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
+        
+        # Collect dependencies from all phases
+        for phase_name, phase_data in config.get('phases', {}).items():
+            deps = phase_data.get('dependencies', {})
+            for doc, doc_deps in deps.items():
+                DOCUMENT_DEPENDENCIES[doc] = doc_deps
+        
+        return DOCUMENT_DEPENDENCIES
+    except Exception as e:
+        print(f"Warning: Could not load document dependencies: {e}")
+        return {}
+
+
+class DocumentGenerator:
+    """
+    Service for generating AI content for ProjectDocument records.
+    
+    Integrates with the existing GenerationCoordinator while providing
+    document-specific context gathering and dependency checking.
+    """
+    
+    def __init__(self, use_specialized_agents: bool = True):
+        """
+        Initialize the document generator.
+        
+        Args:
+            use_specialized_agents: Whether to use specialized agents (vs generic)
+        """
+        self.use_specialized_agents = use_specialized_agents
+        self.coordinator = get_generation_coordinator(use_specialized_agents=use_specialized_agents)
+        self.dependencies = load_document_dependencies()
+    
+    def check_dependencies(
+        self,
+        db: Session,
+        project_id: str,
+        document_name: str
+    ) -> Tuple[bool, List[str], List[str]]:
+        """
+        Check if all dependencies for a document are met.
+        
+        Args:
+            db: Database session
+            project_id: Project UUID
+            document_name: Name of document to check dependencies for
+            
+        Returns:
+            Tuple of (dependencies_met, missing_deps, available_deps)
+        """
+        deps = self.dependencies.get(document_name, [])
+        
+        if not deps:
+            return True, [], []
+        
+        # Get existing documents for this project
+        existing_docs = db.query(ProjectDocument).filter(
+            ProjectDocument.project_id == project_id
+        ).all()
+        
+        existing_doc_names = {doc.document_name: doc for doc in existing_docs}
+        
+        missing = []
+        available = []
+        
+        for dep_name in deps:
+            dep_doc = existing_doc_names.get(dep_name)
+            if dep_doc:
+                # Check if dependency has content (either uploaded, approved, or generated)
+                if dep_doc.status in ['approved', 'uploaded'] or dep_doc.generated_content:
+                    available.append(dep_name)
+                else:
+                    missing.append(dep_name)
+            else:
+                missing.append(dep_name)
+        
+        return len(missing) == 0, missing, available
+    
+    def get_project_context(
+        self,
+        db: Session,
+        project_id: str,
+        document_name: str
+    ) -> Dict:
+        """
+        Gather context from the project for document generation.
+        
+        Args:
+            db: Database session
+            project_id: Project UUID
+            document_name: Name of document being generated
+            
+        Returns:
+            Dictionary with project context for generation
+        """
+        # Get project details
+        project = db.query(ProcurementProject).filter(
+            ProcurementProject.id == project_id
+        ).first()
+        
+        if not project:
+            return {}
+        
+        # Get existing documents with content
+        existing_docs = db.query(ProjectDocument).filter(
+            ProjectDocument.project_id == project_id,
+            ProjectDocument.document_name != document_name
+        ).all()
+
+        # Collect generated/approved content from dependencies
+        dependency_content = {}
+        deps = self.dependencies.get(document_name, [])
+        
+        for doc in existing_docs:
+            if doc.document_name in deps:
+                if doc.generated_content:
+                    dependency_content[doc.document_name] = doc.generated_content
+
+            return {
+            "project_name": project.name,
+            "project_description": project.description,
+            "project_type": project.project_type.value if project.project_type else None,
+            "current_phase": project.current_phase.value if hasattr(project, 'current_phase') and project.current_phase else None,
+            # Use estimated_value which is the actual field on ProcurementProject model
+            "estimated_value": str(project.estimated_value) if project.estimated_value else None,
+            "dependency_documents": dependency_content,
+            "existing_documents": [
+                {
+                    "name": doc.document_name,
+                    "status": doc.status.value,
+                    "has_content": bool(doc.generated_content)
+                }
+                for doc in existing_docs
+            ]
+        }
+    
+    async def generate_document(
+        self,
+        db: Session,
+        document: ProjectDocument,
+        assumptions: List[Dict[str, str]],
+        additional_context: Optional[str] = None,
+        progress_callback: Optional[callable] = None
+    ) -> Tuple[bool, str, Optional[Dict]]:
+        """
+        Generate AI content for a single document.
+        
+        Args:
+            db: Database session
+            document: ProjectDocument to generate content for
+            assumptions: List of assumption dictionaries
+            additional_context: Optional additional context from user
+            progress_callback: Optional callback for progress updates
+            
+        Returns:
+            Tuple of (success, content_or_error, metadata)
+        """
+        try:
+            # Check dependencies - ensures required documents are generated first
+            deps_met, missing_deps, available_deps = self.check_dependencies(
+                db, str(document.project_id), document.document_name
+            )
+            
+            if not deps_met:
+                return False, f"Missing dependencies: {', '.join(missing_deps)}", None
+            
+            # Get project context including name, description, type, and dependency content
+            project_context = self.get_project_context(
+                db, str(document.project_id), document.document_name
+            )
+
+            # Build generation assumptions including project context
+            generation_assumptions = assumptions.copy()
+            
+            # Add project context as assumptions
+            if project_context.get("project_name"):
+                generation_assumptions.append({
+                    "id": "project_name",
+                    "text": f"Project: {project_context['project_name']}",
+                    "source": "Project Settings"
+                })
+            
+            if project_context.get("project_description"):
+                generation_assumptions.append({
+                    "id": "project_desc",
+                    "text": project_context['project_description'],
+                    "source": "Project Description"
+                })
+            
+            if additional_context:
+                generation_assumptions.append({
+                    "id": "user_context",
+                    "text": additional_context,
+                    "source": "User Input"
+                })
+            
+            # Add dependency content as assumptions
+            for dep_name, dep_content in project_context.get("dependency_documents", {}).items():
+                # Truncate very long content to avoid token limits
+                content_preview = dep_content[:2000] + "..." if len(dep_content) > 2000 else dep_content
+                generation_assumptions.append({
+                    "id": f"dep_{dep_name.lower().replace(' ', '_')}",
+                    "text": f"From {dep_name}: {content_preview}",
+                    "source": dep_name
+                })
+            
+            # Create generation task with unique ID
+            task_id = f"doc_{document.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            task = GenerationTask(
+                task_id=task_id,
+                document_names=[document.document_name],
+                assumptions=generation_assumptions,
+                linked_assumptions={document.document_name: [a.get("id", "") for a in generation_assumptions]}
+            )
+
+            # Update document status to show generation in progress
+            document.generation_status = GenerationStatus.GENERATING
+            document.generation_task_id = task_id
+            db.commit()
+            
+            # Run generation via the coordinator (handles agent routing and AI calls)
+            completed_task = await self.coordinator.generate_documents(
+                task=task,
+                progress_callback=progress_callback
+            )
+            
+            if completed_task.status == "completed" and completed_task.sections:
+                # Get the generated content from sections dictionary
+                content = completed_task.sections.get(
+                    document.document_name,
+                    list(completed_task.sections.values())[0] if completed_task.sections else ""
+                )
+                
+                # Get quality score if available from quality analysis
+                quality_score = None
+                if completed_task.quality_analysis:
+                    doc_quality = completed_task.quality_analysis.get(document.document_name, {})
+                    quality_score = doc_quality.get("score", doc_quality.get("overall_score"))
+                
+                # Return metadata for frontend display
+                metadata = {
+                    "agent_metadata": completed_task.agent_metadata,
+                    "citations": completed_task.citations,
+                    "quality_analysis": completed_task.quality_analysis,
+                    "phase_info": completed_task.phase_info
+                }
+                
+                return True, content, metadata
+            else:
+                error_msg = completed_task.errors[0] if completed_task.errors else "Generation failed - no sections returned"
+                return False, error_msg, None
+
+        except Exception as e:
+            return False, str(e), None
+    
+    async def generate_batch(
+        self,
+        db: Session,
+        project_id: str,
+        document_ids: List[str],
+        assumptions: List[Dict[str, str]],
+        progress_callback: Optional[callable] = None
+    ) -> Dict[str, Tuple[bool, str, Optional[Dict]]]:
+        """
+        Generate AI content for multiple documents in dependency order.
+        
+        Args:
+            db: Database session
+            project_id: Project UUID
+            document_ids: List of document UUIDs to generate
+            assumptions: List of assumption dictionaries
+            progress_callback: Optional callback for progress updates
+            
+        Returns:
+            Dictionary mapping document_id to (success, content_or_error, metadata)
+        """
+        # Get documents
+        documents = db.query(ProjectDocument).filter(
+            ProjectDocument.id.in_(document_ids)
+        ).all()
+        
+        # Sort by dependencies
+        sorted_docs = self._sort_by_dependencies(documents)
+        
+        results = {}
+        
+        for doc in sorted_docs:
+            success, content_or_error, metadata = await self.generate_document(
+                db=db,
+                document=doc,
+                assumptions=assumptions,
+                progress_callback=progress_callback
+            )
+            
+            results[str(doc.id)] = (success, content_or_error, metadata)
+            
+            if success:
+                # Save generated content for downstream documents
+                doc.generated_content = content_or_error
+                doc.generated_at = datetime.utcnow()
+                doc.generation_status = GenerationStatus.GENERATED
+                if metadata and metadata.get("quality_analysis"):
+                    doc_quality = metadata["quality_analysis"].get(doc.document_name, {})
+                    doc.ai_quality_score = doc_quality.get("score", doc_quality.get("overall_score"))
+                db.commit()
+            else:
+                doc.generation_status = GenerationStatus.FAILED
+                db.commit()
+        
+        return results
+    
+    def _sort_by_dependencies(self, documents: List[ProjectDocument]) -> List[ProjectDocument]:
+        """Sort documents by their dependencies (topological sort)."""
+        doc_map = {doc.document_name: doc for doc in documents}
+        result = []
+        visited = set()
+        
+        def visit(doc_name: str):
+            if doc_name in visited:
+                return
+            visited.add(doc_name)
+            
+            # Visit dependencies first
+            for dep in self.dependencies.get(doc_name, []):
+                if dep in doc_map:
+                    visit(dep)
+            
+            if doc_name in doc_map:
+                result.append(doc_map[doc_name])
+        
+        for doc in documents:
+            visit(doc.document_name)
+        
+        return result
+    
+    def get_generation_estimate(self, document_name: str) -> Dict:
+        """
+        Get estimated generation time and info for a document.
+        
+        Args:
+            document_name: Name of the document
+            
+        Returns:
+            Dictionary with estimate info
+        """
+        # Rough estimates based on document complexity
+        time_estimates = {
+            "Market Research Report": 3,
+            "Acquisition Plan": 4,
+            "Performance Work Statement (PWS)": 4,
+            "Independent Government Cost Estimate (IGCE)": 3,
+            "Source Selection Plan": 3,
+            "Section L - Instructions to Offerors": 3,
+            "Section M - Evaluation Factors": 3,
+        }
+        
+        deps = self.dependencies.get(document_name, [])
+        
+        return {
+            "document_name": document_name,
+            "estimated_minutes": time_estimates.get(document_name, 2),
+            "dependencies": deps,
+            "has_dependencies": len(deps) > 0
+        }
+
+
+# Singleton instance
+_document_generator: Optional[DocumentGenerator] = None
+
+
+def get_document_generator(use_specialized_agents: bool = True) -> DocumentGenerator:
+    """Get or create the DocumentGenerator singleton."""
+    global _document_generator
+    if _document_generator is None:
+        _document_generator = DocumentGenerator(use_specialized_agents=use_specialized_agents)
+    return _document_generator
