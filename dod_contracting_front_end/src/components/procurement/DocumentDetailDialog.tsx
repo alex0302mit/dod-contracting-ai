@@ -10,7 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Calendar, User, FileText, Download, Upload, CheckCircle2, Clock, History, UserCheck, Sparkles } from 'lucide-react';
+import { Calendar, User, FileText, Download, Upload, CheckCircle2, Clock, History, UserCheck, Sparkles, GitBranch } from 'lucide-react';
 import { ProjectDocument } from '@/hooks/useProjectDocuments';
 import { useDocumentUploads, DocumentUpload } from '@/hooks/useDocumentUploads';
 import { projectsApi, approvalsApi, type Approval } from '@/services/api';
@@ -22,6 +22,8 @@ import { ApprovalRequestDialog } from './ApprovalRequestDialog';
 import { ApprovalActionsCard } from './ApprovalActionsCard';
 import { ApprovalHistoryView } from './ApprovalHistoryView';
 import { DocumentGenerateTab } from './DocumentGenerateTab';
+// DocumentLineagePanel for showing source documents that influenced AI generation
+import { DocumentLineagePanel } from '@/components/documents/DocumentLineagePanel';
 
 interface DocumentDetailDialogProps {
   document: ProjectDocument;
@@ -144,7 +146,8 @@ export function DocumentDetailDialog({
           </DialogHeader>
 
           <Tabs defaultValue="details" className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
+            {/* Show 6 columns if AI-generated, 5 otherwise */}
+            <TabsList className={`grid w-full ${document.generation_status === 'generated' ? 'grid-cols-6' : 'grid-cols-5'}`}>
               <TabsTrigger value="details">Details</TabsTrigger>
               <TabsTrigger value="generate" className="gap-1">
                 <Sparkles className="h-3 w-3" />
@@ -155,6 +158,13 @@ export function DocumentDetailDialog({
                 Approvals ({approvals.filter(a => a.approval_status === 'pending').length})
               </TabsTrigger>
               <TabsTrigger value="history">History</TabsTrigger>
+              {/* Lineage tab - only shows for AI-generated documents */}
+              {document.generation_status === 'generated' && (
+                <TabsTrigger value="lineage" className="gap-1">
+                  <GitBranch className="h-3 w-3" />
+                  Sources
+                </TabsTrigger>
+              )}
             </TabsList>
 
             <TabsContent value="details" className="space-y-4 mt-4">
@@ -433,6 +443,16 @@ export function DocumentDetailDialog({
                 )}
               </div>
             </TabsContent>
+
+            {/* Lineage Tab - Shows source documents that influenced AI generation */}
+            {document.generation_status === 'generated' && (
+              <TabsContent value="lineage" className="mt-4">
+                <DocumentLineagePanel
+                  documentId={document.id}
+                  documentName={document.document_name}
+                />
+              </TabsContent>
+            )}
           </Tabs>
 
           {canEdit && (

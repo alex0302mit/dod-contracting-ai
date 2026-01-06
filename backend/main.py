@@ -3192,6 +3192,386 @@ If no clear assumptions can be extracted, return an empty array []."""
 
 
 # ============================================================================
+# Project Knowledge API - Project-Scoped Document Management
+# ============================================================================
+
+@app.get("/api/projects/{project_id}/knowledge", tags=["Knowledge"])
+async def get_project_knowledge(
+    project_id: str,
+    phase: Optional[str] = Query(None, description="Filter by phase"),
+    purpose: Optional[str] = Query(None, description="Filter by purpose"),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get all knowledge documents for a specific project.
+    
+    Knowledge documents are reference materials (regulations, templates, market research, etc.)
+    that are indexed into RAG and used to inform AI-generated documents.
+    
+    Optional filters:
+    - phase: Filter by procurement phase (pre_solicitation, solicitation, post_solicitation)
+    - purpose: Filter by document purpose (regulation, template, market_research, prior_award, strategy_memo)
+    """
+    try:
+        rag_service = get_rag_service()
+        
+        # Get all RAG documents
+        all_docs = rag_service.list_uploaded_documents()
+        
+        # Filter by project_id
+        project_docs = []
+        for doc in all_docs:
+            metadata = doc.get('metadata', {})
+            doc_project_id = metadata.get('project_id')
+            
+            # Include documents that match this project OR have no project_id (legacy docs)
+            if doc_project_id == project_id:
+                # Apply additional filters
+                if phase and metadata.get('phase') != phase:
+                    continue
+                if purpose and metadata.get('purpose') != purpose:
+                    continue
+                
+                project_docs.append({
+                    "id": doc.get('filename', ''),
+                    "project_id": project_id,
+                    "filename": doc.get('filename', ''),
+                    "file_type": doc.get('file_type', 'unknown'),
+                    "file_size": doc.get('file_size', 0),
+                    "phase": metadata.get('phase'),
+                    "purpose": metadata.get('purpose'),
+                    "upload_date": metadata.get('upload_timestamp', doc.get('upload_date', '')),
+                    "uploaded_by": metadata.get('uploaded_by', ''),
+                    "rag_indexed": True,  # If it's in RAG, it's indexed
+                    "chunk_count": metadata.get('chunk_count'),
+                    "chunk_ids": metadata.get('chunk_ids', [])
+                })
+        
+        return {
+            "documents": project_docs,
+            "total": len(project_docs)
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching project knowledge: {str(e)}"
+        )
+
+
+@app.post("/api/projects/{project_id}/knowledge/upload", tags=["Knowledge"])
+async def upload_project_knowledge(
+    project_id: str,
+    file: UploadFile = File(...),
+    phase: str = Query(..., description="Procurement phase: pre_solicitation, solicitation, post_solicitation"),
+    purpose: str = Query(..., description="Document purpose: regulation, template, market_research, prior_award, strategy_memo"),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Upload a document to a project's knowledge base.
+    
+    The document is:
+    1. Saved to storage
+    2. Tagged with project_id, phase, and purpose
+    3. Processed and indexed into the RAG vector store
+    
+    This makes the document available for AI-powered document generation
+    with full traceability to the source.
+    
+    Args:
+        project_id: The project to associate this document with
+        file: The document file (PDF, DOCX, TXT, MD, XLSX, PPTX)
+        phase: The procurement phase this document supports
+        purpose: The document's purpose/category
+    """
+    try:
+        # Validate file type
+        allowed_extensions = {'.pdf', '.docx', '.txt', '.md', '.xlsx', '.pptx', '.doc'}
+        file_ext = os.path.splitext(file.filename)[1].lower()
+        if file_ext not in allowed_extensions:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"File type not supported. Allowed: {', '.join(allowed_extensions)}"
+            )
+        
+        # Validate phase
+        valid_phases = ['pre_solicitation', 'solicitation', 'post_solicitation']
+        if phase not in valid_phases:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid phase. Must be one of: {', '.join(valid_phases)}"
+            )
+        
+        # Validate purpose
+        valid_purposes = ['regulation', 'template', 'market_research', 'prior_award', 'strategy_memo']
+        if purpose not in valid_purposes:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid purpose. Must be one of: {', '.join(valid_purposes)}"
+            )
+        
+        # Read file content
+        content = await file.read()
+        
+        # Get RAG service and upload with project metadata
+        rag_service = get_rag_service()
+        
+        # Upload with enhanced metadata including project_id, phase, and purpose
+        result = rag_service.upload_and_process_document(
+            file_content=content,
+            filename=file.filename,
+            user_id=str(current_user.id),
+            metadata={
+                "project_id": project_id,
+                "phase": phase,
+                "purpose": purpose,
+                "category": purpose  # For backward compatibility with existing RAG queries
+            }
+        )
+        
+        if not result.get("success"):
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=result.get("error", "Failed to process document")
+            )
+        
+        return {
+            "id": result.get("saved_as", file.filename),
+            "filename": file.filename,
+            "file_type": file_ext.replace('.', ''),
+            "file_size": result.get("file_size", len(content)),
+            "chunks_created": result.get("chunks_created", 0),
+            "chunk_ids": result.get("chunk_ids", []),
+            "message": f"Successfully uploaded and indexed {file.filename} for project"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(f"Error uploading project knowledge: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error uploading document: {str(e)}"
+        )
+
+
+@app.delete("/api/projects/{project_id}/knowledge/{document_id}", tags=["Knowledge"])
+async def delete_project_knowledge(
+    project_id: str,
+    document_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Delete a document from a project's knowledge base.
+    
+    This removes the document file and its associated chunks from the RAG vector store.
+    AI-generated documents that previously used this source will not be affected.
+    """
+    try:
+        rag_service = get_rag_service()
+        
+        # Delete from RAG
+        result = rag_service.delete_document(document_id)
+        
+        if not result.get("success"):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=result.get("error", "Document not found")
+            )
+        
+        return {
+            "message": f"Successfully deleted {document_id}",
+            "deleted_chunks": result.get("deleted_chunks", 0)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting document: {str(e)}"
+        )
+
+
+# ============================================================================
+# Document Lineage API - Track Sources of AI-Generated Content
+# ============================================================================
+
+@app.get("/api/documents/{document_id}/lineage", tags=["Lineage"])
+async def get_document_lineage(
+    document_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get lineage information for a document.
+    
+    For AI-generated documents: Returns source documents that influenced generation
+    For uploaded documents: Returns documents that were derived from this source
+    
+    This provides explainability for AI decisions by showing:
+    - Which source documents were used
+    - How relevant each source was (relevance_score)
+    - Which RAG chunks were retrieved
+    """
+    try:
+        from backend.models.lineage import DocumentLineage
+        
+        # Get lineage records where this document is the derived document (sources)
+        sources_query = db.query(DocumentLineage).filter(
+            DocumentLineage.derived_document_id == document_id
+        ).all()
+        
+        # Get lineage records where this document is the source (derived documents)
+        derived_query = db.query(DocumentLineage).filter(
+            DocumentLineage.source_document_id == document_id
+        ).all()
+        
+        # Also check by source_filename for RAG-only documents
+        derived_by_filename = db.query(DocumentLineage).filter(
+            DocumentLineage.source_filename.isnot(None)
+        ).all()
+        
+        sources = [lineage.to_dict() for lineage in sources_query]
+        derived = [lineage.to_dict() for lineage in derived_query]
+        
+        return {
+            "document_id": document_id,
+            "sources": sources,  # Documents that influenced this one
+            "derived_from_this": derived,  # Documents created from this source
+            "total_sources": len(sources),
+            "total_derived": len(derived)
+        }
+        
+    except Exception as e:
+        import traceback
+        print(f"Error fetching lineage: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching lineage: {str(e)}"
+        )
+
+
+class LineageRecordRequest(BaseModel):
+    """Request model for creating a lineage record"""
+    source_document_id: Optional[str] = None
+    source_filename: Optional[str] = None
+    influence_type: str = "data_source"
+    relevance_score: float = 0.0
+    chunk_ids_used: List[str] = []
+    context: Optional[str] = None
+
+
+@app.post("/api/documents/{document_id}/lineage", tags=["Lineage"])
+async def record_document_lineage(
+    document_id: str,
+    request: LineageRecordRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Record a lineage relationship for a document.
+    
+    Called after AI generation to record which source documents were used.
+    
+    Args:
+        document_id: The derived (generated) document ID
+        request: Lineage details including source, influence type, and relevance
+    """
+    try:
+        from backend.models.lineage import DocumentLineage, InfluenceType
+        import uuid as uuid_lib
+        
+        # Create lineage record
+        lineage = DocumentLineage(
+            id=uuid_lib.uuid4(),
+            source_document_id=request.source_document_id,
+            source_filename=request.source_filename,
+            derived_document_id=document_id,
+            influence_type=InfluenceType(request.influence_type),
+            relevance_score=request.relevance_score,
+            chunk_ids_used=request.chunk_ids_used,
+            chunks_used_count=len(request.chunk_ids_used),
+            context=request.context
+        )
+        
+        db.add(lineage)
+        db.commit()
+        db.refresh(lineage)
+        
+        return {
+            "id": str(lineage.id),
+            "message": "Lineage record created successfully",
+            "derived_document_id": document_id,
+            "source": request.source_document_id or request.source_filename
+        }
+        
+    except Exception as e:
+        db.rollback()
+        import traceback
+        print(f"Error recording lineage: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error recording lineage: {str(e)}"
+        )
+
+
+@app.post("/api/documents/{document_id}/lineage/batch", tags=["Lineage"])
+async def record_batch_lineage(
+    document_id: str,
+    sources: List[LineageRecordRequest],
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Record multiple lineage relationships at once.
+    
+    Used after AI generation to record all sources in a single transaction.
+    More efficient than individual calls for bulk lineage recording.
+    """
+    try:
+        from backend.models.lineage import DocumentLineage, InfluenceType
+        import uuid as uuid_lib
+        
+        created_records = []
+        
+        for source in sources:
+            lineage = DocumentLineage(
+                id=uuid_lib.uuid4(),
+                source_document_id=source.source_document_id,
+                source_filename=source.source_filename,
+                derived_document_id=document_id,
+                influence_type=InfluenceType(source.influence_type),
+                relevance_score=source.relevance_score,
+                chunk_ids_used=source.chunk_ids_used,
+                chunks_used_count=len(source.chunk_ids_used),
+                context=source.context
+            )
+            db.add(lineage)
+            created_records.append(str(lineage.id))
+        
+        db.commit()
+        
+        return {
+            "message": f"Created {len(created_records)} lineage records",
+            "derived_document_id": document_id,
+            "lineage_ids": created_records,
+            "sources_count": len(sources)
+        }
+        
+    except Exception as e:
+        db.rollback()
+        import traceback
+        print(f"Error recording batch lineage: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error recording batch lineage: {str(e)}"
+        )
+
+
+# ============================================================================
 # Document Generation Endpoints
 # ============================================================================
 

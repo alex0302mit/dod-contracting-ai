@@ -47,6 +47,8 @@ import { fieldTemplates, getTemplatesForSection } from '@/lib/fieldTemplates';
 import { CommentThread, Comment } from '@/lib/commentTypes';
 // Tooltip for hover labels on icon buttons
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+// DocumentLineagePanel for showing source documents that influenced AI generation
+import { DocumentLineagePanel } from "@/components/documents/DocumentLineagePanel";
 
 interface Citation {
   id: number;
@@ -95,11 +97,15 @@ interface LiveEditorProps {
   collaborationMetadata?: CollaborationMetadata | null;
   // Precomputed quality scores from document generation (for instant display)
   initialQualityScores?: Record<string, QualityAnalysisResponse>;
+  // Optional document ID for showing source lineage panel
+  documentId?: string;
+  // Optional document name for display purposes
+  documentName?: string;
   onExport: () => void;
   onBack: () => void;
 }
 
-export function LiveEditor({ lockedAssumptions, sections, setSections, citations, agentMetadata, collaborationMetadata, initialQualityScores, onExport, onBack }: LiveEditorProps) {
+export function LiveEditor({ lockedAssumptions, sections, setSections, citations, agentMetadata, collaborationMetadata, initialQualityScores, documentId, documentName, onExport, onBack }: LiveEditorProps) {
   const sectionNames = Object.keys(sections);
   const [activeSection, setActiveSection] = useState(sectionNames[0]);
   const [viewMode, setViewMode] = useState<"edit" | "compare" | "history" | "dependencies">("edit");
@@ -117,7 +123,8 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
   const [proposedChanges, setProposedChanges] = useState<any>(null);
   const [showAutoImprove, setShowAutoImprove] = useState(false);
   const [currentEditor, setCurrentEditor] = useState<Editor | null>(null);
-  const [sidebarTab, setSidebarTab] = useState<"context" | "tags" | "validation" | "fields" | "comments">("context");
+  // Sidebar tab state - includes "sources" for document lineage when documentId is available
+  const [sidebarTab, setSidebarTab] = useState<"context" | "tags" | "validation" | "fields" | "comments" | "sources">("context");
   // Quality score details panel expansion state
   const [showQualityDetails, setShowQualityDetails] = useState(false);
   // API-powered quality analysis state - cached per section for consistent scores across UI
@@ -1051,8 +1058,9 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
                   </TooltipProvider>
                   <span className="text-xs text-muted-foreground">Quality & Context</span>
                 </div>
-                <Tabs value={sidebarTab} onValueChange={(v) => setSidebarTab(v as "context" | "tags" | "validation" | "fields" | "comments")} className="w-full">
-                  <TabsList className="grid w-full grid-cols-5">
+                <Tabs value={sidebarTab} onValueChange={(v) => setSidebarTab(v as "context" | "tags" | "validation" | "fields" | "comments" | "sources")} className="w-full">
+                  {/* Show 6 columns if documentId is available for lineage, otherwise 5 */}
+                  <TabsList className={`grid w-full ${documentId ? 'grid-cols-6' : 'grid-cols-5'}`}>
                     <TabsTrigger value="context" className="gap-1 text-[10px] px-1">
                       <FileText className="h-3 w-3" />
                       Info
@@ -1073,6 +1081,13 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
                       <MessageCircle className="h-3 w-3" />
                       Notes
                     </TabsTrigger>
+                    {/* Sources tab - shows document lineage for explainability */}
+                    {documentId && (
+                      <TabsTrigger value="sources" className="gap-1 text-[10px] px-1">
+                        <GitBranch className="h-3 w-3" />
+                        Src
+                      </TabsTrigger>
+                    )}
                   </TabsList>
                 </Tabs>
               </div>
@@ -1558,6 +1573,14 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
                 onAddComment={handleAddComment}
                 onResolveThread={handleResolveThread}
                 onDeleteThread={handleDeleteThread}
+              />
+            )}
+            {/* Sources Tab - Document Lineage Panel showing source documents */}
+            {sidebarTab === "sources" && documentId && (
+              <DocumentLineagePanel
+                documentId={documentId}
+                documentName={documentName}
+                compact={true}
               />
             )}
               </ScrollArea>

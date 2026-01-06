@@ -10,11 +10,19 @@ Key responsibilities:
 3. Check and enforce document dependencies
 4. Call GenerationCoordinator for content generation
 5. Save results to ProjectDocument.generated_content
+6. Record document lineage for explainability
+
+Dependencies:
+- backend.models.document: ProjectDocument, GenerationStatus
+- backend.models.lineage: DocumentLineage, InfluenceType
+- backend.services.generation_coordinator: GenerationCoordinator, GenerationTask
+- backend.services.rag_service: RAGService for chunk tracking
 """
 
 import os
 import yaml
 import asyncio
+import uuid as uuid_lib
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -291,6 +299,15 @@ class DocumentGenerator:
                     "phase_info": completed_task.phase_info
                 }
                 
+                # Record lineage for explainability
+                # Track which sources influenced this AI-generated document
+                await self._record_generation_lineage(
+                    db=db,
+                    document=document,
+                    task=completed_task,
+                    project_context=project_context
+                )
+                
                 return True, content, metadata
             else:
                 error_msg = completed_task.errors[0] if completed_task.errors else "Generation failed - no sections returned"
@@ -298,6 +315,114 @@ class DocumentGenerator:
 
         except Exception as e:
             return False, str(e), None
+    
+    async def _record_generation_lineage(
+        self,
+        db: Session,
+        document: ProjectDocument,
+        task: GenerationTask,
+        project_context: Dict
+    ) -> None:
+        """
+        Record lineage relationships after successful AI generation.
+        
+        This creates DocumentLineage records linking the generated document
+        to its source documents (dependencies, RAG chunks, etc.) for:
+        - Explainability: Users can see what influenced AI decisions
+        - Auditability: Required for DoD/FAR compliance
+        - Traceability: Track document evolution
+        
+        Args:
+            db: Database session
+            document: The generated ProjectDocument
+            task: Completed GenerationTask with metadata
+            project_context: Context used during generation
+        """
+        try:
+            from backend.models.lineage import DocumentLineage, InfluenceType
+            
+            lineage_records = []
+            
+            # 1. Record dependency document lineage
+            # These are other project documents used as context
+            for dep_name, dep_content in project_context.get("dependency_documents", {}).items():
+                # Find the dependency document in the database
+                dep_doc = db.query(ProjectDocument).filter(
+                    ProjectDocument.project_id == document.project_id,
+                    ProjectDocument.document_name == dep_name
+                ).first()
+                
+                if dep_doc:
+                    # Calculate relevance based on content usage
+                    # Higher score if dependency was heavily referenced
+                    content_length = len(dep_content) if dep_content else 0
+                    relevance = min(1.0, content_length / 5000) if content_length > 0 else 0.3
+                    
+                    lineage = DocumentLineage(
+                        id=uuid_lib.uuid4(),
+                        source_document_id=dep_doc.id,
+                        derived_document_id=document.id,
+                        influence_type=InfluenceType.DATA_SOURCE,
+                        relevance_score=relevance,
+                        chunk_ids_used=[],  # Dependency docs aren't chunked
+                        chunks_used_count=0,
+                        context=f"Used as dependency: {dep_name}"
+                    )
+                    lineage_records.append(lineage)
+            
+            # 2. Record RAG chunk lineage if available
+            # This tracks which uploaded knowledge docs were retrieved
+            if hasattr(task, 'rag_sources') and task.rag_sources:
+                # Group chunks by source document
+                sources_map: Dict[str, Dict] = {}
+                
+                for source in task.rag_sources:
+                    source_file = source.get('source_document') or source.get('source')
+                    if source_file:
+                        if source_file not in sources_map:
+                            sources_map[source_file] = {
+                                'chunk_ids': [],
+                                'total_score': 0.0,
+                                'count': 0
+                            }
+                        
+                        chunk_id = source.get('chunk_id')
+                        if chunk_id:
+                            sources_map[source_file]['chunk_ids'].append(chunk_id)
+                        
+                        score = source.get('score', source.get('relevance_score', 0.5))
+                        sources_map[source_file]['total_score'] += score
+                        sources_map[source_file]['count'] += 1
+                
+                # Create lineage records for each source
+                for source_file, data in sources_map.items():
+                    avg_score = data['total_score'] / data['count'] if data['count'] > 0 else 0.5
+                    
+                    lineage = DocumentLineage(
+                        id=uuid_lib.uuid4(),
+                        source_document_id=None,  # RAG docs may not be in project_documents
+                        source_filename=source_file,
+                        derived_document_id=document.id,
+                        influence_type=InfluenceType.CONTEXT,
+                        relevance_score=avg_score,
+                        chunk_ids_used=data['chunk_ids'],
+                        chunks_used_count=len(data['chunk_ids']),
+                        context=f"Retrieved from RAG knowledge base"
+                    )
+                    lineage_records.append(lineage)
+            
+            # 3. Commit all lineage records
+            if lineage_records:
+                for record in lineage_records:
+                    db.add(record)
+                db.commit()
+                print(f"✅ Recorded {len(lineage_records)} lineage relationships for {document.document_name}")
+                
+        except Exception as e:
+            # Don't fail generation if lineage recording fails
+            print(f"⚠️ Warning: Could not record lineage for {document.document_name}: {e}")
+            import traceback
+            traceback.print_exc()
     
     async def generate_batch(
         self,

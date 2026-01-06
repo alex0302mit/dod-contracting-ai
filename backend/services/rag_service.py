@@ -76,11 +76,13 @@ class RAGService:
             file_content: Raw file bytes
             filename: Original filename
             user_id: ID of user uploading the document
-            metadata: Optional additional metadata
+            metadata: Optional additional metadata (project_id, phase, purpose, etc.)
 
         Returns:
-            Dict with upload results and processing info
+            Dict with upload results, processing info, and chunk_ids for lineage tracking
         """
+        import uuid
+        
         # Generate unique filename to avoid collisions
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         safe_filename = f"{timestamp}_{filename}"
@@ -101,15 +103,25 @@ class RAGService:
                     "filename": filename
                 }
 
-            # Add user metadata to all chunks
-            for chunk in chunks:
+            # Generate unique chunk_ids for lineage tracking
+            chunk_ids = []
+            for idx, chunk in enumerate(chunks):
+                # Generate a unique chunk_id using document + index
+                chunk_id = f"{safe_filename}_chunk_{idx}_{uuid.uuid4().hex[:8]}"
+                chunk_ids.append(chunk_id)
+                
+                # Add chunk_id to metadata for retrieval
                 chunk.metadata.update({
+                    "chunk_id": chunk_id,
                     "uploaded_by": user_id,
                     "upload_timestamp": timestamp,
-                    "original_filename": filename
+                    "original_filename": filename,
+                    "source_document": safe_filename,
+                    "chunk_index": idx,
+                    "total_chunks": len(chunks)
                 })
 
-                # Add any custom metadata provided
+                # Add any custom metadata provided (project_id, phase, purpose, etc.)
                 if metadata:
                     chunk.metadata.update(metadata)
 
@@ -125,6 +137,7 @@ class RAGService:
                 "saved_as": safe_filename,
                 "file_path": str(file_path),
                 "chunks_created": len(chunks),
+                "chunk_ids": chunk_ids,  # Return chunk_ids for lineage tracking
                 "file_size": len(file_content),
                 "message": f"Successfully processed {filename} into {len(chunks)} chunks"
             }
@@ -177,22 +190,61 @@ class RAGService:
 
     def list_uploaded_documents(self) -> List[Dict]:
         """
-        List all documents that have been uploaded via this service
+        List all documents that have been uploaded via this service.
+        
+        Retrieves metadata from vector store chunks to include:
+        - project_id, phase, purpose (for project-scoped documents)
+        - chunk_ids for lineage tracking
+        - uploaded_by and upload_timestamp
 
         Returns:
-            List of document info dictionaries
+            List of document info dictionaries with full metadata
         """
         documents = []
+        
+        # Build a map of document metadata from vector store chunks
+        # This gives us access to project_id, phase, purpose, etc.
+        doc_metadata_map = {}
+        for chunk in self.vector_store.chunks:
+            source_doc = chunk.get("metadata", {}).get("source_document") or chunk.get("metadata", {}).get("source")
+            if source_doc:
+                if source_doc not in doc_metadata_map:
+                    doc_metadata_map[source_doc] = {
+                        "chunk_ids": [],
+                        "metadata": chunk.get("metadata", {})
+                    }
+                # Collect all chunk_ids for this document
+                chunk_id = chunk.get("metadata", {}).get("chunk_id") or chunk.get("chunk_id")
+                if chunk_id:
+                    doc_metadata_map[source_doc]["chunk_ids"].append(chunk_id)
 
         for file_path in self.upload_dir.glob("*"):
             if file_path.is_file():
                 stat = file_path.stat()
+                filename = file_path.name
+                
+                # Get metadata from vector store if available
+                doc_meta = doc_metadata_map.get(filename, {})
+                chunk_metadata = doc_meta.get("metadata", {})
+                
                 documents.append({
-                    "filename": file_path.name,
+                    "filename": filename,
                     "file_path": str(file_path),
                     "file_size": stat.st_size,
                     "upload_date": datetime.fromtimestamp(stat.st_mtime).isoformat(),
-                    "file_type": file_path.suffix[1:] if file_path.suffix else "unknown"
+                    "file_type": file_path.suffix[1:] if file_path.suffix else "unknown",
+                    # Include metadata from vector store chunks
+                    "metadata": {
+                        "project_id": chunk_metadata.get("project_id"),
+                        "phase": chunk_metadata.get("phase"),
+                        "purpose": chunk_metadata.get("purpose"),
+                        "category": chunk_metadata.get("category"),
+                        "uploaded_by": chunk_metadata.get("uploaded_by"),
+                        "upload_timestamp": chunk_metadata.get("upload_timestamp"),
+                        "original_filename": chunk_metadata.get("original_filename"),
+                        "chunk_count": len(doc_meta.get("chunk_ids", [])),
+                        "chunk_ids": doc_meta.get("chunk_ids", [])
+                    }
                 })
 
         # Sort by upload date (newest first)

@@ -1146,6 +1146,251 @@ export const ragApi = {
 };
 
 // ============================================================================
+// Knowledge API - Project-Scoped Document Management
+// ============================================================================
+
+/**
+ * KnowledgeDocument represents a document in a project's knowledge base.
+ * These documents are indexed into RAG and used for AI-powered generation.
+ * 
+ * Each document is associated with:
+ * - A specific project (project_id)
+ * - A procurement phase (phase)
+ * - A purpose/category (purpose)
+ * - RAG indexing status
+ */
+export interface KnowledgeDocument {
+  id: string;
+  project_id: string;
+  filename: string;
+  file_type: string;
+  file_size: number;
+  phase?: string;
+  purpose?: string;
+  upload_date: string;
+  uploaded_by: string;
+  rag_indexed: boolean;
+  chunk_count?: number;
+  chunk_ids?: string[];
+}
+
+export interface KnowledgeUploadResponse {
+  id: string;
+  filename: string;
+  file_type: string;
+  file_size: number;
+  chunks_created: number;
+  chunk_ids: string[];
+  message: string;
+}
+
+export const knowledgeApi = {
+  /**
+   * Get all knowledge documents for a specific project
+   * Returns documents filtered by project_id from the RAG system
+   */
+  getProjectKnowledge: async (projectId: string): Promise<{ 
+    documents: KnowledgeDocument[]; 
+    total: number 
+  }> => {
+    return apiRequest(`/api/projects/${projectId}/knowledge`);
+  },
+
+  /**
+   * Upload a document to a project's knowledge base
+   * The document is tagged with phase and purpose, then indexed into RAG
+   * 
+   * @param projectId - The project to associate this document with
+   * @param file - The file to upload
+   * @param phase - The procurement phase (pre_solicitation, solicitation, post_solicitation)
+   * @param purpose - The document purpose (regulation, template, market_research, prior_award, strategy_memo)
+   */
+  uploadToProject: async (
+    projectId: string, 
+    file: File, 
+    phase: string, 
+    purpose: string
+  ): Promise<KnowledgeUploadResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const params = new URLSearchParams({
+      phase,
+      purpose,
+    });
+
+    const token = getAuthToken();
+    const response = await fetch(
+      `${API_BASE_URL}/api/projects/${projectId}/knowledge/upload?${params}`, 
+      {
+        method: 'POST',
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+        body: formData,
+      }
+    );
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        clearAuthToken();
+        window.location.href = '/login';
+      }
+      const error = await response.text();
+      throw new Error(`Upload failed: ${error}`);
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Delete a document from a project's knowledge base
+   * Also removes associated chunks from the RAG vector store
+   */
+  deleteFromProject: async (
+    projectId: string, 
+    documentId: string
+  ): Promise<{
+    message: string;
+    deleted_chunks: number;
+  }> => {
+    return apiRequest(`/api/projects/${projectId}/knowledge/${documentId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  /**
+   * Get knowledge documents filtered by phase within a project
+   */
+  getByPhase: async (
+    projectId: string, 
+    phase: string
+  ): Promise<{ documents: KnowledgeDocument[] }> => {
+    return apiRequest(`/api/projects/${projectId}/knowledge?phase=${phase}`);
+  },
+
+  /**
+   * Get knowledge documents filtered by purpose within a project
+   */
+  getByPurpose: async (
+    projectId: string, 
+    purpose: string
+  ): Promise<{ documents: KnowledgeDocument[] }> => {
+    return apiRequest(`/api/projects/${projectId}/knowledge?purpose=${purpose}`);
+  },
+};
+
+// ============================================================================
+// Lineage API - Document Source Tracking and Explainability
+// ============================================================================
+
+/**
+ * Influence types that describe how a source document affected generation.
+ * 
+ * - context: General context provided to the AI
+ * - template: Used as a structural template
+ * - regulation: FAR/DFARS or policy reference
+ * - data_source: Primary data (market research, prior awards)
+ * - reference: Cited in the generated content
+ */
+export type InfluenceType = 'context' | 'template' | 'regulation' | 'data_source' | 'reference';
+
+/**
+ * Represents a lineage relationship between source and derived documents.
+ * Used to track which uploaded documents influenced AI-generated content.
+ */
+export interface DocumentLineage {
+  id: string;
+  source_document_id?: string;
+  source_filename?: string;
+  derived_document_id: string;
+  influence_type: InfluenceType;
+  relevance_score: number;
+  chunk_ids_used: string[];
+  chunks_used_count: number;
+  context?: string;
+  created_at: string;
+  source_document?: {
+    id: string;
+    document_name: string;
+    category: string;
+  };
+}
+
+/**
+ * Request body for creating a lineage record
+ */
+export interface LineageRecordRequest {
+  source_document_id?: string;
+  source_filename?: string;
+  influence_type?: InfluenceType;
+  relevance_score?: number;
+  chunk_ids_used?: string[];
+  context?: string;
+}
+
+/**
+ * Response from the lineage endpoint for a document
+ */
+export interface DocumentLineageResponse {
+  document_id: string;
+  sources: DocumentLineage[];
+  derived_from_this: DocumentLineage[];
+  total_sources: number;
+  total_derived: number;
+}
+
+export const lineageApi = {
+  /**
+   * Get lineage information for a document
+   * 
+   * For AI-generated documents: Returns source documents that influenced generation
+   * For uploaded documents: Returns documents that were derived from this source
+   */
+  getLineage: async (documentId: string): Promise<DocumentLineageResponse> => {
+    return apiRequest(`/api/documents/${documentId}/lineage`);
+  },
+
+  /**
+   * Record a single lineage relationship
+   * Called after AI generation to track which sources were used
+   */
+  recordLineage: async (
+    derivedDocumentId: string,
+    source: LineageRecordRequest
+  ): Promise<{
+    id: string;
+    message: string;
+    derived_document_id: string;
+    source: string;
+  }> => {
+    return apiRequest(`/api/documents/${derivedDocumentId}/lineage`, {
+      method: 'POST',
+      body: JSON.stringify(source),
+    });
+  },
+
+  /**
+   * Record multiple lineage relationships at once
+   * More efficient for bulk lineage recording after AI generation
+   */
+  recordBatchLineage: async (
+    derivedDocumentId: string,
+    sources: LineageRecordRequest[]
+  ): Promise<{
+    message: string;
+    derived_document_id: string;
+    lineage_ids: string[];
+    sources_count: number;
+  }> => {
+    return apiRequest(`/api/documents/${derivedDocumentId}/lineage/batch`, {
+      method: 'POST',
+      body: JSON.stringify(sources),
+    });
+  },
+};
+
+// ============================================================================
 // Copilot AI Assistant API
 // ============================================================================
 
@@ -1368,6 +1613,8 @@ export default {
   notifications: notificationsApi,
   export: exportApi,
   rag: ragApi,
+  knowledge: knowledgeApi,
+  lineage: lineageApi,
   copilot: copilotApi,
   quality: qualityApi,
   createWebSocket,

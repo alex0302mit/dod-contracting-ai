@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, FileText, Loader2, ArrowRight, Shield, Sparkles } from 'lucide-react';
+import { ArrowLeft, FileText, Loader2, ArrowRight, Shield, Sparkles, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,8 @@ import { ProcurementTrackerBar } from './SegmentedTrackerBar';
 import { DocumentChecklist } from './DocumentChecklist';
 // GeneratedDocumentsGallery - AI Documents gallery view for viewing/exporting generated content
 import { GeneratedDocumentsGallery } from './GeneratedDocumentsGallery';
+// KnowledgeTab - Project-scoped document library for RAG-indexed reference materials
+import { KnowledgeTab } from './KnowledgeTab';
 import { PhaseTransitionDialog } from './PhaseTransitionDialog';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -197,7 +199,7 @@ export function ProcurementTracker({ projectId, onBack }: ProcurementTrackerProp
           )}
 
           <Tabs defaultValue="phases" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-6">
+            <TabsList className="grid w-full grid-cols-4 mb-6">
               <TabsTrigger value="phases">Phase Steps</TabsTrigger>
               <TabsTrigger value="documents" className="gap-2">
                 <FileText className="h-4 w-4" />
@@ -211,6 +213,10 @@ export function ProcurementTracker({ projectId, onBack }: ProcurementTrackerProp
                     {generatedDocsCount}
                   </Badge>
                 )}
+              </TabsTrigger>
+              <TabsTrigger value="knowledge" className="gap-2">
+                <FolderOpen className="h-4 w-4" />
+                Knowledge
               </TabsTrigger>
             </TabsList>
 
@@ -240,6 +246,14 @@ export function ProcurementTracker({ projectId, onBack }: ProcurementTrackerProp
                 projectId={projectId}
                 documents={documents}
                 onUpdate={handleDataUpdate}
+              />
+            </TabsContent>
+
+            {/* Knowledge Tab - Project-scoped document library for AI context */}
+            <TabsContent value="knowledge">
+              <KnowledgeTab
+                projectId={projectId}
+                currentPhase={selectedPhase?.phase_name?.toLowerCase().replace(' ', '_')}
               />
             </TabsContent>
           </Tabs>

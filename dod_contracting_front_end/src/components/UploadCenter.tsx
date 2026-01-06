@@ -17,7 +17,7 @@ import {
   ArrowLeft, Upload, FileText, Trash2, Search, 
   Sparkles, Loader2, CheckCircle2, Filter, 
   FolderOpen, FileStack, AlertCircle, X,
-  FileType, Calendar, HardDrive
+  FileType, Calendar, HardDrive, AlertTriangle, ArrowRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -326,10 +326,38 @@ export function UploadCenter({
 
   return (
     <div className="container mx-auto p-8 max-w-7xl">
+      {/* Deprecation Banner - Direct users to project Knowledge tabs */}
+      <Card className="mb-6 border-amber-300 bg-amber-50">
+        <CardContent className="py-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <h3 className="font-medium text-amber-800">Document uploads have moved</h3>
+              <p className="text-sm text-amber-700 mt-1">
+                For better organization and AI traceability, document uploads are now project-scoped. 
+                Go to any project's <strong>"Knowledge"</strong> tab to upload documents that will be 
+                indexed for AI-powered document generation.
+              </p>
+              <Button 
+                variant="outline" 
+                className="mt-3 gap-2 text-amber-700 border-amber-400 hover:bg-amber-100"
+                onClick={onBack}
+              >
+                Go to Projects
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent mb-3">
           Document Library
+          <Badge variant="outline" className="ml-3 text-sm font-normal text-amber-600 border-amber-300">
+            Legacy
+          </Badge>
         </h1>
         <p className="text-lg text-muted-foreground">
           Upload, organize, and manage your acquisition documents for AI-powered generation
