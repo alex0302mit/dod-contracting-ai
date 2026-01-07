@@ -52,6 +52,7 @@ import {
 import { ProjectDocument } from '@/hooks/useProjectDocuments';
 import { useEditorNavigation } from '@/contexts/EditorNavigationContext';
 import { documentGenerationApi } from '@/services/api';
+import { markdownToHtml } from '@/lib/markdownToHtml';
 
 interface DocumentPreviewCardProps {
   document: ProjectDocument;
@@ -162,10 +163,13 @@ export function DocumentPreviewCard({
     }
   };
 
-  // Preview content: first 250 characters
-  const contentPreview = document.generated_content
+  // Preview content: first 250 characters, converted to HTML for proper rendering
+  const rawPreview = document.generated_content
     ? document.generated_content.substring(0, 250).trim()
     : 'No content available';
+  const contentPreview = document.generated_content
+    ? markdownToHtml(rawPreview)
+    : rawPreview;
   const hasMoreContent = (document.generated_content?.length || 0) > 250;
 
   // Format generation date
@@ -221,11 +225,12 @@ export function DocumentPreviewCard({
         </CardHeader>
 
         <CardContent className="py-3">
-          {/* Content preview with fade-out gradient */}
+          {/* Content preview with fade-out gradient - rendered as HTML */}
           <div className="relative">
-            <div className="text-sm text-slate-600 whitespace-pre-wrap font-sans leading-relaxed">
-              {contentPreview}
-            </div>
+            <div
+              className="text-sm text-slate-600 prose prose-sm prose-slate max-w-none [&>h1]:text-base [&>h1]:font-semibold [&>h2]:text-sm [&>h2]:font-semibold [&>h3]:text-sm [&>p]:my-1"
+              dangerouslySetInnerHTML={{ __html: contentPreview }}
+            />
             {hasMoreContent && (
               <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent" />
             )}

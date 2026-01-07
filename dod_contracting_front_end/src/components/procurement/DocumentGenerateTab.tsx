@@ -26,6 +26,7 @@ import {
   type GenerationTaskInfo,
   type DependencyCheckResult,
 } from '@/services/api';
+import { markdownToHtml } from '@/lib/markdownToHtml';
 
 interface DocumentGenerateTabProps {
   document: ProjectDocument;
@@ -397,10 +398,15 @@ export function DocumentGenerateTab({
           </CardHeader>
           <CardContent>
             <div className="max-h-64 overflow-y-auto rounded-lg bg-slate-50 p-4">
-              <pre className="text-sm text-slate-700 whitespace-pre-wrap font-sans">
-                {document.generated_content?.substring(0, 1000)}
-                {(document.generated_content?.length || 0) > 1000 && '...'}
-              </pre>
+              <div
+                className="text-sm text-slate-700 prose prose-sm prose-slate max-w-none [&>h1]:text-base [&>h1]:font-semibold [&>h2]:text-sm [&>h2]:font-semibold [&>h3]:text-sm [&>p]:my-1"
+                dangerouslySetInnerHTML={{
+                  __html: markdownToHtml(document.generated_content?.substring(0, 1000) || '')
+                }}
+              />
+              {(document.generated_content?.length || 0) > 1000 && (
+                <span className="text-slate-400 text-sm">...</span>
+              )}
             </div>
             <div className="flex justify-end mt-4">
               <Button

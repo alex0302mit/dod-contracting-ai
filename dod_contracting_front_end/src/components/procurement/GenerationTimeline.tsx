@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { ProjectDocument } from '@/hooks/useProjectDocuments';
 import { useEditorNavigation } from '@/contexts/EditorNavigationContext';
+import { markdownToHtml } from '@/lib/markdownToHtml';
 
 interface GenerationTimelineProps {
   documents: ProjectDocument[];
@@ -230,12 +231,13 @@ export function GenerationTimeline({ documents, onUpdate }: GenerationTimelinePr
                     <CollapsibleContent>
                       <div className="mt-4 pt-4 border-t">
                         <div className="bg-slate-50 rounded-lg p-4">
-                          <pre className="text-sm text-slate-700 whitespace-pre-wrap font-sans leading-relaxed">
-                            {contentPreview}
-                            {(entry.document.generated_content?.length || 0) > 300 && (
-                              <span className="text-slate-400">...</span>
-                            )}
-                          </pre>
+                          <div
+                            className="text-sm text-slate-700 prose prose-sm prose-slate max-w-none [&>h1]:text-base [&>h1]:font-semibold [&>h2]:text-sm [&>h2]:font-semibold [&>h3]:text-sm [&>p]:my-1"
+                            dangerouslySetInnerHTML={{ __html: markdownToHtml(contentPreview) }}
+                          />
+                          {(entry.document.generated_content?.length || 0) > 300 && (
+                            <span className="text-slate-400 text-sm">...</span>
+                          )}
                         </div>
                       </div>
                     </CollapsibleContent>

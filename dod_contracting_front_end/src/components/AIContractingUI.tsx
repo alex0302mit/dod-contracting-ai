@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 // Removed Map icon - Board tab removed from navigation
-// Updated: Using unified DocumentWorkflow instead of separate Assumption/Trace/GenPlan
-import { FileText, Upload, Sparkles, Download, TrendingUp, UserCheck, Workflow, Settings, LogOut, User, ChevronDown } from "lucide-react";
+// Updated: Upload and Workflow icons removed - those tabs replaced by Quick Generate
+import { FileText, Sparkles, Download, TrendingUp, UserCheck, Settings, LogOut, User, ChevronDown, Home, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -17,12 +17,15 @@ import { LiveEditor } from "./LiveEditor";
 import { UploadCenter } from "./UploadCenter";
 // AssumptionMap, TraceMatrix, GenerationPlan replaced by unified DocumentWorkflow
 import { DocumentWorkflow } from "./DocumentWorkflow";
+// QuickGenerateTab: One-time package generation wizard without project creation
+import { QuickGenerateTab } from "./quick-generate/QuickGenerateTab";
 // Compliance tab removed - compliance gate now appears in export dropdown
 import { ExportView } from "./ExportView";
 import { ProcurementHub } from "./procurement/ProcurementHub";
 import { PendingApprovalsView } from "./procurement/PendingApprovalsView";
 import { NotificationCenter } from "./procurement/NotificationCenter";
 import { AdminUserManagement } from "./admin/AdminUserManagement";
+import { DashboardView } from "./dashboard/DashboardView";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 // EditorNavigationProvider allows components to navigate to editor with pre-loaded content
 import { EditorNavigationProvider, useEditorNavigation } from "@/contexts/EditorNavigationContext";
@@ -31,14 +34,17 @@ import { ragApi } from "@/services/api";
 import { toast } from "sonner";
 import { convertSectionsToHtml, convertMarkdownToHtml } from "@/lib/markdownToHtml";
 
-// Route types for navigation - Consolidated workflow replaces ASSUMPTION_MAP, TRACE_MATRIX, GEN_PLAN
-type RouteType = "UPLOAD_CENTER" | "DOCUMENT_WORKFLOW" | "GENERATING" | "EDITOR" | "EXPORT" | "PROCUREMENT_TRACKER" | "PENDING_APPROVALS" | "ADMIN";
+// Route types for navigation - Dashboard is default, Consolidated workflow replaces ASSUMPTION_MAP, TRACE_MATRIX, GEN_PLAN
+// QUICK_GENERATE: New one-time package generation wizard that doesn't require project creation
+type RouteType = "DASHBOARD" | "QUICK_GENERATE" | "UPLOAD_CENTER" | "DOCUMENT_WORKFLOW" | "GENERATING" | "EDITOR" | "EXPORT" | "PROCUREMENT_TRACKER" | "PENDING_APPROVALS" | "ADMIN";
 
 function MainApp() {
   const { user, signOut } = useAuth();
   // Get editor navigation context to handle "Open in Editor" from procurement tracker
   const { setNavigationCallback } = useEditorNavigation();
-  const [route, setRoute] = useState<RouteType>("EDITOR");
+  const [route, setRoute] = useState<RouteType>("DASHBOARD");
+  // State for project selection from Dashboard (to pass to ProcurementHub)
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [uploads, setUploads] = useState({ strategy: [] as string[], reqs: [] as string[], market_research: [] as string[], templates: [] as string[] });
   const [parsed, setParsed] = useState({
     assumptions: [] as Array<{ id: string; text: string; source: string }>,
@@ -184,6 +190,21 @@ function MainApp() {
 
           <nav className="hidden lg:flex items-center gap-2">
             <NavButton
+              icon={<Home className="h-4 w-4" />}
+              label="Dashboard"
+              active={route === "DASHBOARD"}
+              onClick={() => setRoute("DASHBOARD")}
+              highlight
+            />
+            {/* Quick Generate: One-time package generation without project creation */}
+            <NavButton
+              icon={<Sparkles className="h-4 w-4" />}
+              label="Quick Generate"
+              active={route === "QUICK_GENERATE"}
+              onClick={() => setRoute("QUICK_GENERATE")}
+              highlight
+            />
+            <NavButton
               icon={<TrendingUp className="h-4 w-4" />}
               label="Tracker"
               active={route === "PROCUREMENT_TRACKER"}
@@ -197,23 +218,9 @@ function MainApp() {
               onClick={() => setRoute("PENDING_APPROVALS")}
               highlight
             />
-            {/* Board NavButton removed - no longer needed in navigation */}
+            {/* Uploads and Workflow tabs removed - replaced by Quick Generate wizard */}
             <NavButton
-              icon={<Upload className="h-4 w-4" />}
-              label="Uploads"
-              active={route === "UPLOAD_CENTER"}
-              onClick={() => setRoute("UPLOAD_CENTER")}
-            />
-            {/* Unified Document Workflow - replaces separate Assumptions, Trace, and Gen Plan tabs */}
-            <NavButton
-              icon={<Workflow className="h-4 w-4" />}
-              label="Workflow"
-              active={route === "DOCUMENT_WORKFLOW"}
-              onClick={() => setRoute("DOCUMENT_WORKFLOW")}
-              highlight
-            />
-            <NavButton
-              icon={<Sparkles className="h-4 w-4" />}
+              icon={<FileText className="h-4 w-4" />}
               label="Editor"
               active={route === "EDITOR"}
               onClick={() => setRoute("EDITOR")}
@@ -274,7 +281,36 @@ function MainApp() {
       </header>
 
       <main className="flex-1 overflow-auto">
-        {route === "PROCUREMENT_TRACKER" && <ProcurementHub />}
+        {route === "DASHBOARD" && (
+          <DashboardView
+            onNavigate={(newRoute) => setRoute(newRoute)}
+            onSelectProject={(projectId) => {
+              setSelectedProjectId(projectId);
+              setRoute("PROCUREMENT_TRACKER");
+            }}
+          />
+        )}
+        {/* Quick Generate: One-time package generation wizard */}
+        {route === "QUICK_GENERATE" && (
+          <QuickGenerateTab
+            onOpenEditor={(sections) => {
+              // Transfer generated sections to the main editor
+              setEditorSections(sections);
+              setRoute("EDITOR");
+            }}
+            onComplete={(sections) => {
+              // Optional: Handle completion (e.g., for analytics)
+              setEditorSections(sections);
+              setRoute("EDITOR");
+            }}
+          />
+        )}
+        {route === "PROCUREMENT_TRACKER" && (
+          <ProcurementHub
+            initialProjectId={selectedProjectId}
+            onProjectChange={setSelectedProjectId}
+          />
+        )}
         {route === "PENDING_APPROVALS" && <PendingApprovalsView />}
         {route === "ADMIN" && <AdminUserManagement />}
         {/* StrategyBoard route removed - Board tab eliminated from UX */}
