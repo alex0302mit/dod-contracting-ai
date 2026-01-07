@@ -826,6 +826,12 @@ INSTRUCTIONS:
 5. Keep it concise but comprehensive (2-4 paragraphs)
 6. Use inline citations like [1], [2], etc. for source references
 
+LIST FORMATTING REQUIREMENTS (MANDATORY):
+- Do NOT include blank lines between bullet list items
+- Keep all list items in a continuous block with single newlines
+- CORRECT: "- item1\\n- item2\\n- item3"
+- WRONG: "- item1\\n\\n- item2\\n\\n- item3"
+
 Write the section content now:"""
 
         # Call with retry logic

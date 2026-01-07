@@ -963,10 +963,21 @@ async def generate_document_content(
     
     # Check if already generating
     if document.generation_status == GenerationStatus.GENERATING:
-        raise HTTPException(
-            status_code=400,
-            detail="Document is already being generated. Please wait or cancel the current generation."
-        )
+        # Check if the task is actually still running in memory
+        task_exists = document.generation_task_id and document.generation_task_id in document_generation_tasks
+        
+        if task_exists:
+            # Task is genuinely still running - reject the request
+            raise HTTPException(
+                status_code=400,
+                detail="Document is already being generated. Please wait or cancel the current generation."
+            )
+        else:
+            # Task not in memory - orphaned state (server restart or crash)
+            # Reset status to allow new generation
+            document.generation_status = GenerationStatus.NOT_GENERATED
+            document.generation_task_id = None
+            db.commit()
     
     # Check dependencies
     generator = get_document_generator()
@@ -1001,7 +1012,7 @@ async def generate_document_content(
     document.generation_status = GenerationStatus.GENERATING
     document.generation_task_id = task_id
     db.commit()
-    
+
     # Queue background task for single document generation
     background_tasks.add_task(
         run_single_doc_generation,

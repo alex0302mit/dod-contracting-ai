@@ -458,7 +458,8 @@ export const documentGenerationApi = {
     qualityScore?: number
   ): Promise<{ message: string; document: Document }> => {
     const params = new URLSearchParams({ content });
-    if (qualityScore !== undefined) {
+    // Use != null to catch both null and undefined
+    if (qualityScore != null) {
       params.append('quality_score', qualityScore.toString());
     }
     return apiRequest(`/api/documents/${documentId}/save-generated?${params}`, {

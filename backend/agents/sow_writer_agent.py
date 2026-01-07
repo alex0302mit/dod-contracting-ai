@@ -417,6 +417,12 @@ Your task:
 ☐ No fabricated tasks or requirements
 ☐ "Shall" language used for contractor obligations
 
+**LIST FORMATTING (MANDATORY)**:
+- Do NOT include blank lines between bullet list items
+- Keep all list items in a continuous block with single newlines
+- CORRECT: "- item1\\n- item2\\n- item3"
+- WRONG: "- item1\\n\\n- item2\\n\\n- item3"
+
 Write the section now with MANDATORY inline citations:
 """
 

@@ -490,6 +490,20 @@ Generate a COMPREHENSIVE Market Research Report for the following program:
 - Reference actual company names when available from web search
 - Include exact percentages, not ranges (or cite why range is necessary)
 
+**LIST FORMATTING REQUIREMENTS** (MANDATORY):
+- Do NOT include blank lines between bullet list items
+- Keep all list items in a continuous block with single newlines
+- Correct format:
+  - Item 1
+  - Item 2
+  - Item 3
+- INCORRECT format (DO NOT USE - causes rendering issues):
+  - Item 1
+  
+  - Item 2
+  
+  - Item 3
+
 **REGULATORY CITATIONS** (MANDATORY):
 - FAR 10.001 - Market research requirements
 - FAR 10.002(b)(2) - Commercial item market research

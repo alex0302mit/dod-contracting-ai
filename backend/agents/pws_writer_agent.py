@@ -349,6 +349,12 @@ EXAMPLE FORMAT:
 - **Measurement Method**: Automated monitoring logs
 - **Timeframe**: Measured monthly
 
+LIST FORMATTING (MANDATORY):
+- Do NOT include blank lines between bullet list items
+- Keep all list items in a continuous block with single newlines
+- CORRECT: "- item1\\n- item2\\n- item3"
+- WRONG: "- item1\\n\\n- item2\\n\\n- item3"
+
 Write professional, measurable performance requirements. Use markdown formatting."""
     
     def _build_qasp_prompt(
@@ -412,6 +418,12 @@ EXAMPLE:
 - Monthly reports generated showing availability percentages
 - Threshold: 99.9% uptime required
 - If uptime falls below 99.5%, contractor must submit root cause analysis within 48 hours
+
+LIST FORMATTING (MANDATORY):
+- Do NOT include blank lines between bullet list items
+- Keep all list items in a continuous block with single newlines
+- CORRECT: "- item1\\n- item2\\n- item3"
+- WRONG: "- item1\\n\\n- item2\\n\\n- item3"
 
 Write a comprehensive QASP that ensures effective quality assurance. Use markdown formatting."""
     
@@ -479,6 +491,12 @@ EXAMPLE:
 - **Incentive Level**: ≥ 98% (eligible for performance bonus)
 - **Unacceptable**: < 90% (requires corrective action plan)
 
+LIST FORMATTING (MANDATORY):
+- Do NOT include blank lines between bullet list items
+- Keep all list items in a continuous block with single newlines
+- CORRECT: "- item1\\n- item2\\n- item3"
+- WRONG: "- item1\\n\\n- item2\\n\\n- item3"
+
 Write clear, measurable performance standards with acceptance criteria. Use markdown formatting."""
     
     def _build_general_pws_prompt(
@@ -527,6 +545,12 @@ FORMATTING:
 - Include subsections where appropriate
 - Bold key terms and requirements
 - Use tables for structured data
+
+LIST FORMATTING (MANDATORY):
+- Do NOT include blank lines between bullet list items
+- Keep all list items in a continuous block with single newlines
+- CORRECT: "- item1\\n- item2\\n- item3"
+- WRONG: "- item1\\n\\n- item2\\n\\n- item3"
 
 Write a comprehensive, performance-based {section_name} section. Use markdown formatting."""
     

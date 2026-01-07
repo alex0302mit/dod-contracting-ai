@@ -40,8 +40,10 @@ import { Callout } from './CalloutExtension';
 import { CommentMark } from './CommentExtension';
 import { EditorToolbar } from './EditorToolbar';
 import { EditorCopilot } from './EditorCopilot';
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import './editor-styles.css';
+// Import content sanitizer to remove empty list items before display
+import { sanitizeListContent } from '@/lib/contentSanitizer';
 
 // Citation interface for document references
 interface Citation {
@@ -98,6 +100,12 @@ export function RichTextEditor({
   // Debounce timer for selection handling
   const selectionTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Sanitize content to remove empty list items before passing to TipTap
+  // This prevents empty bullets from appearing in the editor
+  const sanitizedContent = useMemo(() => {
+    return sanitizeListContent(content);
+  }, [content]);
+
   // Create the TipTap editor instance
   // @ts-expect-error - TipTap table extensions have version compatibility issues between local and global node_modules
   const editor = useEditor(
@@ -147,7 +155,8 @@ export function RichTextEditor({
         Callout,
         CommentMark,
       ],
-      content,
+      // Use sanitized content to prevent empty list items from appearing
+      content: sanitizedContent,
       editorProps: {
         attributes: {
           class: 'prose prose-sm max-w-none focus:outline-none min-h-[300px] px-4 py-3',

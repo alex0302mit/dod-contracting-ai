@@ -285,7 +285,14 @@ class BaseAgent:
         prompt += "1. References and aligns with the previously generated documents above\n"
         prompt += "2. Uses the reference_section() method to cite specific content\n"
         prompt += "3. Ensures consistency with prior documents\n"
-        prompt += "4. Avoids contradictions or duplications\n"
+        prompt += "4. Avoids contradictions or duplications\n\n"
+        
+        # Add list formatting requirements to prevent double bullets
+        prompt += "### LIST FORMATTING REQUIREMENTS (MANDATORY)\n"
+        prompt += "- Do NOT include blank lines between bullet list items\n"
+        prompt += "- Keep all list items in a continuous block with single newlines\n"
+        prompt += "- CORRECT format: item1\\n- item2\\n- item3\n"
+        prompt += "- WRONG format: item1\\n\\n- item2\\n\\n- item3\n"
 
         self.log(f"Built collaborative prompt with {len(dependencies)} dependencies", "INFO")
 

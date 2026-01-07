@@ -58,6 +58,69 @@ def convert_markdown_bold_to_html(text: str) -> str:
     return text
 
 
+def convert_markdown_italic_to_html(text: str) -> str:
+    """
+    Convert markdown *italic* to HTML <i>italic</i>
+    
+    IMPORTANT: This must run AFTER bold conversion to avoid conflicts,
+    since bold uses ** and italic uses single *.
+
+    Args:
+        text: Text with markdown italic syntax (single asterisks)
+
+    Returns:
+        Text with HTML italic tags
+    """
+    # Handle inline italic text with single asterisks
+    # Use regex to find *text* patterns that aren't part of ** (already converted)
+    # Pattern: single * not preceded or followed by another *
+    result = []
+    i = 0
+    while i < len(text):
+        # Check for single asterisk (not part of **)
+        if text[i] == '*':
+            # Make sure it's not escaped or part of **
+            # Find closing single asterisk
+            end = text.find('*', i + 1)
+            if end != -1 and end > i + 1:
+                # Found a closing asterisk - extract italic content
+                italic_content = text[i + 1:end]
+                # Make sure there's actual content (not empty)
+                if italic_content.strip():
+                    result.append('<i>')
+                    result.append(italic_content)
+                    result.append('</i>')
+                    i = end + 1
+                    continue
+        result.append(text[i])
+        i += 1
+    return ''.join(result)
+
+
+def convert_markdown_formatting_to_html(text: str) -> str:
+    """
+    Convert all markdown formatting to HTML tags.
+    
+    Handles:
+    - **bold** -> <b>bold</b>
+    - *italic* -> <i>italic</i>
+    
+    Order matters: bold must be converted first since it uses **,
+    then italic can safely convert remaining single *.
+
+    Args:
+        text: Text with markdown formatting
+
+    Returns:
+        Text with HTML formatting tags
+    """
+    # First convert bold (**text**) - must come first
+    text = convert_markdown_bold_to_html(text)
+    # Then convert italic (*text*) - safe now since ** already removed
+    text = convert_markdown_italic_to_html(text)
+    return text
+
+
 def is_table_row(line: str) -> bool:
     """
     Check if line is a markdown table row
@@ -238,8 +301,8 @@ def create_pdf_table(table_data: List[List[str]], alignments: List[str], has_hea
     for row_idx, row in enumerate(table_data):
         processed_row = []
         for col_idx, cell in enumerate(row):
-            # Convert markdown bold to HTML
-            cell_text = convert_markdown_bold_to_html(cell)
+            # Convert markdown formatting (bold and italic) to HTML
+            cell_text = convert_markdown_formatting_to_html(cell)
 
             # Determine which style to use
             if row_idx == 0 and has_header:
@@ -462,15 +525,22 @@ def convert_markdown_to_pdf(md_file: str, pdf_file: str) -> None:
         # H2 - Headings
         elif line.startswith('## '):
             text = line[3:].strip()
-            text = convert_markdown_bold_to_html(text)
+            text = convert_markdown_formatting_to_html(text)
             story.append(Spacer(1, 0.1*inch))
             story.append(Paragraph(text, heading_style))
 
         # H3 - Subheadings
         elif line.startswith('### '):
             text = line[4:].strip()
-            text = convert_markdown_bold_to_html(text)
+            text = convert_markdown_formatting_to_html(text)
             story.append(Spacer(1, 0.1*inch))
+            story.append(Paragraph(text, subheading_style))
+
+        # H4 - Sub-subheadings (from HTML h3 tags converted via html_to_markdown)
+        elif line.startswith('#### '):
+            text = line[5:].strip()
+            text = convert_markdown_formatting_to_html(text)
+            story.append(Spacer(1, 0.08*inch))
             story.append(Paragraph(text, subheading_style))
 
         # Bold text (metadata) - convert markdown bold to HTML bold
@@ -487,9 +557,9 @@ def convert_markdown_to_pdf(md_file: str, pdf_file: str) -> None:
         elif line.startswith('- ') or line.startswith('* '):
             list_items, end_idx = parse_bullet_list(lines, i)
             if list_items:
-                # Create bullet list
+                # Create bullet list with bold and italic support
                 for item in list_items:
-                    text = convert_markdown_bold_to_html(item)
+                    text = convert_markdown_formatting_to_html(item)
                     story.append(Paragraph(f'• {text}', body_style))
             i = end_idx
             continue
@@ -498,17 +568,17 @@ def convert_markdown_to_pdf(md_file: str, pdf_file: str) -> None:
         elif re.match(r'^\d+[\.\)] ', line):
             list_items, end_idx = parse_numbered_list(lines, i)
             if list_items:
-                # Create numbered list
+                # Create numbered list with bold and italic support
                 for idx, item in enumerate(list_items, 1):
-                    text = convert_markdown_bold_to_html(item)
+                    text = convert_markdown_formatting_to_html(item)
                     story.append(Paragraph(f'{idx}. {text}', body_style))
             i = end_idx
             continue
 
         # Regular paragraph
         else:
-            # Convert markdown bold to HTML
-            text = convert_markdown_bold_to_html(line)
+            # Convert markdown formatting (bold and italic) to HTML
+            text = convert_markdown_formatting_to_html(line)
 
             # Continue reading if it's a multi-line paragraph
             paragraph_lines = [text]
@@ -524,8 +594,8 @@ def convert_markdown_to_pdf(md_file: str, pdf_file: str) -> None:
                     next_line.startswith('* ') or
                     re.match(r'^\d+[\.\)] ', next_line)):
                     break
-                # Convert markdown bold to HTML
-                next_line = convert_markdown_bold_to_html(next_line)
+                # Convert markdown formatting (bold and italic) to HTML
+                next_line = convert_markdown_formatting_to_html(next_line)
                 paragraph_lines.append(next_line)
                 i += 1
 

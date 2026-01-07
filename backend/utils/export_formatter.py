@@ -280,7 +280,8 @@ def create_metadata_section(metadata: Dict) -> str:
     # Collaboration metadata (Phase 4) - only if enabled and has content
     if 'collaboration_metadata' in metadata:
         collab = metadata['collaboration_metadata']
-        if collab.get('enabled'):
+        # Check that collab is not None before calling .get()
+        if collab and collab.get('enabled'):
             gen_order = collab.get('generation_order', [])
             batch_count = collab.get('batch_count', 0)
             cross_refs = collab.get('cross_references', [])
