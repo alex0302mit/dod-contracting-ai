@@ -796,7 +796,7 @@ export const approvalsApi = {
     const params = new URLSearchParams();
     // Only add approver_ids if provided (for manual routing)
     if (approverIds && approverIds.length > 0) {
-      approverIds.forEach(id => params.append('approver_ids', id));
+    approverIds.forEach(id => params.append('approver_ids', id));
     }
     if (uploadId) params.append('upload_id', uploadId);
     // Add routing override if specified
@@ -1184,6 +1184,35 @@ export interface KnowledgeUploadResponse {
   message: string;
 }
 
+/**
+ * Knowledge document statistics for a project.
+ * 
+ * Used for summary displays and filter badges showing
+ * document counts by phase and purpose.
+ */
+export interface KnowledgeStats {
+  /** Total number of knowledge documents in the project */
+  total: number;
+  /** Number of documents successfully indexed in RAG */
+  indexed_count: number;
+  /** Counts by procurement phase */
+  by_phase: {
+    pre_solicitation: number;
+    solicitation: number;
+    post_solicitation: number;
+    unassigned: number;
+  };
+  /** Counts by document purpose/category */
+  by_purpose: {
+    regulation: number;
+    template: number;
+    market_research: number;
+    prior_award: number;
+    strategy_memo: number;
+    other: number;
+  };
+}
+
 export const knowledgeApi = {
   /**
    * Get all knowledge documents for a specific project
@@ -1278,6 +1307,19 @@ export const knowledgeApi = {
   ): Promise<{ documents: KnowledgeDocument[] }> => {
     return apiRequest(`/api/projects/${projectId}/knowledge?purpose=${purpose}`);
   },
+
+  /**
+   * Get knowledge document statistics for a project
+   * 
+   * Returns counts grouped by phase and purpose for summary displays
+   * and filter badges throughout the UI.
+   * 
+   * @param projectId - The project to get stats for
+   * @returns Stats object with total, by_phase, by_purpose counts
+   */
+  getStats: async (projectId: string): Promise<KnowledgeStats> => {
+    return apiRequest(`/api/projects/${projectId}/knowledge/stats`);
+  },
 };
 
 // ============================================================================
@@ -1340,6 +1382,93 @@ export interface DocumentLineageResponse {
   total_derived: number;
 }
 
+// ============================================================================
+// Phase 3A: Advanced Document Lifecycle Types
+// ============================================================================
+
+/**
+ * Timeline event types for document lifecycle tracking
+ */
+export type TimelineEventType = 'uploaded' | 'indexed' | 'generated' | 'used_as_source';
+
+/**
+ * Represents a single event in a document's lifecycle timeline
+ */
+export interface TimelineEvent {
+  type: TimelineEventType;
+  timestamp: string;
+  actor?: string;
+  details: Record<string, unknown>;
+}
+
+/**
+ * Response from the document timeline endpoint
+ */
+export interface DocumentTimelineResponse {
+  document_id: string;
+  document_name: string;
+  events: TimelineEvent[];
+  total_events: number;
+}
+
+/**
+ * Node in the influence graph visualization
+ */
+export interface GraphNode {
+  id: string;
+  label: string;
+  type: 'source' | 'generated';
+  metadata: Record<string, unknown>;
+}
+
+/**
+ * Edge (relationship) in the influence graph visualization
+ */
+export interface GraphEdge {
+  source: string;
+  target: string;
+  weight: number;
+  chunks_count: number;
+  influence_type: string;
+}
+
+/**
+ * Response from the influence graph endpoint
+ */
+export interface InfluenceGraphResponse {
+  document_id: string;
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  node_count: number;
+  edge_count: number;
+}
+
+/**
+ * Represents a single RAG chunk with content and metadata
+ * Used for chunk-level traceability in the lineage view
+ */
+export interface ChunkContent {
+  chunk_id: string;
+  content: string;
+  source_document: string;
+  original_filename?: string;
+  chunk_index: number;
+  total_chunks: number;
+  project_id?: string;
+  phase?: string;
+  purpose?: string;
+  metadata: Record<string, unknown>;
+}
+
+/**
+ * Response from the chunks endpoint
+ */
+export interface ChunksResponse {
+  chunks: ChunkContent[];
+  requested_count: number;
+  found_count: number;
+}
+
 export const lineageApi = {
   /**
    * Get lineage information for a document
@@ -1387,6 +1516,40 @@ export const lineageApi = {
       method: 'POST',
       body: JSON.stringify(sources),
     });
+  },
+
+  // ============================================================================
+  // Phase 3A: Advanced Document Lifecycle API Methods
+  // ============================================================================
+
+  /**
+   * Get lifecycle timeline events for a document
+   * 
+   * Returns chronological events: upload, indexing, generation, usage
+   * Useful for audit trails and compliance documentation
+   */
+  getTimeline: async (documentId: string): Promise<DocumentTimelineResponse> => {
+    return apiRequest(`/api/documents/${documentId}/timeline`);
+  },
+
+  /**
+   * Get influence graph data for visualization
+   * 
+   * Returns nodes (documents) and edges (relationships) for rendering
+   * an interactive graph showing document influence chains
+   */
+  getInfluenceGraph: async (documentId: string): Promise<InfluenceGraphResponse> => {
+    return apiRequest(`/api/documents/${documentId}/influence-graph`);
+  },
+
+  /**
+   * Get chunk content by IDs for traceability view
+   * 
+   * Retrieves the actual content of RAG chunks that influenced generation
+   * Limited to 50 chunks per request
+   */
+  getChunkContent: async (chunkIds: string[]): Promise<ChunksResponse> => {
+    return apiRequest(`/api/chunks?ids=${chunkIds.join(',')}`);
   },
 };
 

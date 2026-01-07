@@ -1,14 +1,36 @@
+/**
+ * PhaseSteps Component - Phase Step Management with Knowledge Upload
+ * 
+ * Displays and manages the steps within a procurement phase.
+ * Now includes a collapsible QuickUploadZone for attaching
+ * knowledge documents directly to the current phase.
+ * 
+ * Features:
+ * - Step progress tracking with visual indicators
+ * - Start/complete step actions
+ * - Phase-level start action
+ * - QuickUploadZone for phase-specific document uploads
+ * - Step detail dialog for full step management
+ * 
+ * Dependencies:
+ * - QuickUploadZone for phase-attached uploads
+ * - StepDetailDialog for detailed step editing
+ * - Various API services for data operations
+ */
+
 import { useState, useEffect, useCallback } from 'react';
-import { CheckCircle2, Clock, PlayCircle, User, Calendar, Loader2 } from 'lucide-react';
+import { CheckCircle2, Clock, PlayCircle, User, Calendar, Loader2, Database } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useQuery } from '@tanstack/react-query';
 
 import { StepDetailDialog } from './StepDetailDialog';
+import { QuickUploadZone } from './QuickUploadZone';
 import { format, isPast } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { projectsApi, stepsApi, phasesApi } from '@/services/api';
+import { projectsApi, stepsApi, phasesApi, knowledgeApi, type KnowledgeDocument } from '@/services/api';
 
 interface Phase {
   id: string;
@@ -44,6 +66,23 @@ export function PhaseSteps({ projectId, phase, steps: propSteps, onPhaseUpdate, 
   const [actionLoading, setActionLoading] = useState<{ [key: string]: boolean }>({});
   const [selectedStep, setSelectedStep] = useState<Step | null>(null);
   const [showStepDialog, setShowStepDialog] = useState(false);
+
+  // Fetch knowledge document count for this phase
+  const { data: phaseKnowledgeCount = 0, refetch: refetchKnowledge } = useQuery({
+    queryKey: ['phase-knowledge-count', projectId, phase.phase_name],
+    queryFn: async () => {
+      try {
+        const response = await knowledgeApi.getProjectKnowledge(projectId);
+        const docs = response.documents || [];
+        // Map phase_name to phase value (e.g., "Pre-Solicitation" -> "pre_solicitation")
+        const phaseKey = phase.phase_name.toLowerCase().replace('-', '_').replace(' ', '_');
+        return docs.filter((doc: KnowledgeDocument) => doc.phase === phaseKey).length;
+      } catch {
+        return 0;
+      }
+    },
+    staleTime: 30000, // Cache for 30 seconds
+  });
 
   // Memoized function to create default steps
   const createDefaultSteps = useCallback(async () => {
@@ -177,7 +216,19 @@ export function PhaseSteps({ projectId, phase, steps: propSteps, onPhaseUpdate, 
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
+              <div className="flex items-center gap-2">
               <CardTitle>Phase Steps</CardTitle>
+                {/* Knowledge Badge */}
+                {phaseKnowledgeCount > 0 && (
+                  <Badge 
+                    variant="outline" 
+                    className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] gap-1"
+                  >
+                    <Database className="h-3 w-3" />
+                    {phaseKnowledgeCount} knowledge doc{phaseKnowledgeCount !== 1 ? 's' : ''}
+                  </Badge>
+                )}
+              </div>
               <p className="text-sm text-slate-600 mt-1">
                 {completedCount} of {steps.length} steps completed
               </p>
@@ -206,6 +257,19 @@ export function PhaseSteps({ projectId, phase, steps: propSteps, onPhaseUpdate, 
           </div>
         </CardHeader>
         <CardContent>
+          {/* Phase Knowledge Upload Zone */}
+          <div className="mb-6">
+            <QuickUploadZone
+              projectId={projectId}
+              phaseId={phase.phase_name.toLowerCase().replace('-', '_').replace(' ', '_')}
+              phaseName={phase.phase_name}
+              onUploadComplete={() => {
+                refetchKnowledge();
+                toast.success('Knowledge document added to phase');
+              }}
+            />
+          </div>
+          
           <div className="space-y-3">
             {steps.map((step, index) => (
               <div

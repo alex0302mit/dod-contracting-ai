@@ -52,7 +52,7 @@ export function ApprovalRequestDialog({
   const [selectedApprovers, setSelectedApprovers] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetchingUsers, setFetchingUsers] = useState(true);
-  
+
   // Routing selection state
   const [routingMethod, setRoutingMethod] = useState<ApprovalRouting>(documentRouting);
   const [showManualSelection, setShowManualSelection] = useState(documentRouting === 'manual');
@@ -232,48 +232,48 @@ export function ApprovalRequestDialog({
           {showManualSelection && (
             <div className="space-y-2 border-t pt-4">
               <Label className="text-sm font-medium">Select Approvers</Label>
-              {fetchingUsers ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                </div>
-              ) : users.length === 0 ? (
-                <div className="text-center py-8 text-slate-600">
-                  <UserCheck className="h-12 w-12 mx-auto mb-2 text-slate-400" />
-                  <p>No approvers available</p>
-                </div>
-              ) : (
+          {fetchingUsers ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            </div>
+          ) : users.length === 0 ? (
+            <div className="text-center py-8 text-slate-600">
+              <UserCheck className="h-12 w-12 mx-auto mb-2 text-slate-400" />
+              <p>No approvers available</p>
+            </div>
+          ) : (
                 <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {users.map((user) => (
-                    <div
-                      key={user.id}
+              {users.map((user) => (
+                <div
+                  key={user.id}
                       className={`flex items-start space-x-3 p-3 rounded-lg border cursor-pointer transition-colors
                         ${selectedApprovers.includes(user.id) ? 'border-blue-500 bg-blue-50' : 'hover:bg-slate-50'}`}
-                      onClick={() => toggleApprover(user.id)}
-                    >
-                      <Checkbox
-                        checked={selectedApprovers.includes(user.id)}
-                        onCheckedChange={() => toggleApprover(user.id)}
-                      />
-                      <div className="flex-1">
-                        <div className="font-medium text-sm">{user.name}</div>
-                        <div className="text-xs text-slate-600">{user.email}</div>
-                        <div className="text-xs text-slate-500 capitalize mt-1">
-                          {user.role.replace('_', ' ')}
-                          {user.department && ` • ${user.department}`}
-                        </div>
-                      </div>
+                  onClick={() => toggleApprover(user.id)}
+                >
+                  <Checkbox
+                    checked={selectedApprovers.includes(user.id)}
+                    onCheckedChange={() => toggleApprover(user.id)}
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium text-sm">{user.name}</div>
+                    <div className="text-xs text-slate-600">{user.email}</div>
+                    <div className="text-xs text-slate-500 capitalize mt-1">
+                      {user.role.replace('_', ' ')}
+                      {user.department && ` • ${user.department}`}
                     </div>
-                  ))}
+                  </div>
                 </div>
-              )}
+              ))}
+            </div>
+          )}
 
-              {selectedApprovers.length > 0 && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-sm text-blue-900">
-                    {selectedApprovers.length} approver(s) selected
-                  </p>
-                </div>
-              )}
+          {selectedApprovers.length > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-900">
+                {selectedApprovers.length} approver(s) selected
+              </p>
+            </div>
+          )}
             </div>
           )}
 

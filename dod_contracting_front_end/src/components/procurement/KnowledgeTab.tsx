@@ -4,9 +4,11 @@
  * A project-scoped knowledge hub with:
  * - Drag-and-drop upload zone for project documents
  * - Phase tagging for uploaded documents
+ * - Phase-based filtering with toggle buttons (All, Pre-Sol, Solicitation, Post-Sol)
  * - Category-based filtering (Regulations, Templates, Market Research, Prior Awards)
  * - RAG indexing status display
  * - Document cards with delete functionality
+ * - "Group by Phase" view mode for organized display
  * 
  * This component replaces the global UploadCenter with a project-centric approach.
  * All documents uploaded here are automatically associated with the current project
@@ -17,13 +19,14 @@
  * - Shadcn UI components for styling
  */
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { 
   Upload, FileText, Trash2, Search, 
   Loader2, FolderOpen, FileStack, AlertCircle, X,
   FileType, Calendar, HardDrive, Database, CheckCircle2,
-  BookOpen, Scale, FileBarChart, Award, RefreshCw
+  BookOpen, Scale, FileBarChart, Award, RefreshCw,
+  LayoutGrid, Layers
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,6 +45,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle 
 } from "@/components/ui/alert-dialog";
+import { 
+  ToggleGroup, 
+  ToggleGroupItem 
+} from "@/components/ui/toggle-group";
 import { toast } from "sonner";
 import { knowledgeApi, type KnowledgeDocument } from "@/services/api";
 import { format } from "date-fns";
@@ -54,6 +61,45 @@ interface KnowledgeTabProps {
 
 // Document purpose types for categorization
 type PurposeType = "all" | "regulation" | "template" | "market_research" | "prior_award" | "strategy_memo";
+
+// Phase filter type for document filtering
+type PhaseFilter = "all" | "pre_solicitation" | "solicitation" | "post_solicitation";
+
+// View mode type for display options
+type ViewMode = "grid" | "by_phase";
+
+// Phase configuration for UI display
+const PHASE_CONFIG: Record<PhaseFilter, {
+  label: string;
+  shortLabel: string;
+  color: string;
+  bgColor: string;
+}> = {
+  all: {
+    label: "All Phases",
+    shortLabel: "All",
+    color: "text-slate-700",
+    bgColor: "bg-slate-100"
+  },
+  pre_solicitation: {
+    label: "Pre-Solicitation",
+    shortLabel: "Pre-Sol",
+    color: "text-blue-700",
+    bgColor: "bg-blue-100"
+  },
+  solicitation: {
+    label: "Solicitation",
+    shortLabel: "Solicitation",
+    color: "text-amber-700",
+    bgColor: "bg-amber-100"
+  },
+  post_solicitation: {
+    label: "Post-Solicitation",
+    shortLabel: "Post-Sol",
+    color: "text-emerald-700",
+    bgColor: "bg-emerald-100"
+  }
+};
 
 // Purpose configuration for UI display
 const PURPOSE_CONFIG: Record<PurposeType, { 
@@ -114,12 +160,135 @@ const PHASE_OPTIONS = [
   { value: "post_solicitation", label: "Post-Solicitation" },
 ];
 
+/**
+ * DocumentCard - Reusable document card component
+ * Displays document info with icons, badges, and delete action
+ */
+interface DocumentCardProps {
+  doc: KnowledgeDocument;
+  onDelete: (doc: KnowledgeDocument) => void;
+  getFileIcon: (fileType: string) => React.ReactNode;
+  formatFileSize: (bytes: number) => string;
+  showPhase?: boolean;
+  compact?: boolean;
+}
+
+function DocumentCard({ doc, onDelete, getFileIcon, formatFileSize, showPhase = true, compact = false }: DocumentCardProps) {
+  return (
+    <Card 
+      className={`group hover:shadow-md transition-all duration-200 hover:border-blue-200 ${compact ? 'shadow-sm' : ''}`}
+    >
+      <CardContent className={compact ? "p-3" : "p-4"}>
+        <div className="flex items-start gap-3">
+          {/* File Icon */}
+          <div className={`${compact ? 'h-8 w-8' : 'h-10 w-10'} rounded-lg bg-gradient-to-br ${
+            doc.purpose ? PURPOSE_CONFIG[doc.purpose as PurposeType]?.bgGradient : PURPOSE_CONFIG.regulation.bgGradient
+          } flex items-center justify-center text-white shadow-sm`}>
+            {getFileIcon(doc.file_type)}
+          </div>
+
+          {/* Document Info */}
+          <div className="flex-1 min-w-0">
+            <h4 className={`font-medium truncate ${compact ? 'text-xs' : 'text-sm'}`} title={doc.filename}>
+              {doc.filename}
+            </h4>
+            
+            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+              <Badge 
+                variant="outline" 
+                className={`text-[10px] uppercase ${
+                  doc.purpose ? PURPOSE_CONFIG[doc.purpose as PurposeType]?.color : 'bg-slate-500'
+                } text-white border-0`}
+              >
+                {doc.file_type}
+              </Badge>
+              {showPhase && doc.phase && (
+                <Badge variant="secondary" className="text-[10px]">
+                  {doc.phase.replace('_', '-')}
+                </Badge>
+              )}
+              {/* RAG Indexed Indicator */}
+              {doc.rag_indexed && (
+                <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-300 bg-emerald-50">
+                  <CheckCircle2 className="h-3 w-3 mr-0.5" />
+                  {compact ? '' : 'Indexed'}
+                </Badge>
+              )}
+            </div>
+
+            {!compact && (
+              <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <HardDrive className="h-3 w-3" />
+                  {formatFileSize(doc.file_size)}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  {format(new Date(doc.upload_date), 'MMM d, yyyy')}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Delete Button */}
+          <button
+            type="button"
+            className={`${compact ? 'h-6 w-6' : 'h-8 w-8'} rounded-md flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100`}
+            onClick={() => onDelete(doc)}
+            title="Delete document"
+          >
+            <Trash2 className={compact ? "h-3 w-3" : "h-4 w-4"} />
+          </button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * EmptyState - Empty state component for when no documents exist
+ */
+interface EmptyStateProps {
+  searchQuery: string;
+  onUpload: () => void;
+}
+
+function EmptyState({ searchQuery, onUpload }: EmptyStateProps) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
+        <FolderOpen className="h-8 w-8 text-slate-400" />
+      </div>
+      <h3 className="text-lg font-medium text-slate-700 mb-1">
+        {searchQuery ? 'No matching documents' : 'No knowledge documents yet'}
+      </h3>
+      <p className="text-sm text-muted-foreground mb-4 max-w-md">
+        {searchQuery 
+          ? 'Try adjusting your search or filter' 
+          : 'Upload regulations, templates, market research, or prior awards to help AI generate better documents.'}
+      </p>
+      {!searchQuery && (
+        <Button 
+          variant="outline" 
+          onClick={onUpload}
+          className="gap-2"
+        >
+          <Upload className="h-4 w-4" />
+          Upload First Document
+        </Button>
+      )}
+    </div>
+  );
+}
+
 export function KnowledgeTab({ projectId, currentPhase }: KnowledgeTabProps) {
   // Query client for cache invalidation
   const queryClient = useQueryClient();
   
   // State management
   const [activePurpose, setActivePurpose] = useState<PurposeType>("all");
+  const [activePhaseFilter, setActivePhaseFilter] = useState<PhaseFilter>("all"); // Phase filter state
+  const [viewMode, setViewMode] = useState<ViewMode>("grid"); // View mode state
   const [searchQuery, setSearchQuery] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadPurpose, setUploadPurpose] = useState<PurposeType>("regulation");
@@ -145,10 +314,15 @@ export function KnowledgeTab({ projectId, currentPhase }: KnowledgeTabProps) {
     },
   });
 
-  // Filter documents based on purpose and search
+  // Filter documents based on purpose, phase, and search
   const filteredDocs = documents.filter((doc: KnowledgeDocument) => {
     // Filter by purpose
     if (activePurpose !== "all" && doc.purpose !== activePurpose) {
+      return false;
+    }
+    
+    // Filter by phase
+    if (activePhaseFilter !== "all" && doc.phase !== activePhaseFilter) {
       return false;
     }
     
@@ -164,6 +338,46 @@ export function KnowledgeTab({ projectId, currentPhase }: KnowledgeTabProps) {
     
     return true;
   });
+
+  // Get phase counts for filtering
+  const getPhaseCounts = () => {
+    const counts: Record<PhaseFilter, number> = {
+      all: documents.length,
+      pre_solicitation: 0,
+      solicitation: 0,
+      post_solicitation: 0
+    };
+    
+    documents.forEach((doc: KnowledgeDocument) => {
+      if (doc.phase && doc.phase in counts) {
+        counts[doc.phase as PhaseFilter]++;
+      }
+    });
+    
+    return counts;
+  };
+
+  // Group documents by phase for "by_phase" view mode
+  const getDocumentsByPhase = () => {
+    const grouped: Record<PhaseFilter, KnowledgeDocument[]> = {
+      all: [],
+      pre_solicitation: [],
+      solicitation: [],
+      post_solicitation: []
+    };
+    
+    filteredDocs.forEach((doc: KnowledgeDocument) => {
+      const phase = (doc.phase as PhaseFilter) || "pre_solicitation";
+      if (phase in grouped && phase !== "all") {
+        grouped[phase].push(doc);
+      }
+    });
+    
+    return grouped;
+  };
+
+  const phaseCounts = getPhaseCounts();
+  const documentsByPhase = getDocumentsByPhase();
 
   // Handle file upload with project context
   const handleUpload = async (file: File) => {
@@ -397,6 +611,76 @@ export function KnowledgeTab({ projectId, currentPhase }: KnowledgeTabProps) {
         </CardContent>
       </Card>
 
+      {/* Phase Filter Toggle Row */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-slate-50 rounded-lg border">
+        <div className="flex items-center gap-4">
+          <span className="text-sm font-medium text-slate-700">Filter by Phase:</span>
+          <ToggleGroup 
+            type="single" 
+            value={activePhaseFilter} 
+            onValueChange={(v) => v && setActivePhaseFilter(v as PhaseFilter)}
+            className="bg-white rounded-lg border p-0.5"
+          >
+            {(Object.keys(PHASE_CONFIG) as PhaseFilter[]).map((phase) => {
+              const isCurrentPhase = currentPhase === phase;
+              return (
+                <ToggleGroupItem 
+                  key={phase} 
+                  value={phase}
+                  className={`px-3 py-1.5 text-xs font-medium gap-1.5 data-[state=on]:bg-blue-600 data-[state=on]:text-white ${
+                    isCurrentPhase && activePhaseFilter !== phase ? 'ring-2 ring-blue-300 ring-inset' : ''
+                  }`}
+                  title={isCurrentPhase ? `${PHASE_CONFIG[phase].label} (Current Project Phase)` : PHASE_CONFIG[phase].label}
+                >
+                  {PHASE_CONFIG[phase].shortLabel}
+                  <Badge 
+                    variant="secondary" 
+                    className={`h-4 min-w-[16px] text-[10px] px-1 ${
+                      activePhaseFilter === phase 
+                        ? 'bg-blue-500 text-white' 
+                        : 'bg-slate-200'
+                    }`}
+                  >
+                    {phaseCounts[phase]}
+                  </Badge>
+                  {isCurrentPhase && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" title="Current Phase" />
+                  )}
+                </ToggleGroupItem>
+              );
+            })}
+          </ToggleGroup>
+        </div>
+        
+        {/* View Mode Toggle */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-slate-500">View:</span>
+          <ToggleGroup 
+            type="single" 
+            value={viewMode} 
+            onValueChange={(v) => v && setViewMode(v as ViewMode)}
+            className="bg-white rounded-lg border p-0.5"
+          >
+            <ToggleGroupItem 
+              value="grid" 
+              className="px-2 py-1 text-xs gap-1 data-[state=on]:bg-slate-800 data-[state=on]:text-white"
+              title="Grid View"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+              Grid
+            </ToggleGroupItem>
+            <ToggleGroupItem 
+              value="by_phase" 
+              className="px-2 py-1 text-xs gap-1 data-[state=on]:bg-slate-800 data-[state=on]:text-white"
+              title="Group by Phase"
+            >
+              <Layers className="h-3.5 w-3.5" />
+              By Phase
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </div>
+      </div>
+
       {/* Purpose Tabs & Search */}
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <Tabs value={activePurpose} onValueChange={(v) => setActivePurpose(v as PurposeType)}>
@@ -451,129 +735,124 @@ export function KnowledgeTab({ projectId, currentPhase }: KnowledgeTabProps) {
         </div>
       </div>
 
-      {/* Document Grid */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-lg flex items-center gap-2">
-                {PURPOSE_CONFIG[activePurpose].icon}
-                {PURPOSE_CONFIG[activePurpose].label}
-              </CardTitle>
-              <CardDescription>
-                {PURPOSE_CONFIG[activePurpose].description}
-              </CardDescription>
+      {/* Document Grid / Grouped View */}
+      {viewMode === "grid" ? (
+        // Standard Grid View
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  {PURPOSE_CONFIG[activePurpose].icon}
+                  {PURPOSE_CONFIG[activePurpose].label}
+                  {activePhaseFilter !== "all" && (
+                    <Badge className={`ml-2 ${PHASE_CONFIG[activePhaseFilter].bgColor} ${PHASE_CONFIG[activePhaseFilter].color} border-0`}>
+                      {PHASE_CONFIG[activePhaseFilter].shortLabel}
+                    </Badge>
+                  )}
+                </CardTitle>
+                <CardDescription>
+                  {PURPOSE_CONFIG[activePurpose].description}
+                </CardDescription>
+              </div>
+              <Badge variant="secondary" className="text-sm">
+                {filteredDocs.length} document{filteredDocs.length !== 1 ? 's' : ''}
+              </Badge>
             </div>
-            <Badge variant="secondary" className="text-sm">
-              {filteredDocs.length} document{filteredDocs.length !== 1 ? 's' : ''}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-            </div>
-          ) : filteredDocs.length > 0 ? (
-            <ScrollArea className="h-[400px] pr-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredDocs.map((doc: KnowledgeDocument) => (
-                  <Card 
-                    key={doc.id} 
-                    className="group hover:shadow-md transition-all duration-200 hover:border-blue-200"
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
-                        {/* File Icon */}
-                        <div className={`h-10 w-10 rounded-lg bg-gradient-to-br ${
-                          doc.purpose ? PURPOSE_CONFIG[doc.purpose as PurposeType]?.bgGradient : PURPOSE_CONFIG.regulation.bgGradient
-                        } flex items-center justify-center text-white shadow-sm`}>
-                          {getFileIcon(doc.file_type)}
-                        </div>
-
-                        {/* Document Info */}
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-sm truncate" title={doc.filename}>
-                            {doc.filename}
-                          </h4>
-                          
-                          <div className="flex items-center gap-2 mt-1 flex-wrap">
-                            <Badge 
-                              variant="outline" 
-                              className={`text-[10px] uppercase ${
-                                doc.purpose ? PURPOSE_CONFIG[doc.purpose as PurposeType]?.color : 'bg-slate-500'
-                              } text-white border-0`}
-                            >
-                              {doc.file_type}
-                            </Badge>
-                            {doc.phase && (
-                              <Badge variant="secondary" className="text-[10px]">
-                                {doc.phase.replace('_', '-')}
-                              </Badge>
-                            )}
-                            {/* RAG Indexed Indicator */}
-                            {doc.rag_indexed && (
-                              <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-300 bg-emerald-50">
-                                <CheckCircle2 className="h-3 w-3 mr-1" />
-                                Indexed
-                              </Badge>
-                            )}
-                          </div>
-
-                          <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <HardDrive className="h-3 w-3" />
-                              {formatFileSize(doc.file_size)}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {format(new Date(doc.upload_date), 'MMM d, yyyy')}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Delete Button */}
-                        <button
-                          type="button"
-                          className="h-8 w-8 rounded-md flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                          onClick={() => setDeleteTarget(doc)}
-                          title="Delete document"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              </div>
+            ) : filteredDocs.length > 0 ? (
+              <ScrollArea className="h-[400px] pr-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredDocs.map((doc: KnowledgeDocument) => (
+                    <DocumentCard 
+                      key={doc.id} 
+                      doc={doc} 
+                      onDelete={setDeleteTarget}
+                      getFileIcon={getFileIcon}
+                      formatFileSize={formatFileSize}
+                      showPhase={activePhaseFilter === "all"}
+                    />
+                  ))}
+                </div>
+              </ScrollArea>
+            ) : (
+              <EmptyState 
+                searchQuery={searchQuery} 
+                onUpload={() => fileInputRef.current?.click()} 
+              />
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        // Grouped by Phase View
+        <div className="space-y-6">
+          {(["pre_solicitation", "solicitation", "post_solicitation"] as PhaseFilter[]).map((phase) => {
+            const phaseDocs = documentsByPhase[phase];
+            const isCurrentPhase = currentPhase === phase;
+            
+            return (
+              <Card 
+                key={phase} 
+                className={`transition-all ${isCurrentPhase ? 'ring-2 ring-blue-400 shadow-md' : ''}`}
+              >
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`h-8 w-8 rounded-lg ${PHASE_CONFIG[phase].bgColor} flex items-center justify-center`}>
+                        <Layers className={`h-4 w-4 ${PHASE_CONFIG[phase].color}`} />
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </ScrollArea>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
-                <FolderOpen className="h-8 w-8 text-slate-400" />
-              </div>
-              <h3 className="text-lg font-medium text-slate-700 mb-1">
-                {searchQuery ? 'No matching documents' : 'No knowledge documents yet'}
-              </h3>
-              <p className="text-sm text-muted-foreground mb-4 max-w-md">
-                {searchQuery 
-                  ? 'Try adjusting your search or filter' 
-                  : 'Upload regulations, templates, market research, or prior awards to help AI generate better documents.'}
-              </p>
-              {!searchQuery && (
-                <Button 
-                  variant="outline" 
-                  onClick={() => fileInputRef.current?.click()}
-                  className="gap-2"
-                >
-                  <Upload className="h-4 w-4" />
-                  Upload First Document
-                </Button>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                      <div>
+                        <CardTitle className="text-base flex items-center gap-2">
+                          {PHASE_CONFIG[phase].label}
+                          {isCurrentPhase && (
+                            <Badge className="bg-emerald-100 text-emerald-700 text-[10px]">
+                              Current Phase
+                            </Badge>
+                          )}
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                          {phaseDocs.length} document{phaseDocs.length !== 1 ? 's' : ''} for this phase
+                        </CardDescription>
+                      </div>
+                    </div>
+                    <Badge variant="secondary" className={`${PHASE_CONFIG[phase].bgColor} ${PHASE_CONFIG[phase].color} border-0`}>
+                      {phaseDocs.length}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {phaseDocs.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {phaseDocs.map((doc: KnowledgeDocument) => (
+                        <DocumentCard 
+                          key={doc.id} 
+                          doc={doc} 
+                          onDelete={setDeleteTarget}
+                          getFileIcon={getFileIcon}
+                          formatFileSize={formatFileSize}
+                          showPhase={false}
+                          compact
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center py-8 text-center">
+                      <div className="text-sm text-muted-foreground">
+                        No documents for {PHASE_CONFIG[phase].label}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>

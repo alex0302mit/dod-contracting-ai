@@ -1,16 +1,26 @@
 /**
- * DocumentLineagePanel Component
+ * DocumentLineagePanel Component - Phase 3A Enhanced
  * 
- * Displays the lineage/provenance of AI-generated documents, showing:
+ * Displays the lineage/provenance of AI-generated documents with:
  * - Source documents that influenced the generation
  * - Relevance scores indicating importance of each source
  * - Chunk usage details for fine-grained traceability
+ * 
+ * Phase 3A Enhancements:
+ * - "Show Advanced" toggle for expanded views
+ * - Tabbed interface: Sources List, Timeline, Influence Graph
+ * - Chunk content viewer for drilling into specific chunks
+ * - Integrated lifecycle timeline visualization
+ * - Interactive influence graph
  * 
  * This component provides explainability for AI decisions, which is critical
  * for DoD/FAR compliance and auditability requirements.
  * 
  * Dependencies:
  * - lineageApi from services/api for fetching lineage data
+ * - DocumentLifecycleTimeline for timeline visualization
+ * - InfluenceGraphView for graph visualization
+ * - ChunkContentViewer for chunk content display
  * - Shadcn UI components for consistent styling
  * - React Query for data fetching and caching
  */
@@ -29,13 +39,21 @@ import {
   AlertCircle,
   FileStack,
   Scale,
-  BookOpen
+  BookOpen,
+  Eye,
+  Clock,
+  Network,
+  List,
+  Layers,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Tooltip,
   TooltipContent,
@@ -48,6 +66,11 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { lineageApi, type DocumentLineage, type InfluenceType } from '@/services/api';
+
+// Import Phase 3A components
+import { DocumentLifecycleTimeline } from './DocumentLifecycleTimeline';
+import { InfluenceGraphView } from './InfluenceGraphView';
+import { ChunkContentViewer } from './ChunkContentViewer';
 
 // Props interface for the DocumentLineagePanel
 interface DocumentLineagePanelProps {
@@ -96,17 +119,19 @@ const INFLUENCE_CONFIG: Record<InfluenceType, {
   }
 };
 
-// Single source item component
+// Single source item component with chunk viewing capability
 function SourceItem({ 
   source, 
   expanded,
   onToggle,
-  onSourceClick 
+  onSourceClick,
+  onViewChunks,
 }: { 
   source: DocumentLineage;
   expanded: boolean;
   onToggle: () => void;
   onSourceClick?: (sourceId: string) => void;
+  onViewChunks?: (chunkIds: string[], sourceName: string) => void;
 }) {
   const influenceConfig = INFLUENCE_CONFIG[source.influence_type] || INFLUENCE_CONFIG.data_source;
   
@@ -198,17 +223,42 @@ function SourceItem({
                 </div>
               )}
               
-              {/* Chunk IDs (collapsible for debugging) */}
+              {/* Chunk actions - Phase 3A Enhancement */}
               {source.chunk_ids_used && source.chunk_ids_used.length > 0 && (
-                <details className="text-muted-foreground">
-                  <summary className="cursor-pointer hover:text-slate-700">
-                    View {source.chunk_ids_used.length} chunk IDs
-                  </summary>
-                  <div className="mt-1 p-2 bg-slate-100 rounded text-[10px] font-mono break-all">
-                    {source.chunk_ids_used.slice(0, 5).join(', ')}
-                    {source.chunk_ids_used.length > 5 && ` ... +${source.chunk_ids_used.length - 5} more`}
+                <div className="mt-2 pt-2 border-t">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">
+                      {source.chunk_ids_used.length} chunk{source.chunk_ids_used.length !== 1 ? 's' : ''} used
+                    </span>
+                    
+                    {/* View Chunks Button - Phase 3A */}
+                    {onViewChunks && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="gap-1 h-7 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onViewChunks(source.chunk_ids_used, displayName);
+                        }}
+                      >
+                        <Eye className="h-3 w-3" />
+                        View Chunks
+                      </Button>
+                    )}
                   </div>
-                </details>
+                  
+                  {/* Chunk IDs expandable (for debugging) */}
+                  <details className="text-muted-foreground mt-2">
+                    <summary className="cursor-pointer hover:text-slate-700 text-[10px]">
+                      Show chunk IDs
+                    </summary>
+                    <div className="mt-1 p-2 bg-slate-100 rounded text-[10px] font-mono break-all">
+                      {source.chunk_ids_used.slice(0, 5).join(', ')}
+                      {source.chunk_ids_used.length > 5 && ` ... +${source.chunk_ids_used.length - 5} more`}
+                    </div>
+                  </details>
+                </div>
               )}
               
               {/* View Source Button */}
@@ -237,8 +287,15 @@ export function DocumentLineagePanel({
   compact = false,
   onSourceClick 
 }: DocumentLineagePanelProps) {
-  // State for expanded items
+  // State for UI controls
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [activeTab, setActiveTab] = useState('sources');
+  
+  // State for chunk viewer modal
+  const [chunkViewerOpen, setChunkViewerOpen] = useState(false);
+  const [viewingChunks, setViewingChunks] = useState<string[]>([]);
+  const [viewingSourceName, setViewingSourceName] = useState<string>('');
   
   // Fetch lineage data
   const { data: lineage, isLoading, isError, error } = useQuery({
@@ -259,6 +316,13 @@ export function DocumentLineagePanel({
       }
       return next;
     });
+  };
+  
+  // Handle viewing chunks - opens the ChunkContentViewer modal
+  const handleViewChunks = (chunkIds: string[], sourceName: string) => {
+    setViewingChunks(chunkIds);
+    setViewingSourceName(sourceName);
+    setChunkViewerOpen(true);
   };
   
   // Loading state
@@ -284,7 +348,7 @@ export function DocumentLineagePanel({
     );
   }
   
-  // No lineage data
+  // No lineage data - show empty state
   if (!lineage || lineage.total_sources === 0) {
     return (
       <Card className={compact ? 'border-0 shadow-none' : ''}>
@@ -310,66 +374,170 @@ export function DocumentLineagePanel({
   }
   
   return (
-    <Card className={compact ? 'border-0 shadow-none' : ''}>
-      {!compact && (
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <GitBranch className="h-4 w-4 text-blue-600" />
-            Document Sources
-          </CardTitle>
-          <CardDescription className="text-xs">
-            {lineage.total_sources} source{lineage.total_sources !== 1 ? 's' : ''} influenced this document
-          </CardDescription>
-        </CardHeader>
-      )}
-      
-      <CardContent className={compact ? 'py-2' : ''}>
-        {compact && lineage.total_sources > 0 && (
-          <div className="flex items-center gap-2 mb-3 text-sm text-muted-foreground">
-            <GitBranch className="h-4 w-4" />
-            <span>{lineage.total_sources} sources</span>
-          </div>
-        )}
-        
-        <ScrollArea className={compact ? 'h-[200px]' : 'h-[300px]'}>
-          <div className="space-y-1">
-            {lineage.sources.map((source) => (
-              <SourceItem
-                key={source.id}
-                source={source}
-                expanded={expandedItems.has(source.id)}
-                onToggle={() => toggleExpanded(source.id)}
-                onSourceClick={onSourceClick}
-              />
-            ))}
-          </div>
-        </ScrollArea>
-        
-        {/* Derived documents (if this document was a source) */}
-        {lineage.derived_from_this.length > 0 && (
-          <div className="mt-4 pt-4 border-t">
-            <h4 className="text-xs font-medium text-muted-foreground mb-2">
-              Used as source for:
-            </h4>
-            <div className="space-y-1">
-              {lineage.derived_from_this.map((derived) => (
-                <div 
-                  key={derived.id}
-                  className="flex items-center gap-2 text-xs p-2 rounded bg-slate-50"
-                >
-                  <FileText className="h-3 w-3 text-slate-500" />
-                  <span className="truncate">
-                    Document {derived.derived_document_id.slice(0, 8)}...
-                  </span>
-                  <Badge variant="outline" className="ml-auto text-[10px]">
-                    {Math.round((derived.relevance_score || 0) * 100)}% relevance
-                  </Badge>
-                </div>
-              ))}
+    <>
+      <Card className={compact ? 'border-0 shadow-none' : ''}>
+        {/* Header with Advanced Toggle */}
+        {!compact && (
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <GitBranch className="h-4 w-4 text-blue-600" />
+                  Document Sources
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  {lineage.total_sources} source{lineage.total_sources !== 1 ? 's' : ''} influenced this document
+                </CardDescription>
+              </div>
+              
+              {/* Advanced View Toggle - Phase 3A */}
+              <div className="flex items-center gap-2">
+                <Label htmlFor="advanced-toggle" className="text-xs text-muted-foreground">
+                  Advanced
+                </Label>
+                <Switch
+                  id="advanced-toggle"
+                  checked={showAdvanced}
+                  onCheckedChange={setShowAdvanced}
+                />
+              </div>
             </div>
-          </div>
+          </CardHeader>
         )}
-      </CardContent>
-    </Card>
+        
+        <CardContent className={compact ? 'py-2' : ''}>
+          {/* Compact header */}
+          {compact && lineage.total_sources > 0 && (
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <GitBranch className="h-4 w-4" />
+                <span>{lineage.total_sources} sources</span>
+              </div>
+              
+              {/* Compact advanced toggle */}
+              <div className="flex items-center gap-1.5">
+                <Label htmlFor="advanced-toggle-compact" className="text-[10px] text-muted-foreground">
+                  Advanced
+                </Label>
+                <Switch
+                  id="advanced-toggle-compact"
+                  checked={showAdvanced}
+                  onCheckedChange={setShowAdvanced}
+                  className="scale-75"
+                />
+              </div>
+            </div>
+          )}
+          
+          {/* Phase 3A: Tabbed Interface when Advanced is enabled */}
+          {showAdvanced ? (
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-3 mb-4">
+                <TabsTrigger value="sources" className="gap-1.5 text-xs">
+                  <List className="h-3.5 w-3.5" />
+                  Sources
+                </TabsTrigger>
+                <TabsTrigger value="timeline" className="gap-1.5 text-xs">
+                  <Clock className="h-3.5 w-3.5" />
+                  Timeline
+                </TabsTrigger>
+                <TabsTrigger value="graph" className="gap-1.5 text-xs">
+                  <Network className="h-3.5 w-3.5" />
+                  Graph
+                </TabsTrigger>
+              </TabsList>
+              
+              {/* Sources Tab - Original list view */}
+              <TabsContent value="sources" className="mt-0">
+                <ScrollArea className={compact ? 'h-[200px]' : 'h-[300px]'}>
+                  <div className="space-y-1">
+                    {lineage.sources.map((source) => (
+                      <SourceItem
+                        key={source.id}
+                        source={source}
+                        expanded={expandedItems.has(source.id)}
+                        onToggle={() => toggleExpanded(source.id)}
+                        onSourceClick={onSourceClick}
+                        onViewChunks={handleViewChunks}
+                      />
+                    ))}
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+              
+              {/* Timeline Tab - Phase 3A */}
+              <TabsContent value="timeline" className="mt-0">
+                <DocumentLifecycleTimeline
+                  documentId={documentId}
+                  documentName={documentName}
+                  compact
+                />
+              </TabsContent>
+              
+              {/* Graph Tab - Phase 3A */}
+              <TabsContent value="graph" className="mt-0">
+                <InfluenceGraphView
+                  documentId={documentId}
+                  documentName={documentName}
+                  compact
+                />
+              </TabsContent>
+            </Tabs>
+          ) : (
+            // Standard view (not advanced)
+            <>
+              <ScrollArea className={compact ? 'h-[200px]' : 'h-[300px]'}>
+                <div className="space-y-1">
+                  {lineage.sources.map((source) => (
+                    <SourceItem
+                      key={source.id}
+                      source={source}
+                      expanded={expandedItems.has(source.id)}
+                      onToggle={() => toggleExpanded(source.id)}
+                      onSourceClick={onSourceClick}
+                      onViewChunks={handleViewChunks}
+                    />
+                  ))}
+                </div>
+              </ScrollArea>
+            </>
+          )}
+          
+          {/* Derived documents section (shown in both modes) */}
+          {lineage.derived_from_this.length > 0 && (
+            <div className="mt-4 pt-4 border-t">
+              <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+                <Layers className="h-3.5 w-3.5" />
+                Used as source for:
+              </h4>
+              <div className="space-y-1">
+                {lineage.derived_from_this.map((derived) => (
+                  <div 
+                    key={derived.id}
+                    className="flex items-center gap-2 text-xs p-2 rounded bg-slate-50 hover:bg-slate-100 transition-colors"
+                  >
+                    <FileText className="h-3 w-3 text-slate-500" />
+                    <span className="truncate">
+                      Document {derived.derived_document_id.slice(0, 8)}...
+                    </span>
+                    <Badge variant="outline" className="ml-auto text-[10px]">
+                      {Math.round((derived.relevance_score || 0) * 100)}% relevance
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      
+      {/* Phase 3A: Chunk Content Viewer Modal */}
+      <ChunkContentViewer
+        chunkIds={viewingChunks}
+        open={chunkViewerOpen}
+        onOpenChange={setChunkViewerOpen}
+        sourceDocumentName={viewingSourceName}
+      />
+    </>
   );
 }

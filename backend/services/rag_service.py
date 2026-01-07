@@ -157,36 +157,244 @@ class RAGService:
         self,
         query: str,
         k: int = 5,
-        score_threshold: Optional[float] = None
+        score_threshold: Optional[float] = None,
+        project_id: Optional[str] = None,
+        phase: Optional[str] = None
     ) -> List[Dict]:
         """
-        Search for relevant document chunks
+        Search for relevant document chunks with optional project/phase filtering
+        
+        Phase-aware search enables more relevant retrieval by prioritizing
+        documents attached to the current phase of the acquisition workflow.
 
         Args:
             query: Search query
             k: Number of results to return
             score_threshold: Optional similarity threshold
+            project_id: Optional project ID to filter by
+            phase: Optional phase to filter by (e.g., "pre_solicitation", "solicitation", "post_solicitation")
 
         Returns:
             List of relevant chunks with metadata
         """
+        # Get more results initially if filtering will be applied
+        # This ensures we still have enough results after filtering
+        search_k = k * 3 if (project_id or phase) else k
+        
         results = self.vector_store.search(
             query=query,
-            k=k,
+            k=search_k,
             score_threshold=score_threshold
         )
 
-        # Format results
+        # Format and filter results
         formatted_results = []
+        phase_matched_results = []
+        fallback_results = []
+        
         for chunk_dict, score in results:
-            formatted_results.append({
+            chunk_metadata = chunk_dict.get("metadata", {})
+            
+            # Build result object
+            result = {
                 "content": chunk_dict["content"],
-                "metadata": chunk_dict["metadata"],
+                "metadata": chunk_metadata,
                 "score": score,
-                "chunk_id": chunk_dict["chunk_id"]
-            })
+                "chunk_id": chunk_dict.get("chunk_id") or chunk_metadata.get("chunk_id")
+            }
+            
+            # Apply project filter if specified
+            if project_id:
+                chunk_project = chunk_metadata.get("project_id")
+                if chunk_project and chunk_project != project_id:
+                    continue  # Skip chunks from different projects
+            
+            # Apply phase filter with fallback logic
+            if phase:
+                chunk_phase = chunk_metadata.get("phase")
+                if chunk_phase == phase:
+                    # Exact phase match - prioritize these
+                    phase_matched_results.append(result)
+                else:
+                    # Different phase or no phase - keep as fallback
+                    fallback_results.append(result)
+            else:
+                # No phase filter - include all
+                formatted_results.append(result)
+        
+        # If phase filtering was applied, combine results with phase matches first
+        if phase:
+            # Log phase filtering for debugging
+            print(f"[RAG] Phase filter '{phase}': {len(phase_matched_results)} matches, {len(fallback_results)} fallback")
+            
+            # Prioritize phase-matched results, then add fallbacks if needed
+            formatted_results = phase_matched_results
+            if len(formatted_results) < k:
+                # Not enough phase matches - add fallbacks
+                remaining_slots = k - len(formatted_results)
+                formatted_results.extend(fallback_results[:remaining_slots])
+        
+        # Limit to requested number of results
+        return formatted_results[:k]
 
-        return formatted_results
+    def get_documents_by_project(self, project_id: str) -> List[Dict]:
+        """
+        Get all document chunks associated with a specific project
+        
+        Args:
+            project_id: Project ID to filter by
+            
+        Returns:
+            List of unique documents (deduplicated from chunks) with metadata
+        """
+        documents = {}
+        
+        for chunk in self.vector_store.chunks:
+            # Use helper to handle both dict and DocumentChunk objects
+            chunk_data = self._get_chunk_data(chunk)
+            chunk_metadata = chunk_data["metadata"]
+            chunk_project = chunk_metadata.get("project_id")
+            
+            if chunk_project == project_id:
+                source_doc = chunk_metadata.get("source_document") or chunk_metadata.get("source")
+                if source_doc and source_doc not in documents:
+                    documents[source_doc] = {
+                        "filename": chunk_metadata.get("original_filename", source_doc),
+                        "source_document": source_doc,
+                        "project_id": project_id,
+                        "phase": chunk_metadata.get("phase"),
+                        "purpose": chunk_metadata.get("purpose"),
+                        "uploaded_by": chunk_metadata.get("uploaded_by"),
+                        "upload_timestamp": chunk_metadata.get("upload_timestamp"),
+                        "chunk_count": 0,
+                        "chunk_ids": []
+                    }
+                
+                if source_doc:
+                    documents[source_doc]["chunk_count"] += 1
+                    chunk_id = chunk_data["chunk_id"]
+                    if chunk_id:
+                        documents[source_doc]["chunk_ids"].append(chunk_id)
+
+        return list(documents.values())
+
+    def get_documents_by_project_and_phase(self, project_id: str, phase: str) -> List[Dict]:
+        """
+        Get all document chunks for a specific project and phase
+        
+        Args:
+            project_id: Project ID to filter by
+            phase: Phase name (e.g., "pre_solicitation")
+            
+        Returns:
+            List of unique documents matching project and phase
+        """
+        all_project_docs = self.get_documents_by_project(project_id)
+        return [doc for doc in all_project_docs if doc.get("phase") == phase]
+
+    def get_source_documents_for_chunks(self, chunk_ids: List[str]) -> List[Dict]:
+        """
+        Map chunk IDs back to their source documents for lineage tracking
+        
+        Args:
+            chunk_ids: List of chunk IDs to look up
+            
+        Returns:
+            List of unique source documents that contributed the given chunks
+        """
+        documents = {}
+        chunk_id_set = set(chunk_ids)
+        
+        for chunk in self.vector_store.chunks:
+            # Use helper to handle both dict and DocumentChunk objects
+            chunk_data = self._get_chunk_data(chunk)
+            chunk_metadata = chunk_data["metadata"]
+            chunk_id = chunk_data["chunk_id"]
+            
+            if chunk_id in chunk_id_set:
+                source_doc = chunk_metadata.get("source_document") or chunk_metadata.get("source")
+                if source_doc and source_doc not in documents:
+                    documents[source_doc] = {
+                        "filename": chunk_metadata.get("original_filename", source_doc),
+                        "source_document": source_doc,
+                        "project_id": chunk_metadata.get("project_id"),
+                        "phase": chunk_metadata.get("phase"),
+                        "purpose": chunk_metadata.get("purpose"),
+                        "chunk_ids_used": []
+                    }
+                
+                if source_doc:
+                    documents[source_doc]["chunk_ids_used"].append(chunk_id)
+        
+        return list(documents.values())
+
+    def get_chunks_by_ids(self, chunk_ids: List[str]) -> List[Dict]:
+        """
+        Get full chunk content and metadata by chunk IDs.
+        
+        Used for chunk-level traceability in the document lineage view,
+        allowing users to see exactly what content influenced AI generation.
+        
+        Args:
+            chunk_ids: List of chunk IDs to retrieve
+            
+        Returns:
+            List of chunk dictionaries with content, metadata, and positional info
+        """
+        chunk_id_set = set(chunk_ids)
+        results = []
+        
+        for chunk in self.vector_store.chunks:
+            # Use helper to handle both dict and DocumentChunk objects
+            chunk_data = self._get_chunk_data(chunk)
+            chunk_id = chunk_data["chunk_id"]
+            
+            if chunk_id in chunk_id_set:
+                chunk_metadata = chunk_data["metadata"]
+                results.append({
+                    "chunk_id": chunk_id,
+                    "content": chunk_data["content"],
+                    "source_document": chunk_metadata.get("source_document") or chunk_metadata.get("source"),
+                    "original_filename": chunk_metadata.get("original_filename"),
+                    "chunk_index": chunk_metadata.get("chunk_index", 0),
+                    "total_chunks": chunk_metadata.get("total_chunks", 1),
+                    "project_id": chunk_metadata.get("project_id"),
+                    "phase": chunk_metadata.get("phase"),
+                    "purpose": chunk_metadata.get("purpose"),
+                    "metadata": chunk_metadata
+                })
+        
+        # Sort by source document and chunk index for consistent ordering
+        results.sort(key=lambda x: (x.get("source_document", ""), x.get("chunk_index", 0)))
+        
+        return results
+
+    def _get_chunk_data(self, chunk) -> Dict:
+        """
+        Helper to safely extract data from a chunk (handles both dict and DocumentChunk object)
+        
+        Chunks can be either dictionaries or DocumentChunk dataclass objects depending on
+        how they were loaded. This helper normalizes access.
+        
+        Args:
+            chunk: Either a dict or DocumentChunk object
+            
+        Returns:
+            Dict with 'content', 'metadata', and 'chunk_id' keys
+        """
+        if isinstance(chunk, dict):
+            return {
+                "content": chunk.get("content", ""),
+                "metadata": chunk.get("metadata", {}),
+                "chunk_id": chunk.get("chunk_id") or chunk.get("metadata", {}).get("chunk_id")
+            }
+        else:
+            # DocumentChunk dataclass object - access via attributes
+            return {
+                "content": getattr(chunk, "content", ""),
+                "metadata": getattr(chunk, "metadata", {}),
+                "chunk_id": getattr(chunk, "chunk_id", None) or getattr(chunk, "metadata", {}).get("chunk_id")
+            }
 
     def list_uploaded_documents(self) -> List[Dict]:
         """
@@ -206,15 +414,18 @@ class RAGService:
         # This gives us access to project_id, phase, purpose, etc.
         doc_metadata_map = {}
         for chunk in self.vector_store.chunks:
-            source_doc = chunk.get("metadata", {}).get("source_document") or chunk.get("metadata", {}).get("source")
+            # Use helper to handle both dict and DocumentChunk objects
+            chunk_data = self._get_chunk_data(chunk)
+            chunk_metadata = chunk_data["metadata"]
+            source_doc = chunk_metadata.get("source_document") or chunk_metadata.get("source")
             if source_doc:
                 if source_doc not in doc_metadata_map:
                     doc_metadata_map[source_doc] = {
                         "chunk_ids": [],
-                        "metadata": chunk.get("metadata", {})
+                        "metadata": chunk_metadata
                     }
                 # Collect all chunk_ids for this document
-                chunk_id = chunk.get("metadata", {}).get("chunk_id") or chunk.get("chunk_id")
+                chunk_id = chunk_data["chunk_id"]
                 if chunk_id:
                     doc_metadata_map[source_doc]["chunk_ids"].append(chunk_id)
 

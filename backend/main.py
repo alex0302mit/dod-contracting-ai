@@ -3259,6 +3259,86 @@ async def get_project_knowledge(
         )
 
 
+@app.get("/api/projects/{project_id}/knowledge/stats", tags=["Knowledge"])
+async def get_project_knowledge_stats(
+    project_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get knowledge document statistics for a project.
+    
+    Returns counts of documents grouped by phase and purpose,
+    useful for displaying summary badges and filters.
+    
+    Response includes:
+    - total: Total number of knowledge documents
+    - by_phase: Count per phase (pre_solicitation, solicitation, post_solicitation)
+    - by_purpose: Count per purpose (regulation, template, market_research, etc.)
+    - indexed_count: Number of documents successfully indexed in RAG
+    """
+    try:
+        rag_service = get_rag_service()
+        
+        # Get all RAG documents
+        all_docs = rag_service.list_uploaded_documents()
+        
+        # Initialize stats structure
+        stats = {
+            "total": 0,
+            "indexed_count": 0,
+            "by_phase": {
+                "pre_solicitation": 0,
+                "solicitation": 0,
+                "post_solicitation": 0,
+                "unassigned": 0
+            },
+            "by_purpose": {
+                "regulation": 0,
+                "template": 0,
+                "market_research": 0,
+                "prior_award": 0,
+                "strategy_memo": 0,
+                "other": 0
+            }
+        }
+        
+        # Count documents for this project
+        for doc in all_docs:
+            metadata = doc.get('metadata', {})
+            doc_project_id = metadata.get('project_id')
+            
+            # Only count documents matching this project
+            if doc_project_id == project_id:
+                stats["total"] += 1
+                
+                # Count indexed documents
+                chunk_count = metadata.get('chunk_count', 0)
+                if chunk_count and chunk_count > 0:
+                    stats["indexed_count"] += 1
+                
+                # Count by phase
+                doc_phase = metadata.get('phase')
+                if doc_phase in stats["by_phase"]:
+                    stats["by_phase"][doc_phase] += 1
+                else:
+                    stats["by_phase"]["unassigned"] += 1
+                
+                # Count by purpose
+                doc_purpose = metadata.get('purpose')
+                if doc_purpose in stats["by_purpose"]:
+                    stats["by_purpose"][doc_purpose] += 1
+                else:
+                    stats["by_purpose"]["other"] += 1
+        
+        return stats
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching knowledge stats: {str(e)}"
+        )
+
+
 @app.post("/api/projects/{project_id}/knowledge/upload", tags=["Knowledge"])
 async def upload_project_knowledge(
     project_id: str,
@@ -3402,7 +3482,8 @@ async def delete_project_knowledge(
 @app.get("/api/documents/{document_id}/lineage", tags=["Lineage"])
 async def get_document_lineage(
     document_id: str,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """
     Get lineage information for a document.
@@ -3468,7 +3549,8 @@ class LineageRecordRequest(BaseModel):
 async def record_document_lineage(
     document_id: str,
     request: LineageRecordRequest,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """
     Record a lineage relationship for a document.
@@ -3522,7 +3604,8 @@ async def record_document_lineage(
 async def record_batch_lineage(
     document_id: str,
     sources: List[LineageRecordRequest],
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """
     Record multiple lineage relationships at once.
@@ -3568,6 +3651,351 @@ async def record_batch_lineage(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error recording batch lineage: {str(e)}"
+        )
+
+
+@app.get("/api/chunks", tags=["Lineage"])
+async def get_chunk_content(
+    ids: str = Query(..., description="Comma-separated list of chunk IDs"),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Retrieve content for specific RAG chunks by their IDs.
+    
+    Used for chunk-level traceability in the document lineage view,
+    allowing users to see exactly which content segments influenced
+    AI-generated documents.
+    
+    Args:
+        ids: Comma-separated list of chunk IDs (e.g., "chunk_1,chunk_2,chunk_3")
+        
+    Returns:
+        List of chunk objects with content, source document info, and metadata
+    """
+    try:
+        from backend.services.rag_service import get_rag_service
+        
+        # Parse comma-separated chunk IDs
+        chunk_ids = [id.strip() for id in ids.split(",") if id.strip()]
+        
+        if not chunk_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No valid chunk IDs provided"
+            )
+        
+        # Limit to prevent abuse (max 50 chunks per request)
+        if len(chunk_ids) > 50:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Maximum 50 chunk IDs per request"
+            )
+        
+        # Get RAG service and retrieve chunks
+        rag_service = get_rag_service()
+        chunks = rag_service.get_chunks_by_ids(chunk_ids)
+        
+        return {
+            "chunks": chunks,
+            "requested_count": len(chunk_ids),
+            "found_count": len(chunks)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(f"Error fetching chunks: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching chunk content: {str(e)}"
+        )
+
+
+@app.get("/api/documents/{document_id}/timeline", tags=["Lineage"])
+async def get_document_timeline(
+    document_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get lifecycle timeline events for a document.
+    
+    Returns a chronological list of events in the document's lifecycle:
+    - uploaded: When the document was created/uploaded
+    - indexed: When RAG indexing completed (for knowledge documents)
+    - generated: When AI generation occurred (for AI-generated documents)
+    - used_as_source: When this document influenced other generations
+    
+    This provides a complete audit trail for compliance and explainability.
+    """
+    try:
+        from backend.models.document import ProjectDocument
+        from backend.models.lineage import DocumentLineage, KnowledgeDocument
+        
+        events = []
+        
+        # 1. Get the main document info
+        document = db.query(ProjectDocument).filter(
+            ProjectDocument.id == document_id
+        ).first()
+        
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Document {document_id} not found"
+            )
+        
+        # 2. Add creation/upload event
+        if document.created_at:
+            events.append({
+                "type": "uploaded",
+                "timestamp": document.created_at.isoformat(),
+                "actor": str(document.assigned_user_id) if document.assigned_user_id else None,
+                "details": {
+                    "document_name": document.document_name,
+                    "category": document.category,
+                    "phase": document.phase.value if document.phase else None
+                }
+            })
+        
+        # 3. Check if this is an AI-generated document and add generation event
+        if document.generation_status and document.generation_status.value == "GENERATED":
+            if document.generated_at:
+                # Count sources used from lineage
+                sources_count = db.query(DocumentLineage).filter(
+                    DocumentLineage.derived_document_id == document_id
+                ).count()
+                
+                events.append({
+                    "type": "generated",
+                    "timestamp": document.generated_at.isoformat(),
+                    "actor": None,  # AI generated
+                    "details": {
+                        "sources_used": sources_count,
+                        "quality_score": document.ai_quality_score
+                    }
+                })
+        
+        # 4. Check for knowledge document indexing events
+        # Look for matching knowledge document by filename pattern
+        knowledge_doc = db.query(KnowledgeDocument).filter(
+            KnowledgeDocument.project_id == document.project_id
+        ).first()
+        
+        if knowledge_doc and knowledge_doc.rag_indexed:
+            events.append({
+                "type": "indexed",
+                "timestamp": knowledge_doc.created_at.isoformat() if knowledge_doc.created_at else None,
+                "actor": str(knowledge_doc.uploaded_by) if knowledge_doc.uploaded_by else None,
+                "details": {
+                    "chunks_created": knowledge_doc.chunk_count,
+                    "filename": knowledge_doc.filename
+                }
+            })
+        
+        # 5. Check for "used as source" events - when this doc influenced others
+        derived_lineages = db.query(DocumentLineage).filter(
+            DocumentLineage.source_document_id == document_id
+        ).all()
+        
+        for lineage in derived_lineages:
+            # Get the derived document for details
+            derived_doc = db.query(ProjectDocument).filter(
+                ProjectDocument.id == lineage.derived_document_id
+            ).first()
+            
+            if derived_doc and lineage.created_at:
+                events.append({
+                    "type": "used_as_source",
+                    "timestamp": lineage.created_at.isoformat(),
+                    "actor": None,
+                    "details": {
+                        "derived_document_id": str(lineage.derived_document_id),
+                        "derived_document_name": derived_doc.document_name if derived_doc else None,
+                        "influence_type": lineage.influence_type.value if lineage.influence_type else None,
+                        "relevance_score": lineage.relevance_score,
+                        "chunks_used": lineage.chunks_used_count
+                    }
+                })
+        
+        # 6. Sort events by timestamp (oldest first for timeline display)
+        events.sort(key=lambda x: x.get("timestamp") or "")
+        
+        return {
+            "document_id": document_id,
+            "document_name": document.document_name,
+            "events": events,
+            "total_events": len(events)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(f"Error fetching document timeline: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching document timeline: {str(e)}"
+        )
+
+
+@app.get("/api/documents/{document_id}/influence-graph", tags=["Lineage"])
+async def get_influence_graph(
+    document_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get influence graph data for document visualization.
+    
+    Returns a graph structure showing:
+    - nodes: All documents in the influence chain (sources and derived)
+    - edges: Lineage relationships with relevance weights
+    
+    Used to render an interactive influence graph showing how knowledge
+    documents influenced AI-generated content.
+    """
+    try:
+        from backend.models.document import ProjectDocument
+        from backend.models.lineage import DocumentLineage
+        
+        nodes = {}  # Use dict to deduplicate by document ID
+        edges = []
+        
+        # 1. Get the main document
+        document = db.query(ProjectDocument).filter(
+            ProjectDocument.id == document_id
+        ).first()
+        
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Document {document_id} not found"
+            )
+        
+        # Determine if this is a source or generated document
+        is_generated = document.generation_status and document.generation_status.value == "GENERATED"
+        
+        # Add the main document as a node
+        nodes[document_id] = {
+            "id": document_id,
+            "label": document.document_name,
+            "type": "generated" if is_generated else "source",
+            "metadata": {
+                "category": document.category,
+                "phase": document.phase.value if document.phase else None,
+                "status": document.status.value if document.status else None,
+                "generation_status": document.generation_status.value if document.generation_status else None
+            }
+        }
+        
+        # 2. Get sources that influenced this document
+        source_lineages = db.query(DocumentLineage).filter(
+            DocumentLineage.derived_document_id == document_id
+        ).all()
+        
+        for lineage in source_lineages:
+            # Add source node
+            source_id = str(lineage.source_document_id) if lineage.source_document_id else lineage.source_filename
+            
+            if source_id and source_id not in nodes:
+                # Try to get source document details
+                if lineage.source_document_id:
+                    source_doc = db.query(ProjectDocument).filter(
+                        ProjectDocument.id == lineage.source_document_id
+                    ).first()
+                    if source_doc:
+                        nodes[source_id] = {
+                            "id": source_id,
+                            "label": source_doc.document_name,
+                            "type": "source",
+                            "metadata": {
+                                "category": source_doc.category,
+                                "phase": source_doc.phase.value if source_doc.phase else None
+                            }
+                        }
+                    else:
+                        # Document not found, use lineage info
+                        nodes[source_id] = {
+                            "id": source_id,
+                            "label": lineage.source_filename or "Unknown Source",
+                            "type": "source",
+                            "metadata": {}
+                        }
+                else:
+                    # RAG-only source (filename without project document)
+                    nodes[source_id] = {
+                        "id": source_id,
+                        "label": lineage.source_filename or "RAG Source",
+                        "type": "source",
+                        "metadata": {
+                            "is_rag_file": True
+                        }
+                    }
+            
+            # Add edge from source to this document
+            if source_id:
+                edges.append({
+                    "source": source_id,
+                    "target": document_id,
+                    "weight": lineage.relevance_score or 0.0,
+                    "chunks_count": lineage.chunks_used_count or 0,
+                    "influence_type": lineage.influence_type.value if lineage.influence_type else "data_source"
+                })
+        
+        # 3. Get documents derived from this one (if it's a source)
+        derived_lineages = db.query(DocumentLineage).filter(
+            DocumentLineage.source_document_id == document_id
+        ).all()
+        
+        for lineage in derived_lineages:
+            derived_id = str(lineage.derived_document_id)
+            
+            if derived_id not in nodes:
+                derived_doc = db.query(ProjectDocument).filter(
+                    ProjectDocument.id == lineage.derived_document_id
+                ).first()
+                
+                if derived_doc:
+                    nodes[derived_id] = {
+                        "id": derived_id,
+                        "label": derived_doc.document_name,
+                        "type": "generated",
+                        "metadata": {
+                            "category": derived_doc.category,
+                            "phase": derived_doc.phase.value if derived_doc.phase else None
+                        }
+                    }
+            
+            # Add edge from this document to derived
+            edges.append({
+                "source": document_id,
+                "target": derived_id,
+                "weight": lineage.relevance_score or 0.0,
+                "chunks_count": lineage.chunks_used_count or 0,
+                "influence_type": lineage.influence_type.value if lineage.influence_type else "data_source"
+            })
+        
+        return {
+            "document_id": document_id,
+            "nodes": list(nodes.values()),
+            "edges": edges,
+            "node_count": len(nodes),
+            "edge_count": len(edges)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(f"Error fetching influence graph: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching influence graph: {str(e)}"
         )
 
 

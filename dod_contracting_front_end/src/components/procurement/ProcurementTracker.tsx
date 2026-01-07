@@ -1,11 +1,27 @@
+/**
+ * ProcurementTracker - Main Project Tracking Component
+ * 
+ * Central hub for managing procurement projects with:
+ * - Phase progress visualization
+ * - Step management per phase
+ * - Document checklist with AI generation
+ * - AI Documents gallery for generated content
+ * - Knowledge tab with phase-aware document stats
+ * 
+ * Dependencies:
+ * - projectsApi for project/phase/step data
+ * - knowledgeApi for knowledge stats (phase counts, purpose counts)
+ * - Various sub-components for specific features
+ */
+
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, FileText, Loader2, ArrowRight, Shield, Sparkles, FolderOpen } from 'lucide-react';
+import { ArrowLeft, FileText, Loader2, ArrowRight, Shield, Sparkles, FolderOpen, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { projectsApi } from '@/services/api';
+import { projectsApi, knowledgeApi, type KnowledgeStats } from '@/services/api';
 import { PhaseSteps } from './PhaseSteps';
 import { ProcurementTrackerBar } from './SegmentedTrackerBar';
 import { DocumentChecklist } from './DocumentChecklist';
@@ -85,12 +101,27 @@ export function ProcurementTracker({ projectId, onBack }: ProcurementTrackerProp
     refetchInterval: false,
   });
 
-  // Callback to refetch all data after updates
+  // Fetch knowledge stats for badge display and header summary
+  const { data: knowledgeStats } = useQuery<KnowledgeStats>({
+    queryKey: ['knowledge-stats', projectId],
+    queryFn: () => knowledgeApi.getStats(projectId),
+    staleTime: 30000, // Cache for 30 seconds
+  });
+
+  // Get knowledge count for current phase
+  const currentPhaseKey = selectedPhase?.phase_name?.toLowerCase().replace(/-/g, '_').replace(/ /g, '_') as keyof KnowledgeStats['by_phase'] | undefined;
+  const currentPhaseKnowledgeCount = currentPhaseKey && knowledgeStats?.by_phase 
+    ? knowledgeStats.by_phase[currentPhaseKey] || 0 
+    : 0;
+
+  // Callback to refetch all data after updates (including knowledge stats)
   const handleDataUpdate = () => {
     queryClient.invalidateQueries({ queryKey: ['project', projectId] });
     queryClient.invalidateQueries({ queryKey: ['phases', projectId] });
     queryClient.invalidateQueries({ queryKey: ['steps', projectId] });
     queryClient.invalidateQueries({ queryKey: ['documents', projectId] });
+    queryClient.invalidateQueries({ queryKey: ['knowledge-stats', projectId] });
+    queryClient.invalidateQueries({ queryKey: ['project-knowledge', projectId] });
   };
 
   const calculateProgress = () => {
@@ -157,6 +188,22 @@ export function ProcurementTracker({ projectId, onBack }: ProcurementTrackerProp
                 <div>
                   <h3 className="text-2xl font-bold">Procurement Progress Tracker</h3>
                   <p className="text-blue-100 text-sm mt-2">Track your procurement through all phases</p>
+                  {/* Knowledge stats summary badge */}
+                  {knowledgeStats && knowledgeStats.total > 0 && (
+                    <div className="mt-3 flex items-center gap-2">
+                      <Badge 
+                        className="bg-white/20 text-white border-white/30 hover:bg-white/30 cursor-default gap-1.5"
+                      >
+                        <Database className="h-3 w-3" />
+                        {knowledgeStats.total} knowledge doc{knowledgeStats.total !== 1 ? 's' : ''}
+                        {currentPhaseKnowledgeCount > 0 && (
+                          <span className="text-blue-200">
+                            ({currentPhaseKnowledgeCount} for this phase)
+                          </span>
+                        )}
+                      </Badge>
+                    </div>
+                  )}
                 </div>
                 <div className="text-right">
                   <div className="text-4xl font-bold">{Math.round(calculateProgress())}%</div>
@@ -217,6 +264,20 @@ export function ProcurementTracker({ projectId, onBack }: ProcurementTrackerProp
               <TabsTrigger value="knowledge" className="gap-2">
                 <FolderOpen className="h-4 w-4" />
                 Knowledge
+                {knowledgeStats && knowledgeStats.total > 0 && (
+                  <Badge 
+                    variant="secondary" 
+                    className="ml-1 h-5 px-1.5 text-xs bg-blue-100 text-blue-700"
+                    title={`${knowledgeStats.total} total docs (${currentPhaseKnowledgeCount} for current phase)`}
+                  >
+                    {knowledgeStats.total}
+                    {currentPhaseKnowledgeCount > 0 && (
+                      <span className="ml-0.5 text-blue-500">
+                        ({currentPhaseKnowledgeCount})
+                      </span>
+                    )}
+                  </Badge>
+                )}
               </TabsTrigger>
             </TabsList>
 

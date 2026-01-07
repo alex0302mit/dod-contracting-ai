@@ -210,9 +210,28 @@ class GenerationCoordinator:
             if progress_callback:
                 progress_callback(task)
 
-            # Retrieve RAG context
-            rag_context = await self._retrieve_rag_context(task.document_names)
+            # Extract phase for RAG filtering (improves relevance of retrieved context)
+            detected_phase = self._extract_phase_from_documents(task.document_names, task)
+            if detected_phase:
+                task.message = f"Gathering context from knowledge base (phase: {detected_phase})..."
+                if progress_callback:
+                    progress_callback(task)
+
+            # Retrieve RAG context with phase filtering for improved relevance
+            rag_context = await self._retrieve_rag_context(
+                task.document_names, 
+                phase=detected_phase
+            )
             context_text = self._format_context(rag_context)
+            
+            # Store chunk_ids used for lineage tracking
+            # This enables traceability between generated documents and source knowledge
+            chunk_ids_used = [chunk.get("chunk_id") for chunk in rag_context if chunk.get("chunk_id")]
+            task.agent_metadata["_rag_context"] = {
+                "chunks_retrieved": len(rag_context),
+                "chunk_ids": chunk_ids_used,
+                "phase_filter": detected_phase
+            }
 
             task.progress = 25
             task.message = f"Generating {len(task.document_names)} documents..."
@@ -831,27 +850,86 @@ Write the section content now:"""
 
     async def _retrieve_rag_context(
         self,
-        document_names: List[str]
+        document_names: List[str],
+        project_id: Optional[str] = None,
+        phase: Optional[str] = None
     ) -> List[Dict]:
         """
         Retrieve relevant context from RAG for documents
+        
+        Phase-aware retrieval prioritizes documents attached to the current
+        procurement phase, improving relevance of generated content.
 
         Args:
             document_names: List of document names
+            project_id: Optional project ID for filtering
+            phase: Optional phase for filtering (e.g., "pre_solicitation")
 
         Returns:
-            List of context chunks with metadata
+            List of context chunks with metadata and chunk_ids for lineage tracking
         """
         all_context = []
+        seen_chunk_ids = set()  # Track unique chunks
 
         for doc_name in document_names:
-            # Search for relevant content
+            # Search for relevant content with phase filtering
             search_query = f"{doc_name} DoD acquisition federal requirements"
-            results = self.rag_service.search_documents(query=search_query, k=5)
-            all_context.extend(results)
+            
+            # Use phase-filtered search if phase is provided
+            results = self.rag_service.search_documents(
+                query=search_query, 
+                k=5,
+                project_id=project_id,
+                phase=phase
+            )
+            
+            # Add unique results
+            for result in results:
+                chunk_id = result.get("chunk_id")
+                if chunk_id and chunk_id not in seen_chunk_ids:
+                    seen_chunk_ids.add(chunk_id)
+                    all_context.append(result)
+
+        # Log phase filtering info
+        if phase:
+            print(f"[GenerationCoordinator] RAG retrieval with phase='{phase}': {len(all_context)} chunks")
 
         # Return top 20 unique chunks
         return all_context[:20]
+
+    def _extract_phase_from_documents(
+        self,
+        document_names: List[str],
+        task: 'GenerationTask'
+    ) -> Optional[str]:
+        """
+        Extract the appropriate phase for RAG filtering based on documents
+        
+        Uses the phase detector to determine the primary phase for the
+        requested documents, which is then used to filter RAG retrieval.
+        
+        Args:
+            document_names: List of document names being generated
+            task: GenerationTask instance with phase_info
+            
+        Returns:
+            Phase string (e.g., "pre_solicitation") or None
+        """
+        # Try to get phase from task's phase_info (already computed)
+        if task.phase_info:
+            primary_phase = task.phase_info.get("primary_phase")
+            if primary_phase:
+                # Convert phase name to lowercase with underscores (e.g., "Pre-Solicitation" -> "pre_solicitation")
+                return primary_phase.lower().replace("-", "_").replace(" ", "_")
+        
+        # Fallback: Use phase detector directly
+        if self.phase_detector:
+            phase_result = self.phase_detector.detect_phase(document_names)
+            primary_phase = phase_result.get("primary_phase")
+            if primary_phase:
+                return primary_phase.lower().replace("-", "_").replace(" ", "_")
+        
+        return None
 
     def _build_assumptions_context(
         self,
