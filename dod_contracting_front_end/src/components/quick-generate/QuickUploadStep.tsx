@@ -149,8 +149,8 @@ export function QuickUploadStep({
     const fileArray = Array.from(files);
     
     // Validate file count
-    if (uploadedFiles.length + fileArray.length > 10) {
-      toast.error("Maximum 10 files allowed");
+    if (uploadedFiles.length + fileArray.length > 25) {
+      toast.error("Maximum 25 files allowed");
       return;
     }
 

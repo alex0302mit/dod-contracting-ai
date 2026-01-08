@@ -20,7 +20,7 @@
  * - Shadcn UI components
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   Upload,
   FileSearch,
@@ -118,6 +118,12 @@ export function QuickGenerateTab({ onOpenEditor, onComplete }: QuickGenerateTabP
   // Final results
   const [generatedSections, setGeneratedSections] = useState<Record<string, string>>({});
   const [qualityAnalysis, setQualityAnalysis] = useState<Record<string, any>>({});
+
+  // Refs to prevent infinite loops during generation completion
+  // Using refs instead of local variables ensures persistence across React re-renders
+  // caused by flushSync in the toast library (sonner)
+  const generationCompletedRef = useRef(false);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // ============================================
   // Step Navigation Helpers
@@ -280,8 +286,18 @@ export function QuickGenerateTab({ onOpenEditor, onComplete }: QuickGenerateTabP
 
   /**
    * Handle document generation trigger from DocumentWorkflow
+   * 
+   * Uses refs to track completion state to prevent infinite re-render loops
+   * caused by sonner toast's flushSync behavior.
    */
   const handleGenerate = async (docs: GeneratedDocument[]) => {
+    // Reset refs at start of new generation
+    generationCompletedRef.current = false;
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+
     setSelectedDocuments(docs);
     setCurrentStep('GENERATING');
     setIsGenerating(true);
@@ -306,8 +322,13 @@ export function QuickGenerateTab({ onOpenEditor, onComplete }: QuickGenerateTabP
 
       toast.success(`Generating ${response.documents_requested} documents...`);
 
-      // Poll for status
-      const pollInterval = setInterval(async () => {
+      // Poll for status - store in ref to allow cleanup
+      pollIntervalRef.current = setInterval(async () => {
+        // Guard: skip if completion already handled (prevents re-render loops)
+        if (generationCompletedRef.current) {
+          return;
+        }
+
         try {
           const status = await ragApi.getGenerationStatus(response.task_id);
           setGenerationProgress(status.progress);
@@ -323,7 +344,18 @@ export function QuickGenerateTab({ onOpenEditor, onComplete }: QuickGenerateTabP
           }
 
           if (status.status === 'completed' && status.result) {
-            clearInterval(pollInterval);
+            // Guard: double-check ref to prevent re-execution from flushSync re-renders
+            if (generationCompletedRef.current) {
+              return;
+            }
+            // Mark as completed FIRST to block any subsequent re-renders
+            generationCompletedRef.current = true;
+
+            // Clear interval using ref
+            if (pollIntervalRef.current) {
+              clearInterval(pollIntervalRef.current);
+              pollIntervalRef.current = null;
+            }
             
             // Convert markdown sections to HTML for display
             const htmlSections = convertSectionsToHtml(status.result.sections);
@@ -336,16 +368,29 @@ export function QuickGenerateTab({ onOpenEditor, onComplete }: QuickGenerateTabP
 
             setIsGenerating(false);
             setCurrentStep('REVIEW');
-            toast.success("Documents generated successfully!");
+
+            // Defer toast to next microtask to avoid flushSync cascade
+            // This breaks the synchronous re-render cycle caused by sonner's internal flushSync
+            queueMicrotask(() => {
+              toast.success("Documents generated successfully!");
+            });
             
           } else if (status.status === 'failed') {
-            clearInterval(pollInterval);
+            generationCompletedRef.current = true;
+            if (pollIntervalRef.current) {
+              clearInterval(pollIntervalRef.current);
+              pollIntervalRef.current = null;
+            }
             setIsGenerating(false);
             setCurrentStep('SELECTION');
             toast.error(status.message || "Document generation failed");
           }
         } catch (error: any) {
-          clearInterval(pollInterval);
+          generationCompletedRef.current = true;
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+          }
           setIsGenerating(false);
           setCurrentStep('SELECTION');
           toast.error(`Generation error: ${error.message}`);
