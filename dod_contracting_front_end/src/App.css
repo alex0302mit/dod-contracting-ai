@@ -1,6 +1,14 @@
+/**
+ * App.css - ACES Application Styles
+ * 
+ * This file is intentionally minimal as most styling
+ * is handled by Tailwind CSS and the theme in index.css.
+ * 
+ * Keep only critical overrides here.
+ */
+
+/* Ensure root takes full viewport */
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  min-height: 100vh;
+  width: 100%;
 }

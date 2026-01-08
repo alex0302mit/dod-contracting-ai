@@ -45,6 +45,35 @@ export default {
           DEFAULT: 'hsl(var(--destructive))',
           foreground: 'hsl(var(--destructive-foreground))',
         },
+        // ACES Semantic Colors - strict usage rules
+        // Green = approved/verified
+        success: {
+          DEFAULT: 'hsl(var(--success))',
+          foreground: 'hsl(var(--success-foreground))',
+        },
+        // Amber = needs review/risk
+        warning: {
+          DEFAULT: 'hsl(var(--warning))',
+          foreground: 'hsl(var(--warning-foreground))',
+        },
+        // Blue = active/in progress
+        info: {
+          DEFAULT: 'hsl(var(--info))',
+          foreground: 'hsl(var(--info-foreground))',
+        },
+        // Slate = AI-only actions (NEVER for risk)
+        ai: {
+          DEFAULT: 'hsl(var(--ai))',
+          foreground: 'hsl(var(--ai-foreground))',
+        },
+        // ACES Brand Colors - direct hex values for convenience
+        aces: {
+          navy: '#1C3F6E',
+          slate: '#435165',
+          green: '#188365',
+          amber: '#D1913C',
+          red: '#C43C3F',
+        },
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',

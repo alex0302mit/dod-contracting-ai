@@ -1,129 +1,119 @@
+/**
+ * ACES (Acquisition Contracting Enterprise System) - Light Command Theme
+ * 
+ * Design Philosophy: Evidence-First Command Minimalism
+ * - Light-first command/ops UI: cool off-white app background, crisp white cards
+ * - Thin borders, minimal shadows, structured layout framing
+ * - Primary accent: deep navy for CTAs and active states
+ * - No decorative gradients, minimal animations, calm UI
+ * 
+ * Semantic Colors (strict usage):
+ * - Green (success) = approved/verified
+ * - Blue (info) = active/in progress  
+ * - Amber (warning) = needs review/risk
+ * - Red (destructive) = blocking noncompliance
+ * - Violet (ai) = AI-only actions/labels (never for risk)
+ */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Base typography and rendering settings */
 :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
+/* Reset body styling for full-screen app */
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-}
-
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
+    /* ========================================
+       ACES Brand Color Palette
+       ----------------------------------------
+       Navy:   #1C3F6E - Primary brand color
+       Slate:  #435165 - Secondary/muted
+       Green:  #188365 - Success/approved
+       Amber:  #D1913C - Warning/review
+       Red:    #C43C3F - Destructive/error
+       ======================================== */
+
+    /* ACES Light Command Theme - Cool off-white, crisp white cards */
+    --background: 220 20% 97%;
+    --foreground: 214 59% 27%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    --card-foreground: 214 59% 27%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
-  }
-  .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --popover-foreground: 214 59% 27%;
+    --muted: 215 20% 92%;
+    --muted-foreground: 215 20% 33%;
+    --border: 215 20% 85%;
+    --input: 215 20% 85%;
+    --ring: 214 59% 27%;
+
+    /* Primary: ACES Navy #1C3F6E */
+    --primary: 214 59% 27%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary: ACES Slate #435165 */
+    --secondary: 215 20% 92%;
+    --secondary-foreground: 215 20% 33%;
+
+    /* Accent: Lighter navy for highlights */
+    --accent: 214 40% 94%;
+    --accent-foreground: 214 59% 27%;
+
+    /* Destructive: ACES Red #C43C3F */
+    --destructive: 359 54% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Border radius - slightly rounded for modern feel */
+    --radius: 12px;
+
+    /* Chart colors using ACES palette */
+    --chart-1: 214 59% 27%;
+    --chart-2: 163 69% 30%;
+    --chart-3: 215 20% 33%;
+    --chart-4: 34 63% 53%;
+    --chart-5: 359 54% 50%;
+
+    /* ========================================
+       ACES Semantic Colors (strict usage)
+       ======================================== */
+
+    /* Success: ACES Green #188365 = approved/verified */
+    --success: 163 69% 30%;
+    --success-foreground: 0 0% 100%;
+
+    /* Warning: ACES Amber #D1913C = needs review/risk */
+    --warning: 34 63% 53%;
+    --warning-foreground: 0 0% 0%;
+
+    /* Info: ACES Navy (lighter) = active/in progress */
+    --info: 214 59% 40%;
+    --info-foreground: 0 0% 100%;
+
+    /* AI: ACES Slate #435165 = AI-only actions */
+    --ai: 215 20% 33%;
+    --ai-foreground: 0 0% 100%;
+
+    /* ACES Brand colors as direct CSS variables */
+    --aces-navy: 214 59% 27%;
+    --aces-slate: 215 20% 33%;
+    --aces-green: 163 69% 30%;
+    --aces-amber: 34 63% 53%;
+    --aces-red: 359 54% 50%;
   }
 }
 
@@ -133,5 +123,28 @@ button:focus-visible {
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* ACES-specific utility classes */
+@layer utilities {
+  /* Subtle card shadow for depth without heaviness */
+  .shadow-aces {
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+  }
+  
+  /* Border styling for cards and containers */
+  .border-aces {
+    @apply border border-border/60;
+  }
+  
+  /* Synced indicator animation */
+  .animate-sync-pulse {
+    animation: sync-pulse 2s ease-in-out infinite;
+  }
+  
+  @keyframes sync-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
   }
 }

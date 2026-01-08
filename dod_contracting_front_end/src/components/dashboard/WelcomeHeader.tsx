@@ -10,7 +10,7 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
-import { Shield } from 'lucide-react';
+import { AcesLogoIcon } from '@/components/shared/AcesLogo';
 
 // Role display configuration
 const ROLE_CONFIG: Record<string, { label: string; color: string }> = {
@@ -45,11 +45,11 @@ export function WelcomeHeader() {
           </Badge>
         </div>
         <p className="text-slate-600">
-          Welcome to DoD Acquisition AI - Your intelligent procurement assistant
+          Welcome to ACES - Your intelligent procurement assistant
         </p>
       </div>
-      <div className="hidden md:flex items-center gap-2 text-slate-400">
-        <Shield className="h-10 w-10" />
+      <div className="hidden md:flex items-center gap-2 opacity-50">
+        <AcesLogoIcon size={48} />
       </div>
     </div>
   );

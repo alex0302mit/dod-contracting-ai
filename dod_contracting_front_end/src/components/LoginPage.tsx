@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Shield } from 'lucide-react';
+import { AcesLogo } from '@/components/shared/AcesLogo';
 
 export function LoginPage() {
   const { signIn, loading } = useAuth();
@@ -54,13 +54,13 @@ export function LoginPage() {
         <div className="bg-white rounded-2xl shadow-xl p-8">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="h-16 w-16 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-lg mx-auto mb-4">
-              <Shield className="h-8 w-8 text-white" />
+            <div className="flex justify-center mb-4">
+              <AcesLogo size="lg" showText={true} />
             </div>
-            <h1 className="text-2xl font-bold text-slate-900 mb-2">
-              DoD Procurement System
-            </h1>
             <p className="text-slate-600 text-sm">
+              Acquisition Contracting Enterprise System
+            </p>
+            <p className="text-slate-500 text-xs mt-1">
               Sign in to access your procurement projects
             </p>
           </div>
@@ -156,7 +156,7 @@ export function LoginPage() {
 
         {/* Footer */}
         <p className="text-center text-xs text-slate-500 mt-6">
-          DoD Procurement Automation System v1.0
+          ACES - Acquisition Contracting Enterprise System v1.0
         </p>
       </div>
     </div>

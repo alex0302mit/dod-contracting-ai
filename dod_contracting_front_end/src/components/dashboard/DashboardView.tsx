@@ -32,10 +32,13 @@ export function DashboardView({ onNavigate, onSelectProject }: DashboardViewProp
   const { stats, recentProjects, loading, refresh } = useDashboardStats();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 
-  // Handle project creation success
-  const handleProjectCreated = () => {
-    setShowCreateDialog(false);
-    refresh();
+  // Handle project creation dialog close
+  const handleCreateDialogChange = (open: boolean) => {
+    setShowCreateDialog(open);
+    if (!open) {
+      // Refresh data when dialog closes (project may have been created)
+      refresh();
+    }
   };
 
   // Handle project selection - navigate to tracker with project selected
@@ -95,8 +98,7 @@ export function DashboardView({ onNavigate, onSelectProject }: DashboardViewProp
       {/* Create Project Dialog */}
       <CreateProjectDialog
         open={showCreateDialog}
-        onOpenChange={setShowCreateDialog}
-        onSuccess={handleProjectCreated}
+        onOpenChange={handleCreateDialogChange}
       />
     </div>
   );
