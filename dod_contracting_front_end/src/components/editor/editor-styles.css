@@ -1172,3 +1172,330 @@
     font-size: 10pt;
   }
 }
+
+/* ====================================================================================
+   DOCUMENT CANVAS STYLES
+   Microsoft Word-like page appearance with gray background and white page
+   ==================================================================================== */
+
+/**
+ * Main wrapper for the document canvas view
+ * Contains the background and page element
+ * Fills all available vertical space
+ */
+.document-canvas-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0; /* Allow flex shrinking */
+  overflow: hidden;
+  height: 100%;
+}
+
+/**
+ * Gray background area behind the document page
+ * Creates the visual separation between UI and document
+ * Fills the entire wrapper and allows scrolling
+ */
+.document-canvas-background {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 400px; /* Ensure minimum visible height */
+  background-color: #e5e7eb; /* Gray-200 background */
+  background-image: 
+    linear-gradient(90deg, rgba(0, 0, 0, 0.02) 1px, transparent 1px),
+    linear-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px);
+  background-size: 20px 20px;
+  overflow-y: auto;
+  overflow-x: auto;
+  padding: 2rem;
+  padding-top: 1.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+/**
+ * The document page itself
+ * White container with shadow to look like a real page
+ */
+.document-page {
+  background-color: #ffffff;
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
+  border-radius: 0; /* Sharp corners like real paper */
+  
+  /* US Letter size proportions (8.5 x 11 inches) */
+  /* Using max-width to maintain proportions while being responsive */
+  width: 100%;
+  max-width: 816px; /* 8.5 inches at 96 DPI */
+  min-height: 1056px; /* 11 inches at 96 DPI */
+  
+  /* Allow content to grow beyond min-height */
+  height: auto;
+  
+  /* Ensure page stays at top of scroll container */
+  flex-shrink: 0;
+  margin-bottom: 2rem;
+}
+
+/**
+ * Content area inside the page
+ * Provides the document margins
+ * No visible boundaries - content flows seamlessly
+ */
+.document-content {
+  /* Standard 1-inch margins (96px at 96 DPI) */
+  /* Top/bottom slightly less for better visual balance with header */
+  padding: 72px 72px;
+  min-height: inherit;
+  /* Ensure no visible boundaries */
+  border: none;
+  box-shadow: none;
+  outline: none;
+  background: transparent;
+}
+
+/**
+ * Simplified canvas without page styling
+ * For embedded or full-width editing modes
+ */
+.document-canvas-simple {
+  flex: 1;
+  overflow-y: auto;
+  background-color: #ffffff;
+  padding: 1rem;
+}
+
+/* ==================== DOCUMENT CANVAS RESPONSIVE STYLES ==================== */
+
+@media (max-width: 900px) {
+  .document-canvas-background {
+    padding: 1rem;
+  }
+  
+  .document-page {
+    min-height: auto;
+  }
+  
+  .document-content {
+    padding: 48px 48px;
+  }
+}
+
+@media (max-width: 640px) {
+  .document-canvas-background {
+    padding: 0.5rem;
+  }
+  
+  .document-content {
+    padding: 24px 24px;
+  }
+}
+
+/* ====================================================================================
+   RIBBON TOOLBAR STYLES
+   Microsoft Office-style ribbon interface
+   ==================================================================================== */
+
+/**
+ * Main ribbon toolbar container
+ * Sticky header with subtle background
+ */
+.ribbon-toolbar {
+  /* Background styling handled by Tailwind classes in component */
+}
+
+/**
+ * Enhanced ProseMirror styles when in document canvas
+ * Provides document-like typography defaults
+ * Seamless integration - no visible boundaries
+ */
+.document-page .ProseMirror {
+  /* Reset all default styles for seamless page view */
+  min-height: auto;
+  padding: 0;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  background: transparent !important;
+  
+  /* Document-style typography */
+  font-family: "Times New Roman", Times, serif;
+  font-size: 12pt;
+  line-height: 1.5;
+  color: #000000;
+}
+
+/* Override heading colors for document view */
+.document-page .ProseMirror h1 {
+  font-size: 16pt;
+  font-weight: bold;
+  color: #000000;
+  margin-top: 0;
+  margin-bottom: 12pt;
+  text-align: center;
+}
+
+.document-page .ProseMirror h2 {
+  font-size: 14pt;
+  font-weight: bold;
+  color: #000000;
+  margin-top: 12pt;
+  margin-bottom: 6pt;
+}
+
+.document-page .ProseMirror h3 {
+  font-size: 12pt;
+  font-weight: bold;
+  color: #000000;
+  margin-top: 12pt;
+  margin-bottom: 6pt;
+}
+
+/* Paragraph spacing for document view */
+.document-page .ProseMirror p {
+  margin-bottom: 12pt;
+  text-align: justify;
+  text-indent: 0; /* Can be set to 0.5in for first-line indent */
+}
+
+/* List styling for document view */
+.document-page .ProseMirror ul,
+.document-page .ProseMirror ol {
+  margin-left: 0.5in;
+  margin-bottom: 12pt;
+}
+
+.document-page .ProseMirror li {
+  margin-bottom: 6pt;
+}
+
+/* Block quote styling for document view */
+.document-page .ProseMirror blockquote {
+  margin-left: 0.5in;
+  margin-right: 0.5in;
+  padding-left: 0;
+  border-left: none;
+  font-style: italic;
+  margin-bottom: 12pt;
+}
+
+/* Table styling for document view - more formal appearance */
+.document-page .ProseMirror table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12pt 0;
+}
+
+.document-page .ProseMirror th,
+.document-page .ProseMirror td {
+  border: 1px solid #000000;
+  padding: 6pt 8pt;
+  text-align: left;
+  vertical-align: top;
+}
+
+.document-page .ProseMirror th {
+  background-color: #f3f4f6;
+  font-weight: bold;
+}
+
+/* Code block styling for document view */
+.document-page .ProseMirror pre {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  color: #212529;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 10pt;
+  padding: 12pt;
+  margin: 12pt 0;
+  border-radius: 0;
+}
+
+/* ====================================================================================
+   SEAMLESS EDITOR STYLES
+   Remove all visible boundaries so text flows naturally on the page
+   ==================================================================================== */
+
+/**
+ * Remove focus outline and borders from editor in document view
+ * Creates seamless appearance where text is written directly on the page
+ */
+.document-page .ProseMirror:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+.document-page .ProseMirror:focus-visible {
+  outline: none !important;
+}
+
+/**
+ * Ensure editor wrapper has no visible boundaries
+ */
+.document-content > div {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  background: transparent !important;
+}
+
+/**
+ * Remove any default editor container styling
+ */
+.document-page .tiptap {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/**
+ * Ensure the ProseMirror editor itself is seamless
+ */
+.document-page .ProseMirror {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+/**
+ * Document content wrapper - no visible boundaries
+ */
+.document-content {
+  border: none;
+  box-shadow: none;
+  outline: none;
+}
+
+/* ==================== PRINT STYLES FOR DOCUMENT CANVAS ==================== */
+
+@media print {
+  .document-canvas-wrapper {
+    display: block;
+  }
+  
+  .document-canvas-background {
+    background: none;
+    padding: 0;
+  }
+  
+  .document-page {
+    box-shadow: none;
+    border: none;
+    max-width: none;
+    width: 100%;
+  }
+  
+  .document-content {
+    padding: 0;
+  }
+  
+  /* Hide ribbon toolbar when printing */
+  .ribbon-toolbar {
+    display: none !important;
+  }
+}

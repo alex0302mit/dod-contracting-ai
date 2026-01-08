@@ -1,17 +1,24 @@
 /**
  * Rich Text Editor Component
  *
- * Notion-like editor with inline markdown rendering, quality feedback,
+ * Microsoft Word-style editor with ribbon toolbar, document canvas,
  * citation management, and AI Copilot integration.
  * 
  * Features:
- * - TipTap-based rich text editing
+ * - TipTap-based rich text editing with DOCX-like appearance
+ * - Ribbon toolbar with Home/Insert/Layout tabs
+ * - Document canvas with page-like styling
+ * - Font family and size selectors
  * - Custom extensions for citations, smart tags, etc.
  * - AI Copilot popup on text selection
  * - Quality issue highlighting
  * 
  * Dependencies:
  * - @tiptap/react: Core editor
+ * - @tiptap/extension-font-family: Font family support
+ * - FontSizeExtension: Custom font size support
+ * - RibbonToolbar: Word-style tabbed toolbar
+ * - DocumentCanvas: Page-like editor wrapper
  * - EditorCopilot: AI assistant popup
  */
 
@@ -20,10 +27,12 @@ import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Placeholder from '@tiptap/extension-placeholder';
 import Highlight from '@tiptap/extension-highlight';
-// New extensions for enhanced toolbar features
+// Extensions for enhanced toolbar features
 import TextAlign from '@tiptap/extension-text-align';
 import { Color } from '@tiptap/extension-color';
 import { TextStyle } from '@tiptap/extension-text-style';
+// Font family extension for DOCX-style font selector
+import FontFamily from '@tiptap/extension-font-family';
 // NOTE: Link extension removed due to keyed plugin conflict with React StrictMode
 // Links still work via basic HTML anchor tags in the editor
 // TipTap Table Extensions for interactive table support
@@ -31,6 +40,7 @@ import { Table } from '@tiptap/extension-table';
 import { TableRow } from '@tiptap/extension-table-row';
 import { TableHeader } from '@tiptap/extension-table-header';
 import { TableCell } from '@tiptap/extension-table-cell';
+// Custom DoD document editing extensions
 import { QualityIssueMark, QualityIssue } from './QualityIssueExtension';
 import { CitationMark } from './CitationExtension';
 import { SmartTag } from './SmartTagExtension';
@@ -38,7 +48,14 @@ import { Tooltip } from './TooltipExtension';
 import { SmartField } from './SmartFieldExtension';
 import { Callout } from './CalloutExtension';
 import { CommentMark } from './CommentExtension';
-import { EditorToolbar } from './EditorToolbar';
+// Custom font size extension for DOCX-style size selector
+import { FontSize } from './FontSizeExtension';
+// New DOCX-style editor UI components
+import { QuickAccessToolbar } from './QuickAccessToolbar';
+import { RibbonToolbar } from './RibbonToolbar';
+import { HorizontalRuler } from './HorizontalRuler';
+import { DocumentCanvas } from './DocumentCanvas';
+import { EditorStatusBar } from './EditorStatusBar';
 import { EditorCopilot } from './EditorCopilot';
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import './editor-styles.css';
@@ -86,6 +103,14 @@ export function RichTextEditor({
   // State for citation modal
   const [showCitationModal, setShowCitationModal] = useState(false);
   
+  // State for zoom level (50-200%)
+  const [zoomLevel, setZoomLevel] = useState(100);
+  
+  // State for document margins (in inches)
+  // Default to 1 inch margins (standard document margins)
+  const [leftMargin, setLeftMargin] = useState(1);
+  const [rightMargin, setRightMargin] = useState(1);
+  
   // State for Copilot popup
   const [copilotState, setCopilotState] = useState<CopilotState>({
     isVisible: false,
@@ -130,10 +155,20 @@ export function RichTextEditor({
           types: ['heading', 'paragraph'],
           alignments: ['left', 'center', 'right', 'justify'],
         }),
-        // TextStyle is required for Color extension
+        // TextStyle is required for Color, FontFamily, and FontSize extensions
         TextStyle,
         // Color extension for text color support
         Color,
+        // Font family extension for DOCX-style font selection
+        // Default to Times New Roman (standard document font)
+        FontFamily.configure({
+          types: ['textStyle'],
+        }),
+        // Custom font size extension for DOCX-style size selection
+        // Allows arbitrary pt sizes (8pt, 12pt, 14pt, etc.)
+        FontSize.configure({
+          types: ['textStyle'],
+        }),
         // NOTE: Link extension removed - caused keyed plugin conflicts
         // Links still work via basic HTML anchor tags
         // Table extensions for interactive table editing
@@ -159,7 +194,8 @@ export function RichTextEditor({
       content: sanitizedContent,
       editorProps: {
         attributes: {
-          class: 'prose prose-sm max-w-none focus:outline-none min-h-[300px] px-4 py-3',
+          // Removed prose classes to allow document canvas styling to take over
+          class: 'focus:outline-none min-h-[300px]',
           // Disable browser extensions (Grammarly, etc.) from interfering
           'data-gramm': 'false',
           'data-gramm_editor': 'false',
@@ -352,26 +388,57 @@ export function RichTextEditor({
   return (
     <div
       ref={editorContainerRef}
-      className="border rounded-lg bg-white shadow-sm relative"
+      className="flex flex-col h-full border rounded-lg bg-white shadow-sm relative overflow-hidden"
       data-gramm="false"
       data-gramm_editor="false"
       data-enable-grammarly="false"
     >
-      {/* Toolbar */}
-      <EditorToolbar
+      {/* Quick Access Toolbar - Save, Undo, Redo */}
+      <QuickAccessToolbar
         editor={editor}
+        onSave={() => {
+          // TODO: Implement save functionality
+          console.log('Save triggered');
+        }}
+      />
+
+      {/* Ribbon Toolbar - DOCX-style tabbed interface */}
+      <RibbonToolbar
+        editor={editor}
+        documentName={sectionName}
         onInsertCitation={() => setShowCitationModal(true)}
       />
 
-      {/* Editor Content */}
-      <div
-        className="border-t"
-        data-gramm="false"
-        data-gramm_editor="false"
-        data-enable-grammarly="false"
+      {/* Horizontal Ruler - Shows margins and allows drag adjustment */}
+      <HorizontalRuler
+        zoomLevel={zoomLevel}
+        leftMargin={leftMargin}
+        rightMargin={rightMargin}
+        onLeftMarginChange={setLeftMargin}
+        onRightMarginChange={setRightMargin}
+      />
+
+      {/* Document Canvas - Page-like editor wrapper with adjustable margins */}
+      <DocumentCanvas
+        zoomLevel={zoomLevel}
+        leftMargin={leftMargin}
+        rightMargin={rightMargin}
       >
-        <EditorContent editor={editor} />
-      </div>
+        <div
+          data-gramm="false"
+          data-gramm_editor="false"
+          data-enable-grammarly="false"
+        >
+          <EditorContent editor={editor} />
+        </div>
+      </DocumentCanvas>
+
+      {/* Status Bar - Page count, word count, zoom */}
+      <EditorStatusBar
+        editor={editor}
+        zoomLevel={zoomLevel}
+        onZoomChange={setZoomLevel}
+      />
 
       {/* AI Copilot Popup - appears when text is selected */}
       <EditorCopilot
