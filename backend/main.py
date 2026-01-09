@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from typing import List, Dict, Optional, Any
 from contextlib import asynccontextmanager  # For modern FastAPI lifespan events
 from pydantic import BaseModel
+from datetime import datetime  # For timestamp generation in exports
 import os
 import uvicorn
 from dotenv import load_dotenv
@@ -17,7 +18,8 @@ from backend.database.base import get_db, init_db
 from backend.middleware.auth import get_current_user, authenticate_user, create_access_token, get_password_hash
 from backend.models.user import User, UserRole
 from backend.models.procurement import ProcurementProject, ProcurementPhase, ProcurementStep
-from backend.models.document import ProjectDocument, DocumentUpload
+# GenerationStatus enum needed for filtering generated documents in export
+from backend.models.document import ProjectDocument, DocumentUpload, GenerationStatus
 from backend.models.notification import Notification
 from backend.services.websocket_manager import WebSocketManager
 from backend.services.rag_service import get_rag_service, initialize_rag_service
@@ -406,6 +408,51 @@ def admin_delete_user(
     db.commit()
     
     return {"message": f"User {user.email} has been deactivated"}
+
+
+@app.post("/api/admin/reset-database", tags=["Admin"])
+def reset_database_for_testing(
+    confirm: str = Query(..., description="Must be 'CONFIRM_RESET' to proceed"),
+    db: Session = Depends(get_db)
+):
+    """Reset database by deleting all users, projects, and related data.
+    
+    WARNING: This is a destructive operation for development/testing only.
+    Pass confirm='CONFIRM_RESET' to proceed.
+    """
+    if confirm != "CONFIRM_RESET":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Must pass confirm='CONFIRM_RESET' to proceed with database reset"
+        )
+    
+    from backend.models.procurement import ProjectPermission
+    from backend.models.document import DocumentApproval
+    
+    try:
+        # Delete in order respecting foreign key constraints
+        db.query(DocumentApproval).delete()
+        db.query(DocumentUpload).delete()
+        db.query(ProjectDocument).delete()
+        db.query(ProjectPermission).delete()
+        db.query(Notification).delete()
+        db.query(ProcurementStep).delete()
+        db.query(ProcurementPhase).delete()
+        db.query(ProcurementProject).delete()
+        db.query(User).delete()
+        
+        db.commit()
+        
+        return {
+            "message": "Database reset successfully. All users, projects, and related data deleted.",
+            "next_step": "Run the seed script: python backend/scripts/simple_seed.py"
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to reset database: {str(e)}"
+        )
 
 
 # ============================================================================

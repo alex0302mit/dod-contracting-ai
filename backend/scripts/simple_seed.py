@@ -12,6 +12,7 @@ def create_user_direct():
     print("📝 Creating test users via API...")
 
     users = [
+        # Contracting Officers (can create/manage projects)
         {
             "email": "john.contracting@navy.mil",
             "password": "password123",
@@ -19,17 +20,38 @@ def create_user_direct():
             "role": "contracting_officer"
         },
         {
+            "email": "jane.co@navy.mil",
+            "password": "password123",
+            "name": "Jane Doe",
+            "role": "contracting_officer"
+        },
+        {
+            "email": "robert.co@navy.mil",
+            "password": "password123",
+            "name": "Robert Chen",
+            "role": "contracting_officer"
+        },
+        # Program Managers (can create/manage projects)
+        {
             "email": "sarah.pm@navy.mil",
             "password": "password123",
             "name": "Sarah Johnson",
             "role": "program_manager"
         },
         {
+            "email": "michael.pm@navy.mil",
+            "password": "password123",
+            "name": "Michael Torres",
+            "role": "program_manager"
+        },
+        # Approvers (can approve documents)
+        {
             "email": "mike.approver@navy.mil",
             "password": "password123",
             "name": "Mike Wilson",
             "role": "approver"
         },
+        # Viewers (read-only access)
         {
             "email": "viewer@navy.mil",
             "password": "password123",
@@ -141,14 +163,21 @@ def main():
     print("\n" + "=" * 60)
     print("✅ Database seeding completed successfully!\n")
     print("📧 Test User Credentials:")
-    print("   Contracting Officer: john.contracting@navy.mil / password123")
-    print("   Program Manager: sarah.pm@navy.mil / password123")
-    print("   Approver: mike.approver@navy.mil / password123")
-    print("   Viewer: viewer@navy.mil / password123")
+    print("   Contracting Officers:")
+    print("     - john.contracting@navy.mil / password123 (John Smith)")
+    print("     - jane.co@navy.mil / password123 (Jane Doe)")
+    print("     - robert.co@navy.mil / password123 (Robert Chen)")
+    print("   Program Managers:")
+    print("     - sarah.pm@navy.mil / password123 (Sarah Johnson)")
+    print("     - michael.pm@navy.mil / password123 (Michael Torres)")
+    print("   Approver:")
+    print("     - mike.approver@navy.mil / password123 (Mike Wilson)")
+    print("   Viewer:")
+    print("     - viewer@navy.mil / password123 (Demo Viewer)")
     print("\n🚀 You can now:")
     print("   1. Visit http://localhost:8000/docs to test the API")
     print("   2. Start the frontend and login with the credentials above")
-    print("   3. Frontend will need to be updated to call your API instead of using mock data")
+    print("   3. Create projects and assign contracting officers")
 
 
 if __name__ == "__main__":
