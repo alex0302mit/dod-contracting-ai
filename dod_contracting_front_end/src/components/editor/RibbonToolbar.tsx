@@ -452,10 +452,14 @@ export function RibbonToolbar({
       size="sm"
       onClick={onClick}
       disabled={disabled}
-      className={`h-7 w-7 p-0 ${active ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'hover:bg-gray-200'} ${className}`}
+      className={`h-8 w-8 p-0 rounded-md transition-all duration-150 ${
+        active
+          ? 'bg-primary/10 text-primary ring-1 ring-primary/20 shadow-sm hover:bg-primary/15'
+          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+      } ${className}`}
       title={label}
     >
-      <Icon className="h-3.5 w-3.5" />
+      <Icon className="h-4 w-4" />
     </Button>
   );
 
@@ -473,13 +477,15 @@ export function RibbonToolbar({
     <button
       type="button"
       onClick={onClick}
-      className={`w-6 h-6 rounded border-2 transition-all ${
-        isActive ? 'border-blue-500 scale-110' : 'border-gray-200 hover:border-gray-400'
+      className={`w-7 h-7 rounded-md transition-all duration-150 hover:scale-105 ${
+        isActive
+          ? 'ring-2 ring-primary ring-offset-1 scale-105'
+          : 'border border-border hover:border-muted-foreground'
       }`}
       style={{ backgroundColor: color || 'transparent' }}
       title={name}
     >
-      {!color && <X className="h-4 w-4 text-gray-400 mx-auto" />}
+      {!color && <X className="h-4 w-4 text-muted-foreground mx-auto" />}
     </button>
   );
 
@@ -488,26 +494,26 @@ export function RibbonToolbar({
   // ---------------------------
 
   return (
-    <div className="ribbon-toolbar bg-gray-100 sticky top-0 z-20">
+    <div className="ribbon-toolbar bg-gradient-to-b from-slate-50 to-slate-100 sticky top-0 z-20 shadow-sm border-b border-slate-200/60">
       {/* ==================== RIBBON TABS ==================== */}
       <Tabs defaultValue="home" className="w-full">
         {/* Tab navigation with Word-style underline */}
-        <TabsList className="w-full justify-start h-8 bg-transparent border-b border-gray-200 rounded-none px-1 gap-0">
-          <TabsTrigger 
-            value="home" 
-            className="text-xs font-medium px-4 h-7 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+        <TabsList className="w-full justify-start h-9 bg-transparent border-b border-slate-200/60 rounded-none px-1 gap-0">
+          <TabsTrigger
+            value="home"
+            className="text-xs font-medium px-4 h-8 rounded-none border-b-2 border-transparent transition-all duration-150 hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
           >
             Home
           </TabsTrigger>
-          <TabsTrigger 
-            value="insert" 
-            className="text-xs font-medium px-4 h-7 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+          <TabsTrigger
+            value="insert"
+            className="text-xs font-medium px-4 h-8 rounded-none border-b-2 border-transparent transition-all duration-150 hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
           >
             Insert
           </TabsTrigger>
-          <TabsTrigger 
-            value="layout" 
-            className="text-xs font-medium px-4 h-7 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+          <TabsTrigger
+            value="layout"
+            className="text-xs font-medium px-4 h-8 rounded-none border-b-2 border-transparent transition-all duration-150 hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
           >
             Layout
           </TabsTrigger>
@@ -531,37 +537,43 @@ export function RibbonToolbar({
                     active={editor.isActive('bold')}
                     icon={Bold}
                     label="Bold (Ctrl+B)"
-                    className="h-7 w-7"
+                    className=""
                   />
                   <ToolbarButton
                     onClick={() => editor.chain().focus().toggleItalic().run()}
                     active={editor.isActive('italic')}
                     icon={Italic}
                     label="Italic (Ctrl+I)"
-                    className="h-7 w-7"
+                    className=""
                   />
                   <ToolbarButton
                     onClick={() => editor.chain().focus().toggleUnderline().run()}
                     active={editor.isActive('underline')}
                     icon={UnderlineIcon}
                     label="Underline (Ctrl+U)"
-                    className="h-7 w-7"
+                    className=""
                   />
                   <ToolbarButton
                     onClick={() => editor.chain().focus().toggleStrike().run()}
                     active={editor.isActive('strike')}
                     icon={Strikethrough}
                     label="Strikethrough"
-                    className="h-7 w-7"
+                    className=""
                   />
                   {/* Text Color */}
                   <Popover open={showTextColorPopover} onOpenChange={setShowTextColorPopover}>
                     <PopoverTrigger asChild>
-                      <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0" title="Text Color">
-                        <Palette className="h-3.5 w-3.5" />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 rounded-md transition-all duration-150 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        title="Text Color"
+                      >
+                        <Palette className="h-4 w-4" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-2" align="start">
+                    <PopoverContent className="w-auto p-3 shadow-lg rounded-xl" align="start">
                       <div className="space-y-2">
                         <Label className="text-xs font-medium">Text Color</Label>
                         <div className="flex gap-1 flex-wrap max-w-[180px]">
@@ -585,11 +597,17 @@ export function RibbonToolbar({
                   {/* Highlight Color */}
                   <Popover open={showHighlightPopover} onOpenChange={setShowHighlightPopover}>
                     <PopoverTrigger asChild>
-                      <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0" title="Highlight">
-                        <Highlighter className="h-3.5 w-3.5" />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 rounded-md transition-all duration-150 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        title="Highlight"
+                      >
+                        <Highlighter className="h-4 w-4" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-2" align="start">
+                    <PopoverContent className="w-auto p-3 shadow-lg rounded-xl" align="start">
                       <div className="space-y-2">
                         <Label className="text-xs font-medium">Highlight Color</Label>
                         <div className="flex gap-1 flex-wrap max-w-[160px]">
@@ -614,7 +632,7 @@ export function RibbonToolbar({
                     onClick={handleClearFormatting}
                     icon={RemoveFormatting}
                     label="Clear Formatting"
-                    className="h-7 w-7"
+                    className=""
                   />
                 </div>
               </div>
@@ -632,28 +650,28 @@ export function RibbonToolbar({
                     active={editor.isActive({ textAlign: 'left' })}
                     icon={AlignLeft}
                     label="Align Left"
-                    className="h-7 w-7"
+                    className=""
                   />
                   <ToolbarButton
                     onClick={handleAlignCenter}
                     active={editor.isActive({ textAlign: 'center' })}
                     icon={AlignCenter}
                     label="Align Center"
-                    className="h-7 w-7"
+                    className=""
                   />
                   <ToolbarButton
                     onClick={handleAlignRight}
                     active={editor.isActive({ textAlign: 'right' })}
                     icon={AlignRight}
                     label="Align Right"
-                    className="h-7 w-7"
+                    className=""
                   />
                   <ToolbarButton
                     onClick={handleAlignJustify}
                     active={editor.isActive({ textAlign: 'justify' })}
                     icon={AlignJustify}
                     label="Justify"
-                    className="h-7 w-7"
+                    className=""
                   />
                 </div>
                 {/* Row 2: Lists and indent */}
@@ -663,28 +681,28 @@ export function RibbonToolbar({
                     active={editor.isActive('bulletList')}
                     icon={List}
                     label="Bullet List"
-                    className="h-7 w-7"
+                    className=""
                   />
                   <ToolbarButton
                     onClick={() => editor.chain().focus().toggleOrderedList().run()}
                     active={editor.isActive('orderedList')}
                     icon={ListOrdered}
                     label="Numbered List"
-                    className="h-7 w-7"
+                    className=""
                   />
                   <ToolbarButton
                     onClick={() => editor.chain().focus().liftListItem('listItem').run()}
                     disabled={!editor.can().liftListItem('listItem')}
                     icon={IndentDecrease}
                     label="Outdent"
-                    className="h-7 w-7"
+                    className=""
                   />
                   <ToolbarButton
                     onClick={() => editor.chain().focus().sinkListItem('listItem').run()}
                     disabled={!editor.can().sinkListItem('listItem')}
                     icon={IndentIncrease}
                     label="Indent"
-                    className="h-7 w-7"
+                    className=""
                   />
                 </div>
               </div>
@@ -707,24 +725,28 @@ export function RibbonToolbar({
                   disabled={!editor.can().undo()}
                   icon={Undo2}
                   label="Undo (Ctrl+Z)"
-                  className="h-7 w-7"
+                  className=""
                 />
                 <ToolbarButton
                   onClick={() => editor.chain().focus().redo().run()}
                   disabled={!editor.can().redo()}
                   icon={Redo2}
                   label="Redo (Ctrl+Y)"
-                  className="h-7 w-7"
+                  className=""
                 />
                 <Button
                   type="button"
                   variant={showFindReplace ? 'default' : 'ghost'}
                   size="sm"
-                  className="h-7 w-7 p-0"
+                  className={`h-8 w-8 p-0 rounded-md transition-all duration-150 ${
+                    showFindReplace
+                      ? 'bg-primary/10 text-primary ring-1 ring-primary/20 shadow-sm'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`}
                   onClick={() => setShowFindReplace(!showFindReplace)}
                   title="Find & Replace"
                 >
-                  <Search className="h-3.5 w-3.5" />
+                  <Search className="h-4 w-4" />
                 </Button>
               </div>
             </RibbonGroup>
@@ -757,14 +779,14 @@ export function RibbonToolbar({
                   onClick={() => {/* Zoom out - handled by parent */}}
                   icon={ZoomOut}
                   label="Zoom Out"
-                  className="h-7 w-7"
+                  className=""
                 />
                 <span className="text-xs text-slate-600 min-w-[40px] text-center">100%</span>
                 <ToolbarButton
                   onClick={() => {/* Zoom in - handled by parent */}}
                   icon={ZoomIn}
                   label="Zoom In"
-                  className="h-7 w-7"
+                  className=""
                 />
                 <ToolbarButton
                   onClick={() => {
@@ -776,7 +798,7 @@ export function RibbonToolbar({
                   }}
                   icon={Maximize}
                   label="Toggle Fullscreen"
-                  className="h-7 w-7"
+                  className=""
                 />
               </div>
             </RibbonGroup>
@@ -793,7 +815,7 @@ export function RibbonToolbar({
                   }}
                   icon={Save}
                   label="Save (Ctrl+S)"
-                  className="h-7 w-7"
+                  className=""
                 />
                 <ToolbarButton
                   onClick={() => {
@@ -802,13 +824,13 @@ export function RibbonToolbar({
                   }}
                   icon={Download}
                   label="Export"
-                  className="h-7 w-7"
+                  className=""
                 />
                 <ToolbarButton
                   onClick={() => window.print()}
                   icon={Printer}
                   label="Print (Ctrl+P)"
-                  className="h-7 w-7"
+                  className=""
                 />
               </div>
             </RibbonGroup>
@@ -959,7 +981,7 @@ export function RibbonToolbar({
               variant="outline"
               size="sm"
               onClick={onInsertCitation}
-              className="h-8 px-3 gap-2 bg-blue-50 border-blue-200 hover:bg-blue-100"
+              className="h-8 px-3 gap-2 bg-primary/5 border-primary/20 text-primary hover:bg-primary/10 transition-all duration-150"
               title="Insert Citation"
             >
               <FileText className="h-4 w-4" />
@@ -1089,7 +1111,7 @@ export function RibbonToolbar({
 
       {/* ==================== FIND & REPLACE BAR ==================== */}
       {showFindReplace && (
-        <div className="flex items-center gap-2 px-4 py-2 border-t bg-white flex-wrap">
+        <div className="flex items-center gap-2 px-4 py-2 border-t border-slate-200/60 bg-white/80 backdrop-blur-sm flex-wrap">
           {/* Find Section */}
           <div className="flex items-center gap-2">
             <Label className="text-xs font-medium whitespace-nowrap">Find:</Label>

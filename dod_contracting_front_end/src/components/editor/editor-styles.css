@@ -1201,11 +1201,12 @@
   flex: 1 1 auto;
   height: 100%;
   min-height: 400px; /* Ensure minimum visible height */
-  background-color: #e5e7eb; /* Gray-200 background */
-  background-image: 
-    linear-gradient(90deg, rgba(0, 0, 0, 0.02) 1px, transparent 1px),
-    linear-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px);
-  background-size: 20px 20px;
+  /* Modern gradient background */
+  background: linear-gradient(135deg, hsl(215 20% 94%) 0%, hsl(220 20% 90%) 100%);
+  /* Subtle dot pattern overlay */
+  background-image:
+    radial-gradient(circle, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+  background-size: 24px 24px;
   overflow-y: auto;
   overflow-x: auto;
   padding: 2rem;
@@ -1221,21 +1222,24 @@
  */
 .document-page {
   background-color: #ffffff;
-  box-shadow: 
-    0 4px 6px -1px rgba(0, 0, 0, 0.1),
-    0 2px 4px -1px rgba(0, 0, 0, 0.06),
-    0 0 0 1px rgba(0, 0, 0, 0.05);
-  border-radius: 0; /* Sharp corners like real paper */
-  
+  /* Enhanced shadow for more depth */
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 8px 10px -6px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(0, 0, 0, 0.02);
+  /* Subtle border for definition */
+  border: 1px solid hsl(215 20% 92%);
+  border-radius: 2px; /* Very subtle rounding */
+
   /* US Letter size proportions (8.5 x 11 inches) */
   /* Using max-width to maintain proportions while being responsive */
   width: 100%;
   max-width: 816px; /* 8.5 inches at 96 DPI */
   min-height: 1056px; /* 11 inches at 96 DPI */
-  
+
   /* Allow content to grow beyond min-height */
   height: auto;
-  
+
   /* Ensure page stays at top of scroll container */
   flex-shrink: 0;
   margin-bottom: 2rem;

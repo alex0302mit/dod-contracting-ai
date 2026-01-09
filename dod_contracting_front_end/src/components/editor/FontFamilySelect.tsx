@@ -86,20 +86,20 @@ export function FontFamilySelect({ editor }: FontFamilySelectProps) {
 
   return (
     <Select value={currentValue} onValueChange={handleFontChange}>
-      <SelectTrigger 
-        className="w-[140px] h-8 text-sm font-normal"
+      <SelectTrigger
+        className="w-[140px] h-8 text-sm font-normal rounded-lg border-border shadow-sm transition-all duration-150 hover:border-muted-foreground focus:ring-2 focus:ring-primary/20"
         title="Font Family"
       >
         <SelectValue>
           <span style={{ fontFamily: currentValue }}>{currentName}</span>
         </SelectValue>
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent className="shadow-lg rounded-lg">
         {FONT_FAMILIES.map((font) => (
-          <SelectItem 
-            key={font.value} 
+          <SelectItem
+            key={font.value}
             value={font.value}
-            className="text-sm"
+            className="text-sm transition-colors"
           >
             <span style={{ fontFamily: font.value }}>{font.name}</span>
           </SelectItem>

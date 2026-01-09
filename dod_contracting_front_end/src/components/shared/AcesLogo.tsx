@@ -81,7 +81,7 @@ export function AcesLogo({ size = 'md', showText = true, className }: AcesLogoPr
 
       {/* Wordmark */}
       {showText && (
-        <text x="300" y="145" className="aces-word" fontSize="104">
+        <text x="300" y="180" className="aces-word" fontSize="104">
           ACES
         </text>
       )}

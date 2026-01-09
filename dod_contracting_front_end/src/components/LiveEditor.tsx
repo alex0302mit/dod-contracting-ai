@@ -797,69 +797,113 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
 
   return (
     <div className="h-full flex flex-col">
-      <div className="border-b bg-white/80 backdrop-blur-sm px-6 py-4 flex items-center gap-4 flex-wrap">
-        <Button variant="ghost" size="sm" onClick={onBack}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
-        </Button>
+      {/* Header toolbar - compact 48px with three zones */}
+      <div className="border-b border-border bg-card/95 backdrop-blur-sm px-4 py-2 flex items-center h-12">
+        {/* LEFT ZONE: Navigation + Document Context */}
+        <div className="flex items-center gap-3 min-w-0">
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onBack}>
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Back to documents</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
-        <Separator orientation="vertical" className="h-6" />
+          <Separator orientation="vertical" className="h-5" />
 
-        <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "edit" | "compare" | "history" | "dependencies")} className="flex-1">
-          <TabsList>
-            <TabsTrigger value="edit" className="gap-2">
-              <FileText className="h-4 w-4" />
-              Edit
-            </TabsTrigger>
-            <TabsTrigger value="compare" className="gap-2">
-              <GitCompare className="h-4 w-4" />
-              Compare
-            </TabsTrigger>
-            <TabsTrigger value="history" className="gap-2">
-              <Clock className="h-4 w-4" />
-              History
-            </TabsTrigger>
-            {collaborationMetadata?.enabled && (
-              <TabsTrigger value="dependencies" className="gap-2">
-                <GitBranch className="h-4 w-4" />
-                Dependencies
+          {/* Document context */}
+          <div className="flex items-center gap-2 min-w-0">
+            <FileText className="h-4 w-4 text-primary flex-shrink-0" />
+            <span className="font-medium text-sm truncate max-w-[180px]">
+              {documentName || "Untitled Document"}
+            </span>
+            <span className="text-xs text-muted-foreground hidden sm:inline">
+              • {activeSection}
+            </span>
+          </div>
+        </div>
+
+        {/* CENTER ZONE: View Mode Tabs */}
+        <div className="flex-1 flex justify-center px-4">
+          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "edit" | "compare" | "history" | "dependencies")}>
+            <TabsList className="h-8">
+              <TabsTrigger value="edit" className="gap-1.5 text-sm px-3 py-1">
+                <FileText className="h-3.5 w-3.5" />
+                <span className="hidden md:inline">Edit</span>
               </TabsTrigger>
-            )}
-          </TabsList>
-        </Tabs>
+              <TabsTrigger value="compare" className="gap-1.5 text-sm px-3 py-1">
+                <GitCompare className="h-3.5 w-3.5" />
+                <span className="hidden md:inline">Compare</span>
+              </TabsTrigger>
+              <TabsTrigger value="history" className="gap-1.5 text-sm px-3 py-1">
+                <Clock className="h-3.5 w-3.5" />
+                <span className="hidden md:inline">History</span>
+              </TabsTrigger>
+              {collaborationMetadata?.enabled && (
+                <TabsTrigger value="dependencies" className="gap-1.5 text-sm px-3 py-1">
+                  <GitBranch className="h-3.5 w-3.5" />
+                  <span className="hidden lg:inline">Dependencies</span>
+                </TabsTrigger>
+              )}
+            </TabsList>
+          </Tabs>
+        </div>
 
-        <div className="flex items-center gap-2 ml-auto">
-          <Button variant="outline" size="sm" onClick={commitVersion}>
-            <Save className="h-4 w-4 mr-2" />
-            Commit
-          </Button>
+        {/* RIGHT ZONE: Actions */}
+        <div className="flex items-center gap-1">
+          {/* Secondary actions - icon only with tooltips */}
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={commitVersion}>
+                  <Save className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Commit version</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowAgentSelector(true)}
-            className="bg-gradient-to-r from-blue-50 to-cyan-50 border-blue-200 hover:from-blue-100 hover:to-cyan-100"
-          >
-            <Layers className="h-4 w-4 mr-2" />
-            Compare Agents
-          </Button>
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setShowAgentSelector(true)}
+                >
+                  <Layers className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Compare Agents</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
-          {/* Field Navigator Button - shows when fillable fields are detected */}
-          <FieldNavigatorButton
-            fieldCount={fillableFields.length}
-            onClick={() => setShowFieldNavigator(true)}
-          />
+          {/* Field Navigator - only show when fields detected */}
+          {fillableFields.length > 0 && (
+            <FieldNavigatorButton
+              fieldCount={fillableFields.length}
+              onClick={() => setShowFieldNavigator(true)}
+            />
+          )}
 
+          {/* Agent stats badge - compact */}
           {agentMetadata && Object.keys(agentMetadata).length > 0 && (
             <AgentStats agentMetadata={agentMetadata} />
           )}
 
+          <Separator orientation="vertical" className="h-5 mx-1" />
+
+          {/* Primary action - Export */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Export
-                <ChevronDown className="h-4 w-4 ml-2" />
+              <Button size="sm" className="h-8 gap-2">
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">Export</span>
+                <ChevronDown className="h-3.5 w-3.5 opacity-70" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">

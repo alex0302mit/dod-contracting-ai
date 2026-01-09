@@ -33,29 +33,29 @@ interface RibbonGroupProps {
  * Creates visual separation between different toolbar sections
  * with a label at the bottom identifying the group's purpose.
  */
-export function RibbonGroup({ 
-  label, 
-  children, 
+export function RibbonGroup({
+  label,
+  children,
   className = '',
-  showSeparator = true 
+  showSeparator = true
 }: RibbonGroupProps) {
   return (
     <div className={`ribbon-group flex flex-col ${className}`}>
       {/* Controls area - horizontal row of buttons/controls */}
-      <div className="ribbon-group-controls flex items-center gap-0.5 px-2 py-1 min-h-[52px]">
+      <div className="ribbon-group-controls flex items-center gap-1 px-2 py-1.5 min-h-[56px]">
         {children}
       </div>
-      
+
       {/* Group label */}
-      <div className="ribbon-group-label text-center">
-        <span className="text-[10px] text-slate-500 font-medium leading-none">
+      <div className="ribbon-group-label text-center pb-1">
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium leading-none">
           {label}
         </span>
       </div>
-      
+
       {/* Vertical separator (optional) */}
       {showSeparator && (
-        <div className="ribbon-group-separator absolute right-0 top-2 bottom-2 w-px bg-slate-200" />
+        <div className="ribbon-group-separator absolute right-0 top-2 bottom-2 w-px bg-gradient-to-b from-transparent via-slate-200 to-transparent" />
       )}
     </div>
   );
@@ -82,12 +82,12 @@ export function RibbonGroupRow({ children, className = '' }: RibbonGroupRowProps
 
 /**
  * RibbonDivider - Vertical divider between ribbon groups
- * 
+ *
  * Standalone divider component for use between groups.
  */
 export function RibbonDivider() {
   return (
-    <div className="ribbon-divider w-px h-14 bg-slate-200 mx-1 self-center" />
+    <div className="ribbon-divider w-px h-14 bg-gradient-to-b from-transparent via-slate-300/60 to-transparent mx-1.5 self-center" />
   );
 }
 

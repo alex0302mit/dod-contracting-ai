@@ -93,30 +93,30 @@ export function FontSizeSelect({ editor }: FontSizeSelectProps) {
         type="button"
         variant="ghost"
         size="sm"
-        className="h-8 w-6 p-0"
+        className="h-8 w-7 p-0 rounded-md transition-all duration-150 text-muted-foreground hover:bg-muted hover:text-foreground"
         onClick={handleDecrement}
         disabled={isAtMin}
         title="Decrease font size"
       >
-        <Minus className="h-3 w-3" />
+        <Minus className="h-3.5 w-3.5" />
       </Button>
 
       {/* Font size dropdown */}
       <Select value={currentSize} onValueChange={handleSizeChange}>
-        <SelectTrigger 
-          className="w-[60px] h-8 text-sm font-normal px-2"
+        <SelectTrigger
+          className="w-[60px] h-8 text-sm font-normal px-2 rounded-lg border-border shadow-sm transition-all duration-150 hover:border-muted-foreground focus:ring-2 focus:ring-primary/20"
           title="Font Size"
         >
           <SelectValue>
             <span>{displaySize}</span>
           </SelectValue>
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="shadow-lg rounded-lg">
           {FONT_SIZES.map((size) => (
-            <SelectItem 
-              key={size} 
+            <SelectItem
+              key={size}
               value={size}
-              className="text-sm"
+              className="text-sm transition-colors"
             >
               {getDisplaySize(size)}
             </SelectItem>
@@ -129,12 +129,12 @@ export function FontSizeSelect({ editor }: FontSizeSelectProps) {
         type="button"
         variant="ghost"
         size="sm"
-        className="h-8 w-6 p-0"
+        className="h-8 w-7 p-0 rounded-md transition-all duration-150 text-muted-foreground hover:bg-muted hover:text-foreground"
         onClick={handleIncrement}
         disabled={isAtMax}
         title="Increase font size"
       >
-        <Plus className="h-3 w-3" />
+        <Plus className="h-3.5 w-3.5" />
       </Button>
     </div>
   );

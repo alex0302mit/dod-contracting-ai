@@ -487,11 +487,13 @@ export const documentGenerationApi = {
     documentIds: string[],
     format: 'pdf' | 'docx' | 'markdown'
   ): Promise<void> => {
-    const response = await fetch(`${API_BASE}/api/projects/${projectId}/export-generated-batch`, {
+    // Get auth token for authorization header
+    const token = getAuthToken();
+    const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/export-generated-batch`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...getAuthHeaders(),
+        ...(token && { 'Authorization': `Bearer ${token}` }),
       },
       body: JSON.stringify({
         document_ids: documentIds,

@@ -183,14 +183,18 @@ export function AssignOfficerDialog({
             </div>
 
             {/* Program Manager Selection */}
+            {/* Note: Using "__none__" sentinel value because Radix UI Select doesn't allow empty string values */}
             <div className="space-y-2">
               <Label htmlFor="program-manager">Program Manager (Optional)</Label>
-              <Select value={selectedPMId} onValueChange={setSelectedPMId}>
+              <Select 
+                value={selectedPMId || '__none__'} 
+                onValueChange={(val) => setSelectedPMId(val === '__none__' ? '' : val)}
+              >
                 <SelectTrigger id="program-manager">
                   <SelectValue placeholder="Select program manager (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">
+                  <SelectItem value="__none__">
                     <span className="text-slate-500">None (unassign)</span>
                   </SelectItem>
                   {programManagers.map((user) => (

@@ -71,17 +71,17 @@ export function EditorStatusBar({
   const currentPage = 1; // TODO: Calculate based on cursor position
 
   return (
-    <div className="editor-status-bar flex items-center justify-between h-6 px-3 bg-gray-100 border-t border-gray-300 text-xs text-slate-600">
+    <div className="editor-status-bar flex items-center justify-between h-7 px-3 bg-gradient-to-b from-slate-50 to-slate-100 border-t border-slate-200/60 text-xs text-muted-foreground">
       {/* Left section: Page and word info */}
       <div className="flex items-center gap-4">
         {/* Page count */}
-        <div className="flex items-center gap-1" title={`${pageCount} page(s) total`}>
+        <div className="flex items-center gap-1.5" title={`${pageCount} page(s) total`}>
           <FileText className="h-3 w-3" />
           <span>Page {currentPage} of {pageCount}</span>
         </div>
 
         {/* Separator */}
-        <div className="w-px h-3 bg-gray-300" />
+        <div className="w-px h-3 bg-slate-300/60" />
 
         {/* Word count */}
         <div title={`${wordCount} words`}>
@@ -89,7 +89,7 @@ export function EditorStatusBar({
         </div>
 
         {/* Separator */}
-        <div className="w-px h-3 bg-gray-300" />
+        <div className="w-px h-3 bg-slate-300/60" />
 
         {/* Character count */}
         <div title={`${characterCount} characters`}>
@@ -110,7 +110,7 @@ export function EditorStatusBar({
             type="button"
             variant="ghost"
             size="sm"
-            className="h-5 w-5 p-0 hover:bg-gray-200"
+            className="h-5 w-5 p-0 text-muted-foreground hover:bg-muted hover:text-foreground transition-all duration-150"
             title="Print Layout"
           >
             <FileText className="h-3 w-3" />
@@ -119,7 +119,7 @@ export function EditorStatusBar({
             type="button"
             variant="ghost"
             size="sm"
-            className="h-5 w-5 p-0 hover:bg-gray-200"
+            className="h-5 w-5 p-0 text-muted-foreground hover:bg-muted hover:text-foreground transition-all duration-150"
             title="Web Layout"
           >
             <Layout className="h-3 w-3" />
@@ -127,7 +127,7 @@ export function EditorStatusBar({
         </div>
 
         {/* Separator */}
-        <div className="w-px h-3 bg-gray-300" />
+        <div className="w-px h-3 bg-slate-300/60" />
 
         {/* Zoom control */}
         <ZoomControl
@@ -153,13 +153,13 @@ export function EditorStatusBarMinimal({
   const wordCount = countWords(textContent);
 
   return (
-    <div className="editor-status-bar-minimal flex items-center justify-between h-5 px-2 bg-gray-100 border-t border-gray-200 text-xs text-slate-500">
+    <div className="editor-status-bar-minimal flex items-center justify-between h-6 px-2 bg-gradient-to-b from-slate-50 to-slate-100 border-t border-slate-200/60 text-xs text-muted-foreground">
       <span>{wordCount} words</span>
       <div className="flex items-center gap-1">
         <button
           type="button"
           onClick={() => onZoomChange(Math.max(50, zoomLevel - 10))}
-          className="hover:text-slate-700"
+          className="hover:text-foreground transition-colors"
         >
           −
         </button>
@@ -167,7 +167,7 @@ export function EditorStatusBarMinimal({
         <button
           type="button"
           onClick={() => onZoomChange(Math.min(200, zoomLevel + 10))}
-          className="hover:text-slate-700"
+          className="hover:text-foreground transition-colors"
         >
           +
         </button>
