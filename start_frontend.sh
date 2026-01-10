@@ -18,7 +18,7 @@ echo ""
 
 # Get the script directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$SCRIPT_DIR/dod_contracting_front_end"
+cd "$SCRIPT_DIR/apps/web"
 
 # Step 1: Check Node.js version
 echo -e "${YELLOW}[1/3] Checking Node.js version...${NC}"

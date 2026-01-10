@@ -29,29 +29,30 @@ echo ""
 
 # Step 2: Check/Activate virtual environment
 echo -e "${YELLOW}[2/6] Setting up virtual environment...${NC}"
-if [ ! -d "backend/venv" ]; then
+if [ ! -d "apps/api/venv" ]; then
     echo "   Creating virtual environment..."
-    python3 -m venv backend/venv
+    python3 -m venv apps/api/venv
     echo -e "${GREEN}✓ Virtual environment created${NC}"
 else
     echo -e "${GREEN}✓ Virtual environment exists${NC}"
 fi
 
 # Activate virtual environment
-source backend/venv/bin/activate
+source apps/api/venv/bin/activate
 
-# Set PYTHONPATH so Python can find the backend module
-export PYTHONPATH="${SCRIPT_DIR}:${PYTHONPATH}"
+# Set PYTHONPATH so Python can find the backend module (now at apps/api)
+# We add both the root and apps/api so imports work with 'backend.' prefix
+export PYTHONPATH="${SCRIPT_DIR}/apps/api:${SCRIPT_DIR}:${PYTHONPATH}"
 echo -e "${GREEN}✓ Virtual environment activated${NC}"
 echo ""
 
 # Step 3: Install/Update dependencies
 echo -e "${YELLOW}[3/6] Checking dependencies...${NC}"
-if [ ! -f "backend/venv/.deps_installed" ]; then
+if [ ! -f "apps/api/venv/.deps_installed" ]; then
     echo "   Installing dependencies (this may take a few minutes)..."
     pip install -q --upgrade pip
-    pip install -q -r backend/requirements.txt
-    touch backend/venv/.deps_installed
+    pip install -q -r apps/api/requirements.txt
+    touch apps/api/venv/.deps_installed
     echo -e "${GREEN}✓ Dependencies installed${NC}"
 else
     echo -e "${GREEN}✓ Dependencies already installed (use --reinstall to update)${NC}"
@@ -100,7 +101,7 @@ print(count)
 
 if [ "$USER_COUNT" -eq "0" ]; then
     echo -e "${YELLOW}   No users found. Seeding database...${NC}"
-    python3 backend/scripts/seed_database.py
+    python3 tools/setup/seed_database.py
     echo -e "${GREEN}✓ Database seeded with test users${NC}"
     echo ""
     echo -e "${BLUE}📧 Test Login Credentials:${NC}"
@@ -124,5 +125,5 @@ echo -e "${YELLOW}Press Ctrl+C to stop the server${NC}"
 echo ""
 
 # Start the server
-python3 backend/main.py
+python3 apps/api/main.py
 
