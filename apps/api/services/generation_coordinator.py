@@ -436,6 +436,27 @@ class GenerationCoordinator:
             for a in assumptions
         ])
 
+        # Extract project_info from assumptions for agents that need it
+        # This ensures program name, description, and other project context
+        # are properly passed to specialized agents
+        project_info = {}
+        for assumption in assumptions:
+            assumption_id = assumption.get('id', '')
+            assumption_text = assumption.get('text', '')
+            
+            if assumption_id == 'project_name':
+                # Parse "Project: ALMS" to get just "ALMS"
+                if assumption_text.startswith('Project: '):
+                    project_info['program_name'] = assumption_text[9:]
+                else:
+                    project_info['program_name'] = assumption_text
+            elif assumption_id == 'project_desc':
+                project_info['description'] = assumption_text
+            elif assumption_id == 'estimated_value':
+                project_info['estimated_value'] = assumption_text
+            elif assumption_id == 'organization':
+                project_info['organization'] = assumption_text
+
         # Check if agent has async generate method
         if hasattr(agent, 'generate_async'):
             result = await agent.generate_async(
@@ -450,8 +471,11 @@ class GenerationCoordinator:
             )
         elif hasattr(agent, 'execute'):
             # Legacy execute method (Phase 1 agents)
+            # Include project_info so agents can access program name, description, etc.
             task = {
-                'requirements': assumptions_text,
+                'project_info': project_info,
+                'requirements_content': assumptions_text,
+                'requirements': assumptions_text,  # Keep for backwards compatibility
                 'context': context,
                 'assumptions': assumptions
             }
@@ -700,6 +724,26 @@ class GenerationCoordinator:
             f"- {a['text']} (Source: {a.get('source', 'User')})"
             for a in assumptions
         ])
+
+        # Extract project_info from assumptions for agents that need it
+        # This ensures program name, description, and other project context
+        # are properly passed to specialized agents (same logic as _call_specialized_agent)
+        project_info = {}
+        for assumption in assumptions:
+            assumption_id = assumption.get('id', '')
+            assumption_text = assumption.get('text', '')
+            
+            if assumption_id == 'project_name':
+                if assumption_text.startswith('Project: '):
+                    project_info['program_name'] = assumption_text[9:]
+                else:
+                    project_info['program_name'] = assumption_text
+            elif assumption_id == 'project_desc':
+                project_info['description'] = assumption_text
+            elif assumption_id == 'estimated_value':
+                project_info['estimated_value'] = assumption_text
+            elif assumption_id == 'organization':
+                project_info['organization'] = assumption_text
 
         # Check if agent has collaborative generate method
         if hasattr(agent, 'generate_with_collaboration'):

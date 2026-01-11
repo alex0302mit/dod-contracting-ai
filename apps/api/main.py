@@ -1578,6 +1578,16 @@ def request_document_approval(
             detail="Could not determine approvers. Please configure document routing or select manually."
         )
 
+    # APPROVAL ROUND TRACKING: If document was rejected, start a new approval round
+    # This ensures that when we re-request approval after a rejection, the old rejected
+    # approvals don't prevent the document from being approved in the new round
+    if document.status == DocumentStatus.REJECTED:
+        document.current_approval_round = (document.current_approval_round or 1) + 1
+        routing_info += f" (Starting approval round {document.current_approval_round})"
+
+    # Get the current approval round for creating new approval records
+    current_round = document.current_approval_round or 1
+
     # Create approval requests for each approver
     approvals_created = []
     for approver_id in final_approver_ids:
@@ -1585,19 +1595,23 @@ def request_document_approval(
         if not approver:
             continue
 
-        # Check if approval already exists
+        # Check if approval already exists for this approver in the CURRENT round
+        # We filter by approval_round to allow re-requesting from same approver after rejection
         existing_approval = db.query(DocumentApproval).filter(
             DocumentApproval.project_document_id == document_id,
             DocumentApproval.approver_id == approver_id,
-            DocumentApproval.approval_status == ApprovalStatus.PENDING
+            DocumentApproval.approval_status == ApprovalStatus.PENDING,
+            DocumentApproval.approval_round == current_round  # Only check current round
         ).first()
 
         if not existing_approval:
+            # Create new approval request linked to the current round
             approval = DocumentApproval(
                 project_document_id=document_id,
                 document_upload_id=upload_id,
                 approver_id=approver_id,
-                approval_status=ApprovalStatus.PENDING
+                approval_status=ApprovalStatus.PENDING,
+                approval_round=current_round  # Link to current approval round
             )
             db.add(approval)
             db.flush()  # Flush to get approval.id
@@ -1613,8 +1627,9 @@ def request_document_approval(
 
             approvals_created.append(approval)
 
-    # Update document status to under_review if not already
-    if document.status in [DocumentStatus.UPLOADED, DocumentStatus.PENDING]:
+    # Update document status to under_review
+    # This applies when: starting fresh (PENDING/UPLOADED) OR re-requesting after rejection (REJECTED)
+    if document.status in [DocumentStatus.UPLOADED, DocumentStatus.PENDING, DocumentStatus.REJECTED]:
         document.status = DocumentStatus.UNDER_REVIEW
 
     db.commit()
@@ -1627,6 +1642,7 @@ def request_document_approval(
         "message": f"Approval requested from {len(approvals_created)} user(s)",
         "routing_method": routing,
         "routing_info": routing_info,
+        "current_approval_round": current_round,  # Include round info in response
         "approvals": [a.to_dict() for a in approvals_created]
     }
 
@@ -1745,16 +1761,21 @@ def approve_document(
     )
     db.add(audit_log)
 
-    # Check if all approvals are complete
+    # Check if all approvals are complete for the CURRENT round only
+    # This ensures that old rejected approvals from previous rounds don't affect the current status
     document = db.query(ProjectDocument).filter(ProjectDocument.id == approval.project_document_id).first()
-    all_approvals = db.query(DocumentApproval).filter(
-        DocumentApproval.project_document_id == approval.project_document_id
+    current_round = document.current_approval_round or 1
+    
+    # Only count approvals from the current approval round
+    current_round_approvals = db.query(DocumentApproval).filter(
+        DocumentApproval.project_document_id == approval.project_document_id,
+        DocumentApproval.approval_round == current_round  # Filter by current round
     ).all()
 
-    pending_count = sum(1 for a in all_approvals if a.approval_status == ApprovalStatus.PENDING)
-    rejected_count = sum(1 for a in all_approvals if a.approval_status == ApprovalStatus.REJECTED)
+    pending_count = sum(1 for a in current_round_approvals if a.approval_status == ApprovalStatus.PENDING)
+    rejected_count = sum(1 for a in current_round_approvals if a.approval_status == ApprovalStatus.REJECTED)
 
-    # Update document status based on approvals
+    # Update document status based on current round approvals only
     if rejected_count > 0:
         document.status = DocumentStatus.REJECTED
     elif pending_count == 0:
@@ -1766,7 +1787,8 @@ def approve_document(
     return {
         "message": "Document approved successfully",
         "approval": approval.to_dict(),
-        "document_status": document.status.value
+        "document_status": document.status.value,
+        "current_approval_round": current_round  # Include round info in response
     }
 
 
@@ -1806,9 +1828,11 @@ def reject_document(
     )
     db.add(audit_log)
 
-    # Update document status
+    # Update document status to REJECTED
+    # The document can be re-submitted for approval which will start a new round
     document = db.query(ProjectDocument).filter(ProjectDocument.id == approval.project_document_id).first()
     document.status = DocumentStatus.REJECTED
+    current_round = document.current_approval_round or 1
 
     db.commit()
     db.refresh(approval)
@@ -1816,7 +1840,8 @@ def reject_document(
     return {
         "message": "Document rejected",
         "approval": approval.to_dict(),
-        "document_status": document.status.value
+        "document_status": document.status.value,
+        "current_approval_round": current_round  # Include round info in response
     }
 
 

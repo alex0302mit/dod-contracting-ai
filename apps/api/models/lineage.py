@@ -15,7 +15,7 @@ Dependencies:
 """
 from sqlalchemy import Column, String, DateTime, Float, Enum, ForeignKey, Text, JSON, Integer, Boolean, BigInteger
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
 import uuid
 import enum
@@ -121,15 +121,22 @@ class DocumentLineage(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
+    # passive_deletes=True tells SQLAlchemy to trust the database CASCADE
+    # and not try to nullify FKs when the related ProjectDocument is deleted.
+    # This is required because derived_document_id is NOT NULL, so setting it
+    # to NULL would violate the constraint before the DB CASCADE can delete this record.
+    # Using backref() function to ensure passive_deletes is set on BOTH sides of the relationship.
     source_document = relationship(
         "ProjectDocument", 
         foreign_keys=[source_document_id],
-        backref="derived_documents"
+        backref=backref("derived_documents", passive_deletes=True),
+        passive_deletes=True
     )
     derived_document = relationship(
         "ProjectDocument", 
         foreign_keys=[derived_document_id],
-        backref="source_lineage"
+        backref=backref("source_lineage", passive_deletes=True),
+        passive_deletes=True
     )
 
     def to_dict(self):

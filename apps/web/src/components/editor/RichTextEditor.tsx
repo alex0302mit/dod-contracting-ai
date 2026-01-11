@@ -388,35 +388,38 @@ export function RichTextEditor({
   return (
     <div
       ref={editorContainerRef}
-      className="flex flex-col h-full border rounded-lg bg-white shadow-sm relative overflow-hidden"
+      className="flex flex-col h-full border rounded-lg bg-white shadow-sm relative overflow-y-auto"
       data-gramm="false"
       data-gramm_editor="false"
       data-enable-grammarly="false"
     >
-      {/* Quick Access Toolbar - Save, Undo, Redo */}
-      <QuickAccessToolbar
-        editor={editor}
-        onSave={() => {
-          // TODO: Implement save functionality
-          console.log('Save triggered');
-        }}
-      />
+      {/* Sticky Toolbar Container - all toolbars stick together as one unit */}
+      <div className="sticky top-0 z-20 bg-white">
+        {/* Quick Access Toolbar - Save, Undo, Redo */}
+        <QuickAccessToolbar
+          editor={editor}
+          onSave={() => {
+            // TODO: Implement save functionality
+            console.log('Save triggered');
+          }}
+        />
 
-      {/* Ribbon Toolbar - DOCX-style tabbed interface */}
-      <RibbonToolbar
-        editor={editor}
-        documentName={sectionName}
-        onInsertCitation={() => setShowCitationModal(true)}
-      />
+        {/* Ribbon Toolbar - DOCX-style tabbed interface */}
+        <RibbonToolbar
+          editor={editor}
+          documentName={sectionName}
+          onInsertCitation={() => setShowCitationModal(true)}
+        />
 
-      {/* Horizontal Ruler - Shows margins and allows drag adjustment */}
-      <HorizontalRuler
-        zoomLevel={zoomLevel}
-        leftMargin={leftMargin}
-        rightMargin={rightMargin}
-        onLeftMarginChange={setLeftMargin}
-        onRightMarginChange={setRightMargin}
-      />
+        {/* Horizontal Ruler - Shows margins and allows drag adjustment */}
+        <HorizontalRuler
+          zoomLevel={zoomLevel}
+          leftMargin={leftMargin}
+          rightMargin={rightMargin}
+          onLeftMarginChange={setLeftMargin}
+          onRightMarginChange={setRightMargin}
+        />
+      </div>
 
       {/* Document Canvas - Page-like editor wrapper with adjustable margins */}
       <DocumentCanvas

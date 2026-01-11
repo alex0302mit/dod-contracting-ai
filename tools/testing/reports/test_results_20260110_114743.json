@@ -1,0 +1,212 @@
+{
+  "start_time": "2026-01-10T11:47:43.310364",
+  "end_time": "2026-01-10T11:47:43.584541",
+  "total_tests": 15,
+  "passed": 0,
+  "failed": 0,
+  "skipped": 0,
+  "errors": 15,
+  "pass_rate": "0.0%",
+  "duration_seconds": 0.17026305198669434,
+  "suites": {
+    "api": {
+      "suite_name": "API Endpoint Tests",
+      "start_time": "2026-01-10T11:47:43.378164",
+      "end_time": "",
+      "summary": {
+        "total": 1,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 1,
+        "pass_rate": "0.0%",
+        "total_duration_ms": 0.0
+      },
+      "results": [
+        {
+          "name": "Setup",
+          "category": "setup",
+          "status": "error",
+          "duration_ms": 0.0,
+          "message": "Failed to setup test environment",
+          "details": {},
+          "timestamp": "2026-01-10T11:47:43.388139"
+        }
+      ]
+    },
+    "integration": {
+      "suite_name": "Integration Tests",
+      "start_time": "2026-01-10T11:47:43.384128",
+      "end_time": "",
+      "summary": {
+        "total": 1,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 1,
+        "pass_rate": "0.0%",
+        "total_duration_ms": 0.0
+      },
+      "results": [
+        {
+          "name": "Setup",
+          "category": "setup",
+          "status": "error",
+          "duration_ms": 0.0,
+          "message": "Failed to setup test environment",
+          "details": {},
+          "timestamp": "2026-01-10T11:47:43.388910"
+        }
+      ]
+    },
+    "models": {
+      "suite_name": "Database Model Tests",
+      "start_time": "2026-01-10T11:47:43.378950",
+      "end_time": "",
+      "summary": {
+        "total": 1,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 1,
+        "pass_rate": "0.0%",
+        "total_duration_ms": 0.0
+      },
+      "results": [
+        {
+          "name": "Database Setup",
+          "category": "setup",
+          "status": "error",
+          "duration_ms": 0.0,
+          "message": "Failed to connect to database",
+          "details": {},
+          "timestamp": "2026-01-10T11:47:43.505770"
+        }
+      ]
+    },
+    "services": {
+      "suite_name": "Service Tests",
+      "start_time": "2026-01-10T11:47:43.379528",
+      "end_time": "services_20260110_114743",
+      "summary": {
+        "total": 12,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 12,
+        "pass_rate": "0.0%",
+        "total_duration_ms": 170.26305198669434
+      },
+      "results": [
+        {
+          "name": "AgentComparisonService",
+          "category": "services",
+          "status": "error",
+          "duration_ms": 89.23125267028809,
+          "message": "Error: partially initialized module 'asyncio.coroutines' has no attribute 'iscoroutine' (most likely due to a circular import)",
+          "details": {},
+          "timestamp": "2026-01-10T11:47:43.471051"
+        },
+        {
+          "name": "AgentRouter",
+          "category": "services",
+          "status": "error",
+          "duration_ms": 36.96107864379883,
+          "message": "Error: name 'base_events' is not defined",
+          "details": {},
+          "timestamp": "2026-01-10T11:47:43.508244"
+        },
+        {
+          "name": "ContextManager",
+          "category": "services",
+          "status": "error",
+          "duration_ms": 1.5079975128173828,
+          "message": "Error: name 'base_events' is not defined",
+          "details": {},
+          "timestamp": "2026-01-10T11:47:43.509885"
+        },
+        {
+          "name": "DependencyGraph",
+          "category": "services",
+          "status": "error",
+          "duration_ms": 1.5208721160888672,
+          "message": "Error: name 'base_events' is not defined",
+          "details": {},
+          "timestamp": "2026-01-10T11:47:43.511502"
+        },
+        {
+          "name": "DocumentGenerator",
+          "category": "services",
+          "status": "error",
+          "duration_ms": 1.7788410186767578,
+          "message": "Error: name 'base_events' is not defined",
+          "details": {},
+          "timestamp": "2026-01-10T11:47:43.513335"
+        },
+        {
+          "name": "DocumentInitializer",
+          "category": "services",
+          "status": "error",
+          "duration_ms": 1.5311241149902344,
+          "message": "Error: name 'base_events' is not defined",
+          "details": {},
+          "timestamp": "2026-01-10T11:47:43.514920"
+        },
+        {
+          "name": "ExportService",
+          "category": "services",
+          "status": "error",
+          "duration_ms": 15.292167663574219,
+          "message": "Error: name 'base_events' is not defined",
+          "details": {},
+          "timestamp": "2026-01-10T11:47:43.530281"
+        },
+        {
+          "name": "GenerationCoordinator",
+          "category": "services",
+          "status": "error",
+          "duration_ms": 1.6620159149169922,
+          "message": "Error: name 'base_events' is not defined",
+          "details": {},
+          "timestamp": "2026-01-10T11:47:43.532040"
+        },
+        {
+          "name": "PhaseDetector",
+          "category": "services",
+          "status": "error",
+          "duration_ms": 1.7240047454833984,
+          "message": "Error: name 'base_events' is not defined",
+          "details": {},
+          "timestamp": "2026-01-10T11:47:43.533818"
+        },
+        {
+          "name": "PhaseGateService",
+          "category": "services",
+          "status": "error",
+          "duration_ms": 1.9850730895996094,
+          "message": "Error: name 'base_events' is not defined",
+          "details": {},
+          "timestamp": "2026-01-10T11:47:43.535855"
+        },
+        {
+          "name": "RAGService",
+          "category": "services",
+          "status": "error",
+          "duration_ms": 15.543699264526367,
+          "message": "Error: name 'base_events' is not defined",
+          "details": {},
+          "timestamp": "2026-01-10T11:47:43.551471"
+        },
+        {
+          "name": "WebSocketManager",
+          "category": "services",
+          "status": "error",
+          "duration_ms": 1.5249252319335938,
+          "message": "Error: name 'base_events' is not defined",
+          "details": {},
+          "timestamp": "2026-01-10T11:47:43.553105"
+        }
+      ]
+    }
+  }
+}

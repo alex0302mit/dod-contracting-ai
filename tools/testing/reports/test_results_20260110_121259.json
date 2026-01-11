@@ -1,0 +1,479 @@
+{
+  "start_time": "2026-01-10T12:12:59.592217",
+  "end_time": "2026-01-10T12:12:59.959882",
+  "total_tests": 50,
+  "passed": 19,
+  "failed": 1,
+  "skipped": 30,
+  "errors": 0,
+  "pass_rate": "38.0%",
+  "duration_seconds": 0.279327392578125,
+  "suites": {
+    "api": {
+      "suite_name": "API Endpoint Tests",
+      "start_time": "2026-01-10T12:12:59.616831",
+      "end_time": "api_endpoints_20260110_121259",
+      "summary": {
+        "total": 50,
+        "passed": 19,
+        "failed": 1,
+        "skipped": 30,
+        "errors": 0,
+        "pass_rate": "38.0%",
+        "total_duration_ms": 279.327392578125
+      },
+      "results": [
+        {
+          "name": "POST /api/auth/register",
+          "category": "auth",
+          "status": "passed",
+          "duration_ms": 58.2430362701416,
+          "message": "Test passed",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.735953"
+        },
+        {
+          "name": "POST /api/auth/login",
+          "category": "auth",
+          "status": "passed",
+          "duration_ms": 51.95188522338867,
+          "message": "Test passed",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.787939"
+        },
+        {
+          "name": "POST /api/auth/login (invalid)",
+          "category": "auth",
+          "status": "passed",
+          "duration_ms": 4.83393669128418,
+          "message": "Test passed",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.792802"
+        },
+        {
+          "name": "GET /api/auth/me",
+          "category": "auth",
+          "status": "passed",
+          "duration_ms": 4.938840866088867,
+          "message": "Test passed",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.797771"
+        },
+        {
+          "name": "GET /api/users",
+          "category": "users",
+          "status": "passed",
+          "duration_ms": 6.22105598449707,
+          "message": "Test passed",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.804031"
+        },
+        {
+          "name": "GET /api/admin/users",
+          "category": "admin",
+          "status": "passed",
+          "duration_ms": 4.041910171508789,
+          "message": "Test passed",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.808111"
+        },
+        {
+          "name": "POST /api/admin/bootstrap",
+          "category": "admin",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "Skipped - admin account already exists",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.808136"
+        },
+        {
+          "name": "POST /api/admin/users",
+          "category": "admin",
+          "status": "passed",
+          "duration_ms": 4.914045333862305,
+          "message": "Test passed",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.813068"
+        },
+        {
+          "name": "PUT /api/admin/users/{id}/role",
+          "category": "admin",
+          "status": "passed",
+          "duration_ms": 4.847049713134766,
+          "message": "Test passed",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.817950"
+        },
+        {
+          "name": "DELETE /api/admin/users/{id}",
+          "category": "admin",
+          "status": "passed",
+          "duration_ms": 4.36091423034668,
+          "message": "Test passed",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.822344"
+        },
+        {
+          "name": "POST /api/admin/reset-database",
+          "category": "admin",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "Skipped to preserve test data",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.822372"
+        },
+        {
+          "name": "GET /api/projects",
+          "category": "projects",
+          "status": "passed",
+          "duration_ms": 5.171060562133789,
+          "message": "Test passed",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.827567"
+        },
+        {
+          "name": "POST /api/projects",
+          "category": "projects",
+          "status": "failed",
+          "duration_ms": 42.780160903930664,
+          "message": "Test assertion failed",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.870386"
+        },
+        {
+          "name": "GET /api/projects/{id}",
+          "category": "projects",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "No test project created",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.870418"
+        },
+        {
+          "name": "PUT /api/projects/{id}",
+          "category": "projects",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "No test project created",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.870430"
+        },
+        {
+          "name": "POST /api/projects/{id}/initialize-documents",
+          "category": "projects",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "No test project created",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.870440"
+        },
+        {
+          "name": "GET /api/projects/{id}/phases",
+          "category": "projects",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "No test project created",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.870448"
+        },
+        {
+          "name": "GET /api/projects/{id}/documents",
+          "category": "projects",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "No test project created",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.870457"
+        },
+        {
+          "name": "POST /api/projects/{id}/cleanup-all-duplicate-steps",
+          "category": "projects",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "No test project created",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.870466"
+        },
+        {
+          "name": "POST /api/projects/{id}/generate-document",
+          "category": "projects",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "Skipped to avoid expensive AI calls",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.870475"
+        },
+        {
+          "name": "GET /api/documents/{id}/uploads",
+          "category": "documents",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "No test document created",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.870489"
+        },
+        {
+          "name": "POST /api/documents/{id}/upload",
+          "category": "documents",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "File upload requires multipart form data",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.870497"
+        },
+        {
+          "name": "PATCH /api/documents/{id}",
+          "category": "documents",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "No test document created",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.870505"
+        },
+        {
+          "name": "POST /api/documents/{id}/generate",
+          "category": "documents",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "Skipped to avoid expensive AI calls",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.870513"
+        },
+        {
+          "name": "GET /api/documents/{id}/generation-status",
+          "category": "documents",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "No test document created",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.870521"
+        },
+        {
+          "name": "POST /api/documents/{id}/save-generated",
+          "category": "documents",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "No test document created",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.870529"
+        },
+        {
+          "name": "GET /api/documents/{id}/check-dependencies",
+          "category": "documents",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "No test document created",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.870537"
+        },
+        {
+          "name": "DELETE /api/uploads/{id}",
+          "category": "documents",
+          "status": "passed",
+          "duration_ms": 9.49716567993164,
+          "message": "Test passed",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.880049"
+        },
+        {
+          "name": "POST /api/projects/{id}/generate-batch",
+          "category": "generation",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "Skipped to avoid expensive AI calls",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.880088"
+        },
+        {
+          "name": "GET /api/generation-tasks/{id}",
+          "category": "generation",
+          "status": "passed",
+          "duration_ms": 4.266977310180664,
+          "message": "Test passed",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.884370"
+        },
+        {
+          "name": "POST /api/documents/{id}/request-approval",
+          "category": "approvals",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "No test document created",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.884404"
+        },
+        {
+          "name": "GET /api/documents/{id}/approvals",
+          "category": "approvals",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "No test document created",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.884415"
+        },
+        {
+          "name": "GET /api/approvals/pending",
+          "category": "approvals",
+          "status": "passed",
+          "duration_ms": 4.745006561279297,
+          "message": "Test passed",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.889174"
+        },
+        {
+          "name": "POST /api/approvals/{id}/approve",
+          "category": "approvals",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "No test approval created",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.889204"
+        },
+        {
+          "name": "POST /api/approvals/{id}/reject",
+          "category": "approvals",
+          "status": "passed",
+          "duration_ms": 7.781982421875,
+          "message": "Test passed",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.897004"
+        },
+        {
+          "name": "POST /api/approvals/{id}/delegate",
+          "category": "approvals",
+          "status": "passed",
+          "duration_ms": 5.6781768798828125,
+          "message": "Test passed",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.902718"
+        },
+        {
+          "name": "GET /api/approvals/{id}/audit-trail",
+          "category": "approvals",
+          "status": "passed",
+          "duration_ms": 4.748106002807617,
+          "message": "Test passed",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.907499"
+        },
+        {
+          "name": "GET /api/documents/{id}/approval-history",
+          "category": "approvals",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "No test document created",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.907526"
+        },
+        {
+          "name": "PATCH /api/documents/{id}/routing",
+          "category": "approvals",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "No test document created",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.907538"
+        },
+        {
+          "name": "GET /api/projects/{id}/steps",
+          "category": "steps",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "No test project created",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.907554"
+        },
+        {
+          "name": "PATCH /api/steps/{id}",
+          "category": "steps",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "No test step found",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.907563"
+        },
+        {
+          "name": "PATCH /api/phases/{id}",
+          "category": "phases",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "No test phase found",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.907576"
+        },
+        {
+          "name": "POST /api/phases/{id}/create-default-steps",
+          "category": "phases",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "No test phase found",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.907585"
+        },
+        {
+          "name": "POST /api/phases/{id}/cleanup-duplicate-steps",
+          "category": "phases",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "No test phase found",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.907594"
+        },
+        {
+          "name": "GET /api/phases/{id}/validate-transition",
+          "category": "phases",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "No test phase found",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.907602"
+        },
+        {
+          "name": "POST /api/phases/{id}/request-transition",
+          "category": "phases",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "No test phase found",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.907610"
+        },
+        {
+          "name": "GET /api/phase-transitions/pending",
+          "category": "phase_transitions",
+          "status": "passed",
+          "duration_ms": 7.695198059082031,
+          "message": "Test passed",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.915325"
+        },
+        {
+          "name": "POST /api/phase-transitions/{id}/approve",
+          "category": "phase_transitions",
+          "status": "passed",
+          "duration_ms": 37.0790958404541,
+          "message": "Test passed",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.952441"
+        },
+        {
+          "name": "POST /api/phase-transitions/{id}/reject",
+          "category": "phase_transitions",
+          "status": "passed",
+          "duration_ms": 5.531787872314453,
+          "message": "Test passed",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.958007"
+        },
+        {
+          "name": "GET /api/projects/{id}/transition-history",
+          "category": "phase_transitions",
+          "status": "skipped",
+          "duration_ms": 0.0,
+          "message": "No test project created",
+          "details": {},
+          "timestamp": "2026-01-10T12:12:59.958035"
+        }
+      ]
+    }
+  }
+}

@@ -89,8 +89,104 @@ class MarketResearchReportGeneratorAgent(BaseAgent):
         print(f"  ✓ BaseAgent initialized")
         print(f"  ✓ Temperature: {self.temperature} (factual reporting)")
         print(f"  {web_search_status}")
+        print(f"  ✓ RAG retriever: {'enabled' if retriever else 'disabled'}")
         print(f"  ℹ️  This report should be generated FIRST to reduce TBDs")
         print("="*70 + "\n")
+
+    def _retrieve_uploaded_document_context(
+        self,
+        program_name: str,
+        requirements: str,
+        description: str = ""
+    ) -> str:
+        """
+        Retrieve relevant context from uploaded documents via RAG.
+        
+        This method queries the RAG system for documents that have been
+        uploaded to the project's knowledge base, providing the LLM with
+        actual project-specific context rather than relying solely on
+        general knowledge or web search.
+        
+        Args:
+            program_name: Name of the program (for targeted queries)
+            requirements: Requirements content to help find relevant docs
+            description: Optional project description
+            
+        Returns:
+            Formatted string of relevant document excerpts with sources
+        """
+        if not self.retriever:
+            print("⚠️  RAG retriever not available - skipping uploaded document context")
+            return ""
+        
+        print("\n📚 Retrieving context from uploaded documents...")
+        
+        all_context = []
+        
+        try:
+            # Query 1: Search for program-specific documents
+            if program_name and program_name != 'Unknown':
+                query1 = f"{program_name} market research capabilities requirements vendors"
+                results1 = self.retriever.retrieve(query=query1, k=3)
+                if results1:
+                    print(f"   ✅ Found {len(results1)} documents matching program name")
+                    all_context.extend(results1)
+            
+            # Query 2: Search based on requirements content
+            if requirements:
+                # Use first 500 chars of requirements as query
+                query2 = requirements[:500] if len(requirements) > 500 else requirements
+                results2 = self.retriever.retrieve(query=query2, k=3)
+                if results2:
+                    print(f"   ✅ Found {len(results2)} documents matching requirements")
+                    all_context.extend(results2)
+            
+            # Query 3: Search for market research specific content
+            query3 = "market research vendor analysis pricing NAICS small business competition"
+            results3 = self.retriever.retrieve(query=query3, k=2)
+            if results3:
+                print(f"   ✅ Found {len(results3)} market research reference documents")
+                all_context.extend(results3)
+            
+            if not all_context:
+                print("   ℹ️  No relevant uploaded documents found in knowledge base")
+                return ""
+            
+            # Deduplicate results based on content hash
+            seen_content = set()
+            unique_results = []
+            for result in all_context:
+                # Handle both dict and object formats from retriever
+                content = result.get('content', '') if isinstance(result, dict) else getattr(result, 'content', '')
+                content_hash = hash(content[:200]) if content else None
+                if content_hash and content_hash not in seen_content:
+                    seen_content.add(content_hash)
+                    unique_results.append(result)
+            
+            # Format results into context string
+            context_parts = []
+            for i, result in enumerate(unique_results[:8], 1):  # Limit to 8 unique chunks
+                if isinstance(result, dict):
+                    content = result.get('content', '')
+                    source = result.get('source', result.get('metadata', {}).get('source', 'Unknown'))
+                else:
+                    content = getattr(result, 'content', '')
+                    source = getattr(result, 'source', 'Unknown')
+                
+                # Truncate long content
+                if len(content) > 800:
+                    content = content[:800] + "..."
+                
+                context_parts.append(f"**Source {i}** ({source}):\n{content}\n")
+            
+            formatted_context = "\n".join(context_parts)
+            print(f"   ✅ Retrieved {len(unique_results)} unique document excerpts for context")
+            
+            return formatted_context
+            
+        except Exception as e:
+            print(f"   ⚠️  RAG retrieval failed: {str(e)}")
+            return ""
 
     def execute(self, task: Dict) -> Dict:
         """
@@ -139,7 +235,15 @@ class MarketResearchReportGeneratorAgent(BaseAgent):
             except Exception as e:
                 print(f"⚠️  Cross-reference lookup failed: {str(e)}")
 
-        # STEP 1: Conduct web-based market research (if enabled and available)
+        # STEP 1: Retrieve context from uploaded documents via RAG
+        # This provides project-specific context from user-uploaded documents
+        uploaded_doc_context = self._retrieve_uploaded_document_context(
+            program_name=program_name,
+            requirements=requirements_content,
+            description=project_info.get('description', '')
+        )
+
+        # STEP 2: Conduct web-based market research (if enabled and available)
         web_research_results = ""
         use_web_search = config.get('use_web_search', True)  # Default: enabled
 
@@ -159,14 +263,15 @@ class MarketResearchReportGeneratorAgent(BaseAgent):
             print("   Set TAVILY_API_KEY environment variable to enable web search")
             print("   Continuing with LLM knowledge only...")
 
-        # STEP 2: Generate market research report
+        # STEP 3: Generate market research report with all context
         self.log("Generating market research report content")
 
         market_research_content = self._generate_market_research_report(
             project_info=project_info,
             requirements=requirements_content,
             config=config,
-            web_research=web_research_results
+            web_research=web_research_results,
+            uploaded_context=uploaded_doc_context
         )
 
         # Extract key market data
@@ -351,7 +456,8 @@ class MarketResearchReportGeneratorAgent(BaseAgent):
         project_info: Dict,
         requirements: str,
         config: Dict,
-        web_research: str = ""
+        web_research: str = "",
+        uploaded_context: str = ""
     ) -> str:
         """
         Generate comprehensive market research report content
@@ -360,6 +466,8 @@ class MarketResearchReportGeneratorAgent(BaseAgent):
             project_info: Program information
             requirements: Requirements content
             config: Configuration options
+            web_research: Web search results (optional)
+            uploaded_context: Context from uploaded documents via RAG (optional)
 
         Returns:
             Formatted market research report markdown
@@ -367,179 +475,192 @@ class MarketResearchReportGeneratorAgent(BaseAgent):
         program_name = project_info.get('program_name', 'Unknown Program')
         estimated_value = project_info.get('estimated_value', 'TBD')
         users = project_info.get('users', 'TBD')
+        description = project_info.get('description', '')
+        
+        # Get current date for accurate timestamps in the report
+        current_date = datetime.now().strftime('%B %d, %Y')
+        current_date_iso = datetime.now().strftime('%Y-%m-%d')
 
-        # Build prompt with web research if available
+        # Build section for uploaded document context (RAG) using XML tags
+        # XML tags help the LLM clearly distinguish between data and instructions
+        uploaded_context_section = ""
+        if uploaded_context:
+            uploaded_context_section = f"""
+<uploaded_documents>
+<content>
+{uploaded_context[:5000]}
+</content>
+<instruction>Use this as PRIMARY context - it contains project-specific requirements, constraints, and background that should be reflected in the report.</instruction>
+</uploaded_documents>
+"""
+
+        # Build prompt with web research if available using XML tags
+        # XML tags help separate findings from instructions for better LLM comprehension
         web_research_section = ""
         if web_research:
             web_research_section = f"""
-
-**WEB-BASED MARKET RESEARCH FINDINGS**:
-
+<web_research>
+<findings>
 {web_research[:4000]}
-
-**IMPORTANT**: Use the web research findings above to provide SPECIFIC, CURRENT data in your report:
-- Actual vendor names and capabilities from search results
-- Real pricing data from recent contracts
-- Current small business certifications
-- Recent technology trends
+</findings>
+<instruction>Use these findings for SPECIFIC, CURRENT vendor names, pricing data, small business certifications, and technology trends.</instruction>
+</web_research>
 """
 
+        # Build prompt using XML tags for clear separation of data, instructions, and rules
+        # XML tags help the LLM:
+        # 1. Distinguish between factual inputs and instructions
+        # 2. Follow structured output requirements more reliably
+        # 3. Reduce hallucination by clearly labeling source data
         prompt = f"""You are a Government market research specialist conducting market research per FAR 10.001-10.002.
 
-Generate a COMPREHENSIVE Market Research Report for the following program:
+<system_context>
+<current_date>{current_date}</current_date>
+<current_date_iso>{current_date_iso}</current_date_iso>
+<date_rule>Use current_date_iso for ALL date references in the report. Do NOT use dates from 2024 or earlier unless citing historical contracts.</date_rule>
+</system_context>
 
-**Program**: {program_name}
-**Estimated Value**: {estimated_value}
-**Users**: {users}
+<project_info>
+<program_name>{program_name}</program_name>
+<estimated_value>{estimated_value}</estimated_value>
+<users>{users}</users>
+<description>{description if description else 'Not provided'}</description>
+</project_info>
 
-**Requirements**:
+<requirements>
 {requirements[:3000] if requirements else 'No specific requirements provided - use general assumptions for this type of system'}
+</requirements>
+
+{uploaded_context_section}
 {web_research_section}
 
-**Your Task**: Create a detailed market research report that provides:
+<output_structure>
+Generate a Market Research Report with exactly these 8 sections:
 
-1. **Executive Summary**
+1. Executive Summary
    - Market research methodology (cite FAR 10.001)
    - Key findings summary (with data sources)
    - Recommendations for acquisition approach (cite FAR parts)
 
-2. **Market Overview**
+2. Market Overview
    - Industry landscape for this type of solution
    - Technology maturity assessment
    - Commercial vs Government Off-The-Shelf (GOTS) availability (cite FAR 12.101)
    - Cloud vs On-Premise solutions
 
-3. **Vendor Landscape**
+3. Vendor Landscape
    - Estimated number of capable vendors (cite SAM.gov search results)
    - Small business participation potential (cite FAR 19.202-1)
    - 8(a), HUBZone, SDVOSB, WOSB opportunities (cite SBA.gov data)
-   - Geographic distribution of vendors (cite actual locations if from web search)
+   - Geographic distribution of vendors
    - Typical vendor qualifications and certifications
 
-4. **Pricing Analysis**
+4. Pricing Analysis
    - Typical pricing models (Fixed Price, T&M, Cost Plus)
    - Labor rate ranges by category (cite GSA Schedule or actual contracts)
    - Commercial item pricing if available (cite sources)
    - ODC costs (cite specific pricing sources)
    - Industry standard cost breakdown
 
-5. **Contract Vehicle Analysis**
+5. Contract Vehicle Analysis
    - Recommended contract type with justification (cite FAR parts)
    - Acquisition strategy recommendations
    - Socioeconomic considerations (cite FAR 19.202-1)
    - Competition expectations (cite historical data if available)
 
-6. **Risk Assessment**
+6. Risk Assessment
    - Market risks (limited competition, immature technology)
    - Pricing risks
    - Small business participation risks
    - Mitigation strategies
 
-7. **Sources and Methodology**
-   - Market research sources used (SAM.gov, industry reports, RFIs, web search results, etc.)
+7. Sources and Methodology
+   - Market research sources used (SAM.gov, industry reports, RFIs, web search results)
    - Assumptions made
    - Limitations of the research
 
-8. **APPENDIX A: Research Sources** (REQUIRED)
-   - Web Searches Conducted (list each query, date, result count)
-   - Contracts Referenced (list contract numbers, amounts, dates)
-   - Regulations Cited (list FAR/DFARS sections)
-   - Databases Accessed (SAM.gov, FPDS, FedRAMP, etc.)
+8. APPENDIX A: Research Sources (MANDATORY)
+   - Web Searches Conducted (query, date, result count)
+   - Contracts Referenced (number, amount, description, date)
+   - Regulations Cited (FAR/DFARS section, brief description)
    - Assumptions and Limitations
+</output_structure>
 
-**CRITICAL INSTRUCTIONS**:
+<citation_rules>
+<format>(Ref: [Source], [Date])</format>
+<required_citations>
+- Statistics and percentages: "(Ref: SAM.gov analysis, {current_date_iso})"
+- Vendor counts: "(Ref: SAM.gov search NAICS 541512, {current_date_iso}, X results)"
+- Pricing data: "(Ref: GSA Schedule 70, Contract number, date)"
+- Labor rates: "(Ref: FPDS contract number, date)"
+- Contract awards: "(Ref: FPDS database, Contract number, amount)"
+- FAR regulations: "(Ref: FAR 10.001(a)(2)(i))"
+- Market trends: "(Ref: [Source name], [Date])"
+</required_citations>
+<rule>EVERY factual claim MUST include a citation. {'PRIORITIZE web research findings - cite specific URLs, vendors, and contracts from search results.' if web_research else 'Use realistic numbers and cite industry standards.'}</rule>
+</citation_rules>
 
-**CITATION REQUIREMENTS** (MANDATORY):
-- EVERY factual claim MUST include an inline citation in this format: (Ref: [Source], [Date])
-- Required citations for ALL:
-  - Statistics and percentages: "(Ref: SAM.gov analysis, 2025-10-18)"
-  - Vendor counts: "(Ref: SAM.gov search NAICS 541512, 2025-10-18, 23 results)"
-  - Pricing data: "(Ref: GSA Schedule 70, Contract GS-35F-0119Y, 2024-09)"
-  - Labor rates: "(Ref: FPDS contract W56KGU-24-C-0042, 2024-06)"
-  - Contract awards: "(Ref: FPDS database, Contract FA8726-24-C-0015, $3.4M)"
-  - FAR regulations: "(Ref: FAR 10.001(a)(2)(i))"
-  - Market trends: "(Ref: [Source name], [Date])"
-- {'PRIORITIZE web research findings - cite specific URLs, vendors, and contracts from search results' if web_research else 'Use realistic numbers and cite industry standards'}
+<forbidden_language>
+<absolutely_forbidden>numerous, several, many, various, significant, substantial, considerable, extensive, approximately</absolutely_forbidden>
+<use_sparingly>sufficient, adequate, appropriate, relevant, important, critical</use_sparingly>
+<modal_verbs_restriction>Use "may", "might", "could", "possibly", "potentially" ONLY in the Assumptions/Limitations section</modal_verbs_restriction>
+<exceptions>
+- When quoting FAR/DFARS regulations verbatim, preserve original wording
+- Technical terms like "FedRAMP Moderate" are acceptable
+</exceptions>
+<replacement_examples>
+- "numerous vendors" -> "23 vendors identified (Ref: SAM.gov, {current_date_iso})"
+- "several contracts" -> "6 contracts analyzed (Ref: FPDS search, {current_date_iso})"
+- "significant adoption" -> "85% adoption rate (Ref: Industry survey, recent)"
+- "many small businesses" -> "18 small businesses identified (Ref: SAM.gov SB search)"
+- "adequate competition" -> "competition threshold met with 15 vendors (Ref: FAR 6.401)"
+- "may limit" -> "limits to X vendors" OR "reduces vendor pool by Y%"
+</replacement_examples>
+</forbidden_language>
 
-**ELIMINATE VAGUE LANGUAGE** (MANDATORY - WILL REDUCE QUALITY SCORE):
-- ❌ ABSOLUTELY FORBIDDEN WORDS: "numerous", "several", "many", "various", "significant", "substantial", "considerable", "extensive", "approximately"
-- ❌ USE SPARINGLY (only when necessary): "sufficient", "adequate", "appropriate", "relevant", "important", "critical"
-- ❌ MODAL VERBS (use only in Assumptions/Limitations section): "may", "might", "could", "possibly", "potentially"
-- ❌ DO NOT use qualitative adjectives without specific numbers in main analysis sections
-- ℹ️ EXCEPTIONS:
-  - When quoting FAR/DFARS regulations verbatim, preserve original wording
-  - In Assumptions/Limitations section, modal verbs are acceptable to express uncertainty
-  - Technical terms like "FedRAMP Moderate" are acceptable even if they contain forbidden words
-- ✅ ALWAYS use specific numbers/percentages instead:
-  - Replace "numerous vendors" → "23 vendors identified (Ref: SAM.gov, 2025-10-18)"
-  - Replace "several contracts" → "6 contracts analyzed (Ref: FPDS search, 2024-2025)"
-  - Replace "significant adoption" → "85% adoption rate (Ref: Industry survey, 2024)"
-  - Replace "many small businesses" → "18 small businesses identified (Ref: SAM.gov SB search)"
-  - Replace "significant investment" → "$500K infrastructure investment"
-  - Replace "sufficient capacity" → "capacity meets requirements based on 18 small businesses"
-  - Replace "adequate competition" → "competition threshold met with 15 vendors (Ref: FAR 6.401)"
-  - Replace "critical evaluation" → "high-priority evaluation factor (30% weight)"
-  - Replace "relevant contracts" → "156 contracts matching NAICS 541512 criteria (Ref: CPARS, 2024)"
-  - Replace "may limit" → "limits to X vendors" OR "reduces vendor pool by Y%"
-  - Replace "may exclude" → "excludes capabilities in NAICS codes X, Y, Z"
-
-**DATA SPECIFICITY REQUIREMENTS**:
+<data_specificity>
 - Provide exact vendor counts with source
 - Include specific contract numbers and amounts
 - Give precise labor rate ranges with citations
 - Reference actual company names when available from web search
 - Include exact percentages, not ranges (or cite why range is necessary)
+</data_specificity>
 
-**LIST FORMATTING REQUIREMENTS** (MANDATORY):
+<formatting_rules>
 - Do NOT include blank lines between bullet list items
-- Keep all list items in a continuous block with single newlines
-- Correct format:
-  - Item 1
-  - Item 2
-  - Item 3
-- INCORRECT format (DO NOT USE - causes rendering issues):
-  - Item 1
-  
-  - Item 2
-  
-  - Item 3
+- Keep all list items in continuous blocks with single newlines
+- Use specific numbers, not vague qualifiers
+- Include exact percentages with citations
+</formatting_rules>
 
-**REGULATORY CITATIONS** (MANDATORY):
+<regulatory_references>
+Required FAR citations to include where appropriate:
 - FAR 10.001 - Market research requirements
 - FAR 10.002(b)(2) - Commercial item market research
 - FAR 12.101 - Commercial item determination
 - FAR 19.202-1 - Small business set-aside requirements
 - FAR Parts 12 and 13 for simplified acquisitions
+</regulatory_references>
 
-**APPENDIX A REQUIREMENTS** (CRITICAL - DO NOT SKIP):
-YOU MUST INCLUDE APPENDIX A AS SECTION 8 OF THE REPORT. This is MANDATORY.
-- List EVERY web search query performed with date and result count
-- List EVERY contract referenced with full contract number and amount
-- List EVERY FAR/DFARS section cited with brief description
-- Document ALL assumptions made
-- Acknowledge research limitations clearly
-
-Example APPENDIX A format:
----
-## 8. APPENDIX A: RESEARCH SOURCES
+<appendix_a_requirements>
+MANDATORY - Include as Section 8 with this structure:
 
 ### Web Searches Conducted
-1. SAM.gov search NAICS 541512 - Date: 2025-01-15 - Results: 23 vendors
-2. FPDS search "logistics management system" - Date: 2025-01-15 - Results: 15 contracts
-...
+1. SAM.gov search NAICS 541512 - Date: {current_date_iso} - Results: X vendors
+2. FPDS search "[search term]" - Date: {current_date_iso} - Results: X contracts
 
 ### Contracts Referenced
-1. Contract GS-35F-0119Y - Amount: $4.2M - GSA Schedule 70 - Date: 2024-09
-2. Contract W56KGU-24-C-0042 - Amount: $2.1M - Army logistics services - Date: 2024-06
-...
+1. Contract [number] - Amount: $X.XM - [Description] - Date: [date]
 
 ### Regulations Cited
 1. FAR 10.001 - Market research requirements
 2. FAR 19.202-1 - Small business set-aside determination
-...
----
 
-Generate a comprehensive, professional market research report (2500-3500 words) with citations for EVERY factual claim and a complete APPENDIX A section that acquisition professionals can use to make informed decisions and reduce TBDs in downstream documents."""
+### Assumptions and Limitations
+[Document ALL assumptions made and acknowledge research limitations]
+</appendix_a_requirements>
+
+<output_length>2500-3500 words with citations for EVERY factual claim</output_length>"""
 
         response = self.call_llm(prompt, max_tokens=8000)
 

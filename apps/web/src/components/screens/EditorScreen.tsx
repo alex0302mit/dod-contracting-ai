@@ -45,7 +45,8 @@ const DEFAULT_ASSUMPTIONS: Array<{
 export function EditorScreen() {
   // Note: ConsoleRail is NOT shown for Editor - LiveEditor has its own quality panel
   const { closeRail } = useConsoleRail();
-  const { editorContent, navigate, goBack } = useNavigation();
+  // Include setEditorContent to sync content before export navigation
+  const { editorContent, navigate, goBack, setEditorContent } = useNavigation();
   
   // Editor state
   const [sections, setSections] = useState<Record<string, string>>(
@@ -71,9 +72,12 @@ export function EditorScreen() {
   
   
   // Handle export navigation
+  // Sync current sections to context before navigating to export
+  // This ensures the export view receives the latest edited content, not stale data
   const handleExport = useCallback(() => {
+    setEditorContent(sections);
     navigate('EXPORT');
-  }, [navigate]);
+  }, [navigate, sections, setEditorContent]);
   
   // Handle back navigation
   const handleBack = useCallback(() => {

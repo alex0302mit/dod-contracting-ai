@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Report - 2026-01-10</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f3f4f6; color: #1f2937; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        h1 { font-size: 1.875rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .subtitle { color: #6b7280; margin-bottom: 2rem; }
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .card { background: white; border-radius: 0.5rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .card-title { font-size: 0.875rem; color: #6b7280; margin-bottom: 0.5rem; }
+        .card-value { font-size: 2rem; font-weight: 700; }
+        .card-value.passed { color: #22c55e; }
+        .card-value.failed { color: #ef4444; }
+        .card-value.skipped { color: #eab308; }
+        .card-value.rate { color: #ef4444; }
+        .suite { background: white; border-radius: 0.5rem; padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .suite-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .suite-name { font-size: 1.25rem; font-weight: 600; }
+        .suite-stats { color: #6b7280; }
+        .progress-bar { height: 0.5rem; background: #e5e7eb; border-radius: 0.25rem; overflow: hidden; }
+        .progress-fill { height: 100%; background: #22c55e; transition: width 0.3s; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { text-align: left; padding: 0.75rem; border-bottom: 1px solid #e5e7eb; }
+        th { background: #f9fafb; font-weight: 600; }
+        .status { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; }
+        .status.passed { background: #dcfce7; color: #166534; }
+        .status.failed { background: #fee2e2; color: #991b1b; }
+        .status.skipped { background: #fef3c7; color: #92400e; }
+        .status.error { background: #fee2e2; color: #991b1b; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 DoD Contracting System Test Report</h1>
+        <p class="subtitle">Generated: 2026-01-10T11:58:40.617446</p>
+        
+        <div class="summary-grid">
+            <div class="card">
+                <div class="card-title">Total Tests</div>
+                <div class="card-value">50</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Passed</div>
+                <div class="card-value passed">13</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Failed</div>
+                <div class="card-value failed">8</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Pass Rate</div>
+                <div class="card-value rate">26.0%</div>
+            </div>
+        </div>
+
+        <div class="suite">
+            <div class="suite-header">
+                <span class="suite-name">API Endpoint Tests</span>
+                <span class="suite-stats">13/50 passed (26.0%)</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 26.0%"></div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Test</th>
+                        <th>Status</th>
+                        <th>Duration</th>
+                        <th>Message</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td>POST /api/auth/register</td>
+                        <td><span class="status passed">PASSED</span></td>
+                        <td>65ms</td>
+                        <td>Test passed</td>
+                    </tr>
+
+                    <tr>
+                        <td>POST /api/auth/login</td>
+                        <td><span class="status passed">PASSED</span></td>
+                        <td>54ms</td>
+                        <td>Test passed</td>
+                    </tr>
+
+                    <tr>
+                        <td>POST /api/auth/login (invalid)</td>
+                        <td><span class="status passed">PASSED</span></td>
+                        <td>4ms</td>
+                        <td>Test passed</td>
+                    </tr>
+
+                    <tr>
+                        <td>GET /api/auth/me</td>
+                        <td><span class="status passed">PASSED</span></td>
+                        <td>20ms</td>
+                        <td>Test passed</td>
+                    </tr>
+
+                    <tr>
+                        <td>GET /api/users</td>
+                        <td><span class="status passed">PASSED</span></td>
+                        <td>7ms</td>
+                        <td>Test passed</td>
+                    </tr>
+
+                    <tr>
+                        <td>GET /api/admin/users</td>
+                        <td><span class="status passed">PASSED</span></td>
+                        <td>4ms</td>
+                        <td>Test passed</td>
+                    </tr>
+
+                    <tr>
+                        <td>POST /api/admin/bootstrap</td>
+                        <td><span class="status failed">FAILED</span></td>
+                        <td>5ms</td>
+                        <td>Test assertion failed</td>
+                    </tr>
+
+                    <tr>
+                        <td>POST /api/admin/users</td>
+                        <td><span class="status passed">PASSED</span></td>
+                        <td>4ms</td>
+                        <td>Test passed</td>
+                    </tr>
+
+                    <tr>
+                        <td>PUT /api/admin/users/{id}/role</td>
+                        <td><span class="status passed">PASSED</span></td>
+                        <td>5ms</td>
+                        <td>Test passed</td>
+                    </tr>
+
+                    <tr>
+                        <td>DELETE /api/admin/users/{id}</td>
+                        <td><span class="status passed">PASSED</span></td>
+                        <td>5ms</td>
+                        <td>Test passed</td>
+                    </tr>
+
+                    <tr>
+                        <td>POST /api/admin/reset-database</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>Skipped to preserve test data</td>
+                    </tr>
+
+                    <tr>
+                        <td>GET /api/projects</td>
+                        <td><span class="status passed">PASSED</span></td>
+                        <td>23ms</td>
+                        <td>Test passed</td>
+                    </tr>
+
+                    <tr>
+                        <td>POST /api/projects</td>
+                        <td><span class="status failed">FAILED</span></td>
+                        <td>32ms</td>
+                        <td>Test assertion failed</td>
+                    </tr>
+
+                    <tr>
+                        <td>GET /api/projects/{id}</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>No test project created</td>
+                    </tr>
+
+                    <tr>
+                        <td>PUT /api/projects/{id}</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>No test project created</td>
+                    </tr>
+
+                    <tr>
+                        <td>POST /api/projects/{id}/initialize-documents</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>No test project created</td>
+                    </tr>
+
+                    <tr>
+                        <td>GET /api/projects/{id}/phases</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>No test project created</td>
+                    </tr>
+
+                    <tr>
+                        <td>GET /api/projects/{id}/documents</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>No test project created</td>
+                    </tr>
+
+                    <tr>
+                        <td>POST /api/projects/{id}/cleanup-all-duplicate-steps</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>No test project created</td>
+                    </tr>
+
+                    <tr>
+                        <td>POST /api/projects/{id}/generate-document</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>Skipped to avoid expensive AI calls</td>
+                    </tr>
+
+                    <tr>
+                        <td>GET /api/documents/{id}/uploads</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>No test document created</td>
+                    </tr>
+
+                    <tr>
+                        <td>POST /api/documents/{id}/upload</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>File upload requires multipart form data</td>
+                    </tr>
+
+                    <tr>
+                        <td>PATCH /api/documents/{id}</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>No test document created</td>
+                    </tr>
+
+                    <tr>
+                        <td>POST /api/documents/{id}/generate</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>Skipped to avoid expensive AI calls</td>
+                    </tr>
+
+                    <tr>
+                        <td>GET /api/documents/{id}/generation-status</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>No test document created</td>
+                    </tr>
+
+                    <tr>
+                        <td>POST /api/documents/{id}/save-generated</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>No test document created</td>
+                    </tr>
+
+                    <tr>
+                        <td>GET /api/documents/{id}/check-dependencies</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>No test document created</td>
+                    </tr>
+
+                    <tr>
+                        <td>DELETE /api/uploads/{id}</td>
+                        <td><span class="status failed">FAILED</span></td>
+                        <td>22ms</td>
+                        <td>Test assertion failed</td>
+                    </tr>
+
+                    <tr>
+                        <td>POST /api/projects/{id}/generate-batch</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>Skipped to avoid expensive AI calls</td>
+                    </tr>
+
+                    <tr>
+                        <td>GET /api/generation-tasks/{id}</td>
+                        <td><span class="status passed">PASSED</span></td>
+                        <td>6ms</td>
+                        <td>Test passed</td>
+                    </tr>
+
+                    <tr>
+                        <td>POST /api/documents/{id}/request-approval</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>No test document created</td>
+                    </tr>
+
+                    <tr>
+                        <td>GET /api/documents/{id}/approvals</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>No test document created</td>
+                    </tr>
+
+                    <tr>
+                        <td>GET /api/approvals/pending</td>
+                        <td><span class="status passed">PASSED</span></td>
+                        <td>9ms</td>
+                        <td>Test passed</td>
+                    </tr>
+
+                    <tr>
+                        <td>POST /api/approvals/{id}/approve</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>No test approval created</td>
+                    </tr>
+
+                    <tr>
+                        <td>POST /api/approvals/{id}/reject</td>
+                        <td><span class="status failed">FAILED</span></td>
+                        <td>8ms</td>
+                        <td>Test assertion failed</td>
+                    </tr>
+
+                    <tr>
+                        <td>POST /api/approvals/{id}/delegate</td>
+                        <td><span class="status failed">FAILED</span></td>
+                        <td>37ms</td>
+                        <td>Test assertion failed</td>
+                    </tr>
+
+                    <tr>
+                        <td>GET /api/approvals/{id}/audit-trail</td>
+                        <td><span class="status failed">FAILED</span></td>
+                        <td>8ms</td>
+                        <td>Test assertion failed</td>
+                    </tr>
+
+                    <tr>
+                        <td>GET /api/documents/{id}/approval-history</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>No test document created</td>
+                    </tr>
+
+                    <tr>
+                        <td>PATCH /api/documents/{id}/routing</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>No test document created</td>
+                    </tr>
+
+                    <tr>
+                        <td>GET /api/projects/{id}/steps</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>No test project created</td>
+                    </tr>
+
+                    <tr>
+                        <td>PATCH /api/steps/{id}</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>No test step found</td>
+                    </tr>
+
+                    <tr>
+                        <td>PATCH /api/phases/{id}</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>No test phase found</td>
+                    </tr>
+
+                    <tr>
+                        <td>POST /api/phases/{id}/create-default-steps</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>No test phase found</td>
+                    </tr>
+
+                    <tr>
+                        <td>POST /api/phases/{id}/cleanup-duplicate-steps</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>No test phase found</td>
+                    </tr>
+
+                    <tr>
+                        <td>GET /api/phases/{id}/validate-transition</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>No test phase found</td>
+                    </tr>
+
+                    <tr>
+                        <td>POST /api/phases/{id}/request-transition</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>No test phase found</td>
+                    </tr>
+
+                    <tr>
+                        <td>GET /api/phase-transitions/pending</td>
+                        <td><span class="status passed">PASSED</span></td>
+                        <td>24ms</td>
+                        <td>Test passed</td>
+                    </tr>
+
+                    <tr>
+                        <td>POST /api/phase-transitions/{id}/approve</td>
+                        <td><span class="status failed">FAILED</span></td>
+                        <td>51ms</td>
+                        <td>Test assertion failed</td>
+                    </tr>
+
+                    <tr>
+                        <td>POST /api/phase-transitions/{id}/reject</td>
+                        <td><span class="status failed">FAILED</span></td>
+                        <td>8ms</td>
+                        <td>Test assertion failed</td>
+                    </tr>
+
+                    <tr>
+                        <td>GET /api/projects/{id}/transition-history</td>
+                        <td><span class="status skipped">SKIPPED</span></td>
+                        <td>0ms</td>
+                        <td>No test project created</td>
+                    </tr>
+
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</body>
+</html>

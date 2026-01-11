@@ -1195,7 +1195,8 @@
 /**
  * Gray background area behind the document page
  * Creates the visual separation between UI and document
- * Fills the entire wrapper and allows scrolling
+ * Scroll is now handled by the parent RichTextEditor container
+ * to allow sticky toolbar positioning
  */
 .document-canvas-background {
   flex: 1 1 auto;
@@ -1207,8 +1208,8 @@
   background-image:
     radial-gradient(circle, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
   background-size: 24px 24px;
-  overflow-y: auto;
   overflow-x: auto;
+  /* overflow-y removed - scroll handled by parent for sticky toolbar support */
   padding: 2rem;
   padding-top: 1.5rem;
   display: flex;
@@ -1231,10 +1232,10 @@
   border: 1px solid hsl(215 20% 92%);
   border-radius: 2px; /* Very subtle rounding */
 
-  /* US Letter size proportions (8.5 x 11 inches) */
-  /* Using max-width to maintain proportions while being responsive */
+  /* Document page width - wider than US Letter for better screen usage */
+  /* Original US Letter was 816px (8.5 inches at 96 DPI) */
   width: 100%;
-  max-width: 816px; /* 8.5 inches at 96 DPI */
+  max-width: 1200px; /* Wider page to fill more screen space */
   min-height: 1056px; /* 11 inches at 96 DPI */
 
   /* Allow content to grow beyond min-height */

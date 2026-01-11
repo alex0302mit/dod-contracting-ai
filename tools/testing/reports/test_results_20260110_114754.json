@@ -1,0 +1,38 @@
+{
+  "start_time": "2026-01-10T11:47:54.434063",
+  "end_time": "2026-01-10T11:47:54.454422",
+  "total_tests": 1,
+  "passed": 0,
+  "failed": 0,
+  "skipped": 0,
+  "errors": 1,
+  "pass_rate": "0.0%",
+  "duration_seconds": 0.0,
+  "suites": {
+    "api": {
+      "suite_name": "API Endpoint Tests",
+      "start_time": "2026-01-10T11:47:54.449379",
+      "end_time": "",
+      "summary": {
+        "total": 1,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 1,
+        "pass_rate": "0.0%",
+        "total_duration_ms": 0.0
+      },
+      "results": [
+        {
+          "name": "Setup",
+          "category": "setup",
+          "status": "error",
+          "duration_ms": 0.0,
+          "message": "Failed to setup test environment",
+          "details": {},
+          "timestamp": "2026-01-10T11:47:54.453876"
+        }
+      ]
+    }
+  }
+}

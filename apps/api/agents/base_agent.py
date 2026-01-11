@@ -8,6 +8,7 @@ Phase 4: Enhanced with collaboration methods for cross-referencing
 from typing import Dict, List, Optional
 import anthropic
 from datetime import datetime
+import re  # Used for markdown cleanup in _clean_markdown_lists()
 
 
 class BaseAgent:
@@ -108,11 +109,45 @@ class BaseAgent:
         
         try:
             response = self.client.messages.create(**kwargs)
-            return response.content[0].text
+            # Clean up markdown list formatting to prevent empty bullets
+            return self._clean_markdown_lists(response.content[0].text)
         
         except Exception as e:
             self.log(f"LLM call failed: {e}", "ERROR")
             raise
+    
+    def _clean_markdown_lists(self, content: str) -> str:
+        """
+        Remove blank lines between list items and empty list items.
+        
+        LLMs sometimes generate markdown with:
+        1. Blank lines between list items (causes extra spacing)
+        2. Empty bullet points (just "- " or "* " with no content)
+        
+        This method cleans up both issues for bullet and numbered lists.
+        
+        Args:
+            content: Markdown content from LLM
+            
+        Returns:
+            Cleaned markdown with proper list formatting
+        """
+        # Remove blank lines between bullet list items (- or *)
+        # Pattern: matches a bullet item followed by 1+ blank lines before another bullet
+        content = re.sub(r'(\n[-*]\s+[^\n]+)\n\n+(?=[-*]\s)', r'\1\n', content)
+        
+        # Remove blank lines between numbered list items (1. 2. 3. etc.)
+        # Pattern: matches a numbered item followed by 1+ blank lines before another number
+        content = re.sub(r'(\n\d+\.\s+[^\n]+)\n\n+(?=\d+\.\s)', r'\1\n', content)
+        
+        # Remove empty bullet items (- or * followed by only whitespace then newline)
+        # This catches "- \n" or "-\n" patterns that render as empty bullets
+        content = re.sub(r'\n[-*]\s*\n', '\n', content)
+        
+        # Remove empty numbered items (1. 2. etc. followed by only whitespace then newline)
+        content = re.sub(r'\n\d+\.\s*\n', '\n', content)
+        
+        return content
     
     def add_to_memory(self, key: str, value: any) -> None:
         """

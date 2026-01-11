@@ -202,54 +202,52 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
   // Local issues from text analysis (TBD placeholders, compliance, etc.)
   const localIssues = computeIssues(currentText);
   
-  // Fetch comprehensive API quality analysis when section or content changes
-  // This calls the backend QualityAgent for AI-powered 5-category analysis
-  // Results are cached per section so scores stay consistent across UI
-  // Skip fetching if we have fresh precomputed scores (not stale)
-  useEffect(() => {
-    // Skip if we already have a fresh precomputed score for this section
-    // Only fetch if the section is marked stale (user edited it) or no score exists
-    const hasPrecomputedScore = apiQualityBySection[activeSection];
-    const isSectionStale = staleSections.has(activeSection);
-    
-    if (hasPrecomputedScore && !isSectionStale) {
-      // Use precomputed score - no API call needed
-      return;
-    }
-    
-    // Debounce: don't call API for very short content or empty sections
+  // Quality analysis is now MANUAL - user must click "Re-analyze" button after editing
+  // Initial scores come from precomputed initialQualityScores passed as props
+  // When user edits, section is marked "stale" but no API call is made automatically
+  
+  /**
+   * Manual handler to trigger quality re-analysis
+   * Called when user clicks the "Re-analyze" button after completing their edits
+   * 
+   * Dependencies:
+   * - qualityApi.analyze: Backend QualityAgent for AI-powered 5-category analysis
+   * - apiQualityBySection: Cache of quality scores by section name
+   * - staleSections: Set of sections that have been edited since last analysis
+   */
+  const handleReanalyzeQuality = async () => {
+    // Don't analyze very short content
     if (currentText.replace(/<[^>]*>/g, '').trim().length < 50) {
+      setQualityError('Content too short to analyze (minimum 50 characters)');
       return;
     }
     
-    // Debounce API calls - wait 1.5s after typing stops
-    const timeoutId = setTimeout(async () => {
-      setIsLoadingQuality(true);
-      setQualityError(null);
-      
-      try {
-        const result = await qualityApi.analyze(currentText, activeSection);
-        // Cache result by section name for consistent scores across UI
-        setApiQualityBySection(prev => ({
-          ...prev,
-          [activeSection]: result
-        }));
-        // Clear stale flag - we now have a fresh score for this section
-        setStaleSections(prev => {
-          const next = new Set(prev);
-          next.delete(activeSection);
-          return next;
-        });
-      } catch (error) {
-        console.error('Quality API error:', error);
-        setQualityError(error instanceof Error ? error.message : 'Failed to analyze quality');
-      } finally {
-        setIsLoadingQuality(false);
-      }
-    }, 1500);
+    setIsLoadingQuality(true);
+    setQualityError(null);
     
-    return () => clearTimeout(timeoutId);
-  }, [currentText, activeSection, staleSections]);
+    try {
+      // Call backend QualityAgent for comprehensive 5-category analysis
+      const result = await qualityApi.analyze(currentText, activeSection);
+      
+      // Cache result by section name for consistent scores across UI
+      setApiQualityBySection(prev => ({
+        ...prev,
+        [activeSection]: result
+      }));
+      
+      // Clear stale flag - we now have a fresh score for this section
+      setStaleSections(prev => {
+        const next = new Set(prev);
+        next.delete(activeSection);
+        return next;
+      });
+    } catch (error) {
+      console.error('Quality API error:', error);
+      setQualityError(error instanceof Error ? error.message : 'Failed to analyze quality');
+    } finally {
+      setIsLoadingQuality(false);
+    }
+  };
   
   // Derive current section's API quality from cache
   const apiQuality = apiQualityBySection[activeSection] || null;
@@ -950,7 +948,8 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
         </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
+      {/* Main content area - overflow removed to allow sticky toolbar in RichTextEditor */}
+      <div className="flex-1 flex">
         {/* Left Sidebar - Collapsible Document Sections */}
         <aside className={`border-r bg-white flex flex-col transition-all duration-300 ${leftSidebarOpen ? 'w-64' : 'w-10'}`}>
           {leftSidebarOpen ? (
@@ -1038,7 +1037,8 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
           )}
         </aside>
 
-        <main className="flex-1 overflow-hidden">
+        {/* Main content - scroll container for sticky toolbar support */}
+        <main className="flex-1 overflow-y-auto">
           {viewMode === "edit" && (
             <div ref={editorContainerRef} className="h-full">
               <EditView
@@ -1175,6 +1175,18 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
                         'Document health'
                       )}
                     </CardDescription>
+                    {/* Re-analyze button - only enabled when section has been edited (stale) */}
+                    {/* User must click this after finishing edits to get updated quality score */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleReanalyzeQuality}
+                      disabled={isLoadingQuality || !staleSections.has(activeSection)}
+                      className="mt-2 h-7 text-xs"
+                    >
+                      <RefreshCw className={`h-3 w-3 mr-1.5 ${isLoadingQuality ? 'animate-spin' : ''}`} />
+                      {isLoadingQuality ? 'Analyzing...' : 'Re-analyze'}
+                    </Button>
                   </div>
                   {/* Circular overall score indicator - uses API score if available */}
                   <div className="relative w-14 h-14">
@@ -1761,8 +1773,9 @@ function EditView({ sectionName, text, onTextChange, issues, citations, onEditor
   const qualityIssues: QualityIssue[] = [];
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      {/* Sticky Header - Section title and stats */}
+    // No overflow-hidden - allows sticky toolbar to work with parent scroll container
+    <div className="h-full flex flex-col">
+      {/* Section Header - title and stats */}
       <div className="sticky top-0 z-10 bg-white border-b px-6 py-4 shadow-sm">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
@@ -1784,10 +1797,10 @@ function EditView({ sectionName, text, onTextChange, issues, citations, onEditor
         </div>
       </div>
       
-      {/* Scrollable Editor Content */}
-      <ScrollArea className="flex-1">
-        <div className="p-6 max-w-5xl mx-auto">
-          {/* Rich Text Editor - toolbar is sticky within this container */}
+      {/* Editor Content - no ScrollArea, parent main element handles scroll for sticky toolbar */}
+      <div className="flex-1 p-6">
+        <div className="max-w-5xl mx-auto">
+          {/* Rich Text Editor - toolbar is sticky within parent scroll container */}
           <Card className="overflow-visible">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
@@ -1810,7 +1823,7 @@ function EditView({ sectionName, text, onTextChange, issues, citations, onEditor
             </CardContent>
           </Card>
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }

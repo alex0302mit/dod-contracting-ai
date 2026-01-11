@@ -36,6 +36,19 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+// Responsive toolbar hook and collapsed group component
+import { useResponsiveToolbar } from './hooks/useResponsiveToolbar';
+import { CollapsedGroup } from './CollapsedGroup';
+// Reusable group content components
+import {
+  FontGroupContent,
+  ParagraphGroupContent,
+  StylesGroupContent,
+  EditingGroupContent,
+  DocumentGroupContent,
+  ViewGroupContent,
+  ActionsGroupContent,
+} from './RibbonGroupContents';
 import {
   // Text formatting icons
   Bold,
@@ -183,6 +196,9 @@ export function RibbonToolbar({
   const [replaceTerm, setReplaceTerm] = useState('');
   const [matchCount, setMatchCount] = useState(0);
   const [currentMatch, setCurrentMatch] = useState(0);
+
+  // Responsive toolbar - detects container width and determines which groups to collapse
+  const { containerRef, isCollapsed } = useResponsiveToolbar();
 
   // Early return if editor not ready
   if (!editor) {
@@ -494,7 +510,10 @@ export function RibbonToolbar({
   // ---------------------------
 
   return (
-    <div className="ribbon-toolbar bg-gradient-to-b from-slate-50 to-slate-100 sticky top-0 z-20 shadow-sm border-b border-slate-200/60">
+    <div 
+      ref={containerRef}
+      className="ribbon-toolbar bg-gradient-to-b from-slate-50 to-slate-100 shadow-sm border-b border-slate-200/60"
+    >
       {/* ==================== RIBBON TABS ==================== */}
       <Tabs defaultValue="home" className="w-full">
         {/* Tab navigation with Word-style underline */}
@@ -520,320 +539,106 @@ export function RibbonToolbar({
         </TabsList>
 
         {/* ==================== HOME TAB ==================== */}
+        {/* Responsive: Groups collapse into dropdowns when toolbar is narrow */}
         <TabsContent value="home" className="mt-0">
           <div className="flex items-stretch">
-            {/* ===== FONT GROUP ===== */}
+            {/* ===== FONT GROUP - Never collapses (most essential) ===== */}
             <RibbonGroup label="Font" showSeparator={false}>
-              <div className="flex flex-col gap-1">
-                {/* Row 1: Font family and size */}
-                <div className="flex items-center gap-1">
-                  <FontFamilySelect editor={editor} />
-                  <FontSizeSelect editor={editor} />
-                </div>
-                {/* Row 2: Text formatting */}
-                <div className="flex items-center gap-0.5">
-                  <ToolbarButton
-                    onClick={() => editor.chain().focus().toggleBold().run()}
-                    active={editor.isActive('bold')}
-                    icon={Bold}
-                    label="Bold (Ctrl+B)"
-                    className=""
-                  />
-                  <ToolbarButton
-                    onClick={() => editor.chain().focus().toggleItalic().run()}
-                    active={editor.isActive('italic')}
-                    icon={Italic}
-                    label="Italic (Ctrl+I)"
-                    className=""
-                  />
-                  <ToolbarButton
-                    onClick={() => editor.chain().focus().toggleUnderline().run()}
-                    active={editor.isActive('underline')}
-                    icon={UnderlineIcon}
-                    label="Underline (Ctrl+U)"
-                    className=""
-                  />
-                  <ToolbarButton
-                    onClick={() => editor.chain().focus().toggleStrike().run()}
-                    active={editor.isActive('strike')}
-                    icon={Strikethrough}
-                    label="Strikethrough"
-                    className=""
-                  />
-                  {/* Text Color */}
-                  <Popover open={showTextColorPopover} onOpenChange={setShowTextColorPopover}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 rounded-md transition-all duration-150 text-muted-foreground hover:bg-muted hover:text-foreground"
-                        title="Text Color"
-                      >
-                        <Palette className="h-4 w-4" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-3 shadow-lg rounded-xl" align="start">
-                      <div className="space-y-2">
-                        <Label className="text-xs font-medium">Text Color</Label>
-                        <div className="flex gap-1 flex-wrap max-w-[180px]">
-                          {TEXT_COLORS.map((c) => (
-                            <ColorSwatch
-                              key={c.value}
-                              color={c.value === 'inherit' ? '#ffffff' : c.value}
-                              name={c.name}
-                              onClick={() => handleSetTextColor(c.value)}
-                              isActive={
-                                c.value === 'inherit'
-                                  ? !editor.getAttributes('textStyle').color
-                                  : editor.getAttributes('textStyle').color === c.value
-                              }
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                  {/* Highlight Color */}
-                  <Popover open={showHighlightPopover} onOpenChange={setShowHighlightPopover}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 rounded-md transition-all duration-150 text-muted-foreground hover:bg-muted hover:text-foreground"
-                        title="Highlight"
-                      >
-                        <Highlighter className="h-4 w-4" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-3 shadow-lg rounded-xl" align="start">
-                      <div className="space-y-2">
-                        <Label className="text-xs font-medium">Highlight Color</Label>
-                        <div className="flex gap-1 flex-wrap max-w-[160px]">
-                          {HIGHLIGHT_COLORS.map((c) => (
-                            <ColorSwatch
-                              key={c.name}
-                              color={c.value}
-                              name={c.name}
-                              onClick={() => handleSetHighlight(c.value)}
-                              isActive={
-                                !c.value
-                                  ? !editor.isActive('highlight')
-                                  : editor.isActive('highlight', { color: c.value })
-                              }
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                  <ToolbarButton
-                    onClick={handleClearFormatting}
-                    icon={RemoveFormatting}
-                    label="Clear Formatting"
-                    className=""
-                  />
-                </div>
-              </div>
+              <FontGroupContent
+                editor={editor}
+                showTextColorPopover={showTextColorPopover}
+                setShowTextColorPopover={setShowTextColorPopover}
+                showHighlightPopover={showHighlightPopover}
+                setShowHighlightPopover={setShowHighlightPopover}
+              />
             </RibbonGroup>
 
             <RibbonDivider />
 
-            {/* ===== PARAGRAPH GROUP ===== */}
-            <RibbonGroup label="Paragraph" showSeparator={false}>
-              <div className="flex flex-col gap-1">
-                {/* Row 1: Alignment */}
-                <div className="flex items-center gap-0.5">
-                  <ToolbarButton
-                    onClick={handleAlignLeft}
-                    active={editor.isActive({ textAlign: 'left' })}
-                    icon={AlignLeft}
-                    label="Align Left"
-                    className=""
-                  />
-                  <ToolbarButton
-                    onClick={handleAlignCenter}
-                    active={editor.isActive({ textAlign: 'center' })}
-                    icon={AlignCenter}
-                    label="Align Center"
-                    className=""
-                  />
-                  <ToolbarButton
-                    onClick={handleAlignRight}
-                    active={editor.isActive({ textAlign: 'right' })}
-                    icon={AlignRight}
-                    label="Align Right"
-                    className=""
-                  />
-                  <ToolbarButton
-                    onClick={handleAlignJustify}
-                    active={editor.isActive({ textAlign: 'justify' })}
-                    icon={AlignJustify}
-                    label="Justify"
-                    className=""
-                  />
-                </div>
-                {/* Row 2: Lists and indent */}
-                <div className="flex items-center gap-0.5">
-                  <ToolbarButton
-                    onClick={() => editor.chain().focus().toggleBulletList().run()}
-                    active={editor.isActive('bulletList')}
-                    icon={List}
-                    label="Bullet List"
-                    className=""
-                  />
-                  <ToolbarButton
-                    onClick={() => editor.chain().focus().toggleOrderedList().run()}
-                    active={editor.isActive('orderedList')}
-                    icon={ListOrdered}
-                    label="Numbered List"
-                    className=""
-                  />
-                  <ToolbarButton
-                    onClick={() => editor.chain().focus().liftListItem('listItem').run()}
-                    disabled={!editor.can().liftListItem('listItem')}
-                    icon={IndentDecrease}
-                    label="Outdent"
-                    className=""
-                  />
-                  <ToolbarButton
-                    onClick={() => editor.chain().focus().sinkListItem('listItem').run()}
-                    disabled={!editor.can().sinkListItem('listItem')}
-                    icon={IndentIncrease}
-                    label="Indent"
-                    className=""
-                  />
-                </div>
-              </div>
-            </RibbonGroup>
+            {/* ===== PARAGRAPH GROUP - Collapses at narrow widths ===== */}
+            {isCollapsed('PARAGRAPH') ? (
+              <CollapsedGroup label="Para" icon={AlignLeft}>
+                <ParagraphGroupContent editor={editor} compact />
+              </CollapsedGroup>
+            ) : (
+              <RibbonGroup label="Paragraph" showSeparator={false}>
+                <ParagraphGroupContent editor={editor} />
+              </RibbonGroup>
+            )}
 
-            <RibbonDivider />
+            {!isCollapsed('PARAGRAPH') && <RibbonDivider />}
 
-            {/* ===== STYLES GROUP ===== */}
-            <RibbonGroup label="Styles" showSeparator={false}>
-              <ParagraphStylesSelect editor={editor} />
-            </RibbonGroup>
+            {/* ===== STYLES GROUP - Collapses at medium widths ===== */}
+            {isCollapsed('STYLES') ? (
+              <CollapsedGroup label="Styles" icon={Type}>
+                <StylesGroupContent editor={editor} />
+              </CollapsedGroup>
+            ) : (
+              <RibbonGroup label="Styles" showSeparator={false}>
+                <StylesGroupContent editor={editor} />
+              </RibbonGroup>
+            )}
 
-            <RibbonDivider />
+            {!isCollapsed('STYLES') && <RibbonDivider />}
 
-            {/* ===== EDITING GROUP ===== */}
-            <RibbonGroup label="Editing" showSeparator={false}>
-              <div className="flex items-center gap-0.5">
-                <ToolbarButton
-                  onClick={() => editor.chain().focus().undo().run()}
-                  disabled={!editor.can().undo()}
-                  icon={Undo2}
-                  label="Undo (Ctrl+Z)"
-                  className=""
+            {/* ===== EDITING GROUP - Collapses at medium widths ===== */}
+            {isCollapsed('EDITING') ? (
+              <CollapsedGroup label="Edit" icon={Undo2}>
+                <EditingGroupContent 
+                  editor={editor} 
+                  showFindReplace={showFindReplace}
+                  setShowFindReplace={setShowFindReplace}
                 />
-                <ToolbarButton
-                  onClick={() => editor.chain().focus().redo().run()}
-                  disabled={!editor.can().redo()}
-                  icon={Redo2}
-                  label="Redo (Ctrl+Y)"
-                  className=""
+              </CollapsedGroup>
+            ) : (
+              <RibbonGroup label="Editing" showSeparator={false}>
+                <EditingGroupContent 
+                  editor={editor} 
+                  showFindReplace={showFindReplace}
+                  setShowFindReplace={setShowFindReplace}
                 />
-                <Button
-                  type="button"
-                  variant={showFindReplace ? 'default' : 'ghost'}
-                  size="sm"
-                  className={`h-8 w-8 p-0 rounded-md transition-all duration-150 ${
-                    showFindReplace
-                      ? 'bg-primary/10 text-primary ring-1 ring-primary/20 shadow-sm'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  }`}
-                  onClick={() => setShowFindReplace(!showFindReplace)}
-                  title="Find & Replace"
-                >
-                  <Search className="h-4 w-4" />
-                </Button>
-              </div>
-            </RibbonGroup>
+              </RibbonGroup>
+            )}
 
             {/* ===== SPACER TO PUSH RIGHT GROUPS ===== */}
             <div className="flex-1" />
 
-            {/* ===== DOCUMENT INFO GROUP ===== */}
-            <RibbonGroup label="Document" showSeparator={false}>
-              <div className="flex flex-col gap-1 min-w-[100px]">
-                {/* Word count */}
-                <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                  <Type className="h-3 w-3" />
-                  <span>{editor.state.doc.textContent.trim().split(/\s+/).filter(w => w.length > 0).length.toLocaleString()} words</span>
-                </div>
-                {/* Character count */}
-                <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                  <Hash className="h-3 w-3" />
-                  <span>{editor.state.doc.textContent.length.toLocaleString()} chars</span>
-                </div>
-              </div>
-            </RibbonGroup>
+            {/* ===== DOCUMENT INFO GROUP - Collapses early ===== */}
+            {isCollapsed('DOCUMENT') ? (
+              <CollapsedGroup label="Doc" icon={FileText}>
+                <DocumentGroupContent editor={editor} />
+              </CollapsedGroup>
+            ) : (
+              <RibbonGroup label="Document" showSeparator={false}>
+                <DocumentGroupContent editor={editor} />
+              </RibbonGroup>
+            )}
 
-            <RibbonDivider />
+            {!isCollapsed('DOCUMENT') && <RibbonDivider />}
 
-            {/* ===== VIEW GROUP ===== */}
-            <RibbonGroup label="View" showSeparator={false}>
-              <div className="flex items-center gap-0.5">
-                <ToolbarButton
-                  onClick={() => {/* Zoom out - handled by parent */}}
-                  icon={ZoomOut}
-                  label="Zoom Out"
-                  className=""
-                />
-                <span className="text-xs text-slate-600 min-w-[40px] text-center">100%</span>
-                <ToolbarButton
-                  onClick={() => {/* Zoom in - handled by parent */}}
-                  icon={ZoomIn}
-                  label="Zoom In"
-                  className=""
-                />
-                <ToolbarButton
-                  onClick={() => {
-                    if (document.fullscreenElement) {
-                      document.exitFullscreen();
-                    } else {
-                      document.documentElement.requestFullscreen();
-                    }
-                  }}
-                  icon={Maximize}
-                  label="Toggle Fullscreen"
-                  className=""
-                />
-              </div>
-            </RibbonGroup>
+            {/* ===== VIEW GROUP - Collapses early ===== */}
+            {isCollapsed('VIEW') ? (
+              <CollapsedGroup label="View" icon={ZoomIn}>
+                <ViewGroupContent editor={editor} />
+              </CollapsedGroup>
+            ) : (
+              <RibbonGroup label="View" showSeparator={false}>
+                <ViewGroupContent editor={editor} />
+              </RibbonGroup>
+            )}
 
-            <RibbonDivider />
+            {!isCollapsed('VIEW') && <RibbonDivider />}
 
-            {/* ===== ACTIONS GROUP ===== */}
-            <RibbonGroup label="Actions" showSeparator={false}>
-              <div className="flex items-center gap-0.5">
-                <ToolbarButton
-                  onClick={() => {
-                    // Trigger save - placeholder
-                    console.log('Save document');
-                  }}
-                  icon={Save}
-                  label="Save (Ctrl+S)"
-                  className=""
-                />
-                <ToolbarButton
-                  onClick={() => {
-                    // Export/download - placeholder
-                    console.log('Export document');
-                  }}
-                  icon={Download}
-                  label="Export"
-                  className=""
-                />
-                <ToolbarButton
-                  onClick={() => window.print()}
-                  icon={Printer}
-                  label="Print (Ctrl+P)"
-                  className=""
-                />
-              </div>
-            </RibbonGroup>
+            {/* ===== ACTIONS GROUP - Collapses first (least used during editing) ===== */}
+            {isCollapsed('ACTIONS') ? (
+              <CollapsedGroup label="Actions" icon={Save}>
+                <ActionsGroupContent editor={editor} />
+              </CollapsedGroup>
+            ) : (
+              <RibbonGroup label="Actions" showSeparator={false}>
+                <ActionsGroupContent editor={editor} />
+              </RibbonGroup>
+            )}
           </div>
         </TabsContent>
 

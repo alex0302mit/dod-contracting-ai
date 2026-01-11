@@ -123,6 +123,10 @@ class ProjectDocument(Base):
     # ai_quality_score: Quality score from AI generation (0-100)
     ai_quality_score = Column(Integer, nullable=True)
     
+    # Approval round tracking - incremented each time approval is re-requested after rejection
+    # This allows the system to only count approvals from the current round when determining status
+    current_approval_round = Column(Integer, default=1)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -158,6 +162,8 @@ class ProjectDocument(Base):
             "generated_at": self.generated_at.isoformat() if self.generated_at else None,
             "generation_task_id": self.generation_task_id,
             "ai_quality_score": self.ai_quality_score,
+            # Approval round tracking - indicates which approval cycle the document is on
+            "current_approval_round": self.current_approval_round or 1,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -213,6 +219,10 @@ class DocumentApproval(Base):
     requested_at = Column(DateTime(timezone=True), server_default=func.now())
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Links this approval to a specific round on the document
+    # Only approvals from the current round are counted when determining document status
+    approval_round = Column(Integer, default=1)
 
     # Relationships
     document = relationship("ProjectDocument", back_populates="approvals")
@@ -229,6 +239,8 @@ class DocumentApproval(Base):
             "approval_date": self.approval_date.isoformat() if self.approval_date else None,
             "comments": self.comments,
             "requested_at": self.requested_at.isoformat() if self.requested_at else None,
+            # Approval round - links this approval to a specific approval cycle
+            "approval_round": self.approval_round or 1,
         }
 
 

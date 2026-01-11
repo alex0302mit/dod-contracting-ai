@@ -376,7 +376,11 @@ export function DocumentDetailDialog({
                       View History
                     </Button>
                   )}
-                  {canEdit && (document.status === 'uploaded' || document.status === 'pending') && (
+                  {/* Show Request Approval button for documents that can be submitted for approval:
+                      - uploaded: Initial upload, ready for first approval
+                      - pending: Document created but not uploaded yet
+                      - rejected: Document was rejected and can be re-submitted for a new approval round */}
+                  {canEdit && (document.status === 'uploaded' || document.status === 'pending' || document.status === 'rejected') && (
                     <Button
                       onClick={() => setShowApprovalRequestDialog(true)}
                       className="gap-2"
@@ -397,7 +401,8 @@ export function DocumentDetailDialog({
                       ? 'Request approval from team members to review this document'
                       : 'No approval requests have been made for this document yet'}
                   </p>
-                  {canEdit && (document.status === 'uploaded' || document.status === 'pending') && (
+                  {/* Same condition as above - allow re-requesting approval after rejection */}
+                  {canEdit && (document.status === 'uploaded' || document.status === 'pending' || document.status === 'rejected') && (
                     <Button
                       onClick={() => setShowApprovalRequestDialog(true)}
                       className="gap-2"
