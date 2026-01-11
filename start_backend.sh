@@ -72,7 +72,9 @@ fi
 # Set default environment variables if not set
 export API_HOST=${API_HOST:-"0.0.0.0"}
 export API_PORT=${API_PORT:-8000}
-export API_RELOAD=${API_RELOAD:-"true"}
+# Reload disabled by default to avoid venv file watcher issues
+# Set API_RELOAD=true before running this script to enable hot reload
+export API_RELOAD=${API_RELOAD:-"false"}
 export CORS_ORIGINS=${CORS_ORIGINS:-"http://localhost:5173,http://localhost:5174,http://localhost:3000"}
 echo -e "${GREEN}✓ Environment configured${NC}"
 echo ""

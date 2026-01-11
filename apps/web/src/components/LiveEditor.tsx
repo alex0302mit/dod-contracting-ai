@@ -49,6 +49,23 @@ import { CommentThread, Comment } from '@/lib/commentTypes';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 // DocumentLineagePanel for showing source documents that influenced AI generation
 import { DocumentLineagePanel } from "@/components/documents/DocumentLineagePanel";
+// File import components for drag-and-drop document import
+import { FileDropZone } from "./editor/FileDropZone";
+import { ImportOptionsDialog } from "./editor/ImportOptionsDialog";
+import { ImportedDocumentsList, ImportedDocument } from "./editor/ImportedDocumentsList";
+import { useDocumentImport, ImportResult, ImportPlacement } from "@/hooks/useDocumentImport";
+import { toast } from "sonner";
+// Alert dialog for delete confirmation
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Citation {
   id: number;
@@ -195,6 +212,54 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
 
   // Ref to the editor container for DOM-based highlighting
   const editorContainerRef = useRef<HTMLDivElement>(null);
+
+  // Document import state - for drag-and-drop PDF/DOCX import
+  const { convertFile, converting, progress: importProgress, error: importError, clearError: clearImportError } = useDocumentImport();
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  // Imported documents list - tracks all imported files, persisted in localStorage
+  // Use lazy initialization to load from localStorage synchronously on first render
+  const [importedDocuments, setImportedDocuments] = useState<ImportedDocument[]>(() => {
+    const stored = localStorage.getItem('importedDocuments');
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch (e) {
+        console.error('Failed to parse stored imports:', e);
+        return [];
+      }
+    }
+    return [];
+  });
+  const [deleteConfirmDoc, setDeleteConfirmDoc] = useState<ImportedDocument | null>(null);
+
+  // Save imported documents to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('importedDocuments', JSON.stringify(importedDocuments));
+  }, [importedDocuments]);
+
+  // Restore section content from imported documents on mount
+  useEffect(() => {
+    const stored = localStorage.getItem('importedDocuments');
+    if (stored) {
+      try {
+        const docs: ImportedDocument[] = JSON.parse(stored);
+        const restoredSections = { ...sections };
+        let hasChanges = false;
+        docs.forEach(doc => {
+          if (doc.content && doc.placement === 'new_section' && !sections[doc.sectionName]) {
+            restoredSections[doc.sectionName] = doc.content;
+            hasChanges = true;
+          }
+        });
+        if (hasChanges) {
+          setSections(restoredSections);
+        }
+      } catch (e) {
+        console.error('Failed to restore sections from imports:', e);
+      }
+    }
+  }, []); // Run once on mount
 
   const currentText = sections[activeSection] || "";
   // Local quality score (fast, client-side fallback)
@@ -376,6 +441,100 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
     setSections({ ...sections, [activeSection]: newText });
     // Mark this section's quality score as stale (needs refresh)
     setStaleSections(prev => new Set(prev).add(activeSection));
+  };
+
+  // Handle file selection from drop zone
+  const handleFileSelect = async (file: File) => {
+    clearImportError();
+    const result = await convertFile(file);
+    if (result) {
+      setImportResult(result);
+      setShowImportDialog(true);
+    } else if (importError) {
+      toast.error(importError);
+    }
+  };
+
+  // Handle import dialog confirmation
+  const handleImportConfirm = (placement: ImportPlacement, sectionName?: string) => {
+    if (!importResult) return;
+
+    const html = importResult.html;
+    let targetSectionName = activeSection;
+
+    if (placement === 'new_section') {
+      const name = sectionName || importResult.filename.replace(/\.(pdf|docx)$/i, '');
+      targetSectionName = name;
+      // Add new section
+      setSections({ ...sections, [name]: html });
+      setActiveSection(name);
+      toast.success(`Created new section: ${name}`);
+    } else if (placement === 'replace_current') {
+      // Replace current section content
+      setSections({ ...sections, [activeSection]: html });
+      toast.success(`Replaced content in "${activeSection}"`);
+    } else if (placement === 'append_current') {
+      // Append to current section
+      const currentContent = sections[activeSection] || '';
+      setSections({ ...sections, [activeSection]: currentContent + html });
+      toast.success(`Appended content to "${activeSection}"`);
+    }
+
+    // Mark section as stale for quality re-analysis
+    setStaleSections(prev => new Set(prev).add(placement === 'new_section' ? (sectionName || '') : activeSection));
+
+    // Track the imported document with content for persistence
+    const newImport: ImportedDocument = {
+      id: crypto.randomUUID(),
+      filename: importResult.filename,
+      fileType: importResult.fileType,
+      importedAt: new Date().toISOString(),
+      placement,
+      sectionName: targetSectionName,
+      content: html,
+    };
+    setImportedDocuments(prev => [...prev, newImport]);
+
+    // Clear import state
+    setImportResult(null);
+    setShowImportDialog(false);
+  };
+
+  // Handle delete imported document - opens confirmation dialog
+  const handleDeleteImport = (id: string) => {
+    const doc = importedDocuments.find(d => d.id === id);
+    if (doc) {
+      setDeleteConfirmDoc(doc);
+    }
+  };
+
+  // Confirm delete - optionally removes section content
+  const confirmDeleteImport = (deleteSectionContent: boolean) => {
+    if (!deleteConfirmDoc) return;
+
+    if (deleteSectionContent) {
+      const newSections = { ...sections };
+      if (deleteConfirmDoc.placement === 'new_section') {
+        // Remove the section entirely
+        delete newSections[deleteConfirmDoc.sectionName];
+        // Switch to another section if we deleted the active one
+        if (activeSection === deleteConfirmDoc.sectionName) {
+          const remainingSections = Object.keys(newSections);
+          setActiveSection(remainingSections[0] || '');
+        }
+      } else {
+        // For replace/append, clear the section content
+        newSections[deleteConfirmDoc.sectionName] = '<p></p>';
+      }
+      setSections(newSections);
+      toast.success(`Removed "${deleteConfirmDoc.filename}" and its content`);
+    } else {
+      toast.success(`Removed "${deleteConfirmDoc.filename}" from imports list`);
+    }
+
+    // Remove from imported documents list
+    setImportedDocuments(prev => prev.filter(d => d.id !== deleteConfirmDoc.id));
+    setDeleteConfirmDoc(null);
   };
 
   const commitVersion = () => {
@@ -1005,6 +1164,21 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
                       </Button>
                     );
                   })}
+                  {/* File import drop zone */}
+                  <div className="mt-3 pt-3 border-t border-slate-100">
+                    <FileDropZone
+                      onFileSelect={handleFileSelect}
+                      converting={converting}
+                      progress={importProgress}
+                      compact
+                    />
+                  </div>
+                  {/* Imported documents list */}
+                  <ImportedDocumentsList
+                    documents={importedDocuments}
+                    onDelete={handleDeleteImport}
+                    onNavigate={(sectionName) => setActiveSection(sectionName)}
+                  />
                 </div>
               </ScrollArea>
             </>
@@ -1763,6 +1937,63 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
           }
         }}
       />
+
+      {/* Document Import Dialog - shown after file drop/selection */}
+      <ImportOptionsDialog
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+        importResult={importResult}
+        currentSectionName={activeSection}
+        existingSections={sectionNames}
+        onConfirm={handleImportConfirm}
+      />
+
+      {/* Delete Import Confirmation Dialog */}
+      <AlertDialog open={!!deleteConfirmDoc} onOpenChange={() => setDeleteConfirmDoc(null)}>
+        <AlertDialogContent className="sm:max-w-[500px]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg">Remove imported document?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-lg border border-slate-100">
+                  <FileText className="h-4 w-4 text-slate-500 flex-shrink-0" />
+                  <span className="text-sm font-medium text-slate-700 truncate">
+                    {deleteConfirmDoc?.filename}
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Imported into section: <span className="font-medium text-slate-700">"{deleteConfirmDoc?.sectionName}"</span>
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex flex-col gap-2 pt-4">
+            <Button
+              variant="outline"
+              className="w-full justify-start h-auto py-3 px-4"
+              onClick={() => confirmDeleteImport(false)}
+            >
+              <div className="text-left">
+                <div className="font-medium">Keep content</div>
+                <div className="text-xs text-muted-foreground font-normal">Only remove from imports list</div>
+              </div>
+            </Button>
+            <Button
+              variant="destructive"
+              className="w-full justify-start h-auto py-3 px-4"
+              onClick={() => confirmDeleteImport(true)}
+            >
+              <div className="text-left">
+                <div className="font-medium">Delete everything</div>
+                <div className="text-xs opacity-80 font-normal">Remove from list and delete section content</div>
+              </div>
+            </Button>
+          </div>
+          <AlertDialogFooter className="pt-2">
+            <AlertDialogCancel className="w-full">Cancel</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

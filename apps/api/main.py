@@ -3142,6 +3142,82 @@ def search_rag_documents(
         )
 
 
+@app.post("/api/documents/convert-to-html", tags=["Documents"])
+async def convert_document_to_html(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Convert a PDF or DOCX document to HTML for the rich text editor.
+
+    This endpoint processes uploaded documents and returns HTML content
+    suitable for Tiptap or similar rich text editors.
+
+    Supports:
+    - PDF files (with OCR for scanned documents via Docling)
+    - DOCX files (preserves formatting)
+
+    Returns:
+    - html: The converted HTML content
+    - warnings: Any conversion warnings
+    """
+    import tempfile
+    import os as temp_os
+
+    # Validate file type
+    allowed_extensions = {'.pdf', '.docx'}
+    file_ext = temp_os.path.splitext(file.filename or '')[1].lower()
+
+    if file_ext not in allowed_extensions:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported file type: {file_ext}. Allowed: PDF, DOCX"
+        )
+
+    # Validate file size (25MB max)
+    max_size = 25 * 1024 * 1024
+    contents = await file.read()
+    if len(contents) > max_size:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"File size exceeds 25MB limit"
+        )
+
+    try:
+        # Save to temp file for processing
+        with tempfile.NamedTemporaryFile(
+            delete=False,
+            suffix=file_ext,
+            prefix="convert_"
+        ) as tmp:
+            tmp.write(contents)
+            tmp_path = tmp.name
+
+        try:
+            # Use Docling processor for conversion
+            from rag.docling_processor import DoclingProcessor
+
+            processor = DoclingProcessor()
+            result = processor.convert_to_html(tmp_path)
+
+            return {
+                "html": result.get("html", "<p></p>"),
+                "warnings": result.get("warnings", []),
+                "filename": file.filename
+            }
+
+        finally:
+            # Clean up temp file
+            if temp_os.path.exists(tmp_path):
+                temp_os.unlink(tmp_path)
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error converting document: {str(e)}"
+        )
+
+
 @app.post("/api/extract-assumptions", tags=["RAG"])
 async def extract_assumptions(
     current_user: User = Depends(get_current_user)
@@ -5450,8 +5526,12 @@ def root():
 if __name__ == "__main__":
     HOST = os.getenv("API_HOST", "0.0.0.0")
     PORT = int(os.getenv("API_PORT", 8000))
-    RELOAD = os.getenv("API_RELOAD", "true").lower() == "true"
+    # Disable reload by default due to venv watching issues on macOS
+    # Set API_RELOAD=true to enable (but may cause constant reloads)
+    RELOAD = os.getenv("API_RELOAD", "false").lower() == "true"
 
+    # Start uvicorn server
+    # Note: reload is disabled by default to avoid venv file watcher issues
     uvicorn.run(
         "backend.main:app",
         host=HOST,

@@ -20,10 +20,29 @@ from pathlib import Path
 from typing import List, Dict
 from dataclasses import dataclass
 
-# Import Docling components
+# Patch torch.xpu before importing Docling to prevent 'module has no attribute xpu' error
+# This is needed on macOS where Intel XPU support doesn't exist
 try:
-    from docling.document_converter import DocumentConverter
+    import torch
+    if not hasattr(torch, 'xpu'):
+        # Create a mock xpu module that reports as unavailable
+        class _MockXPU:
+            @staticmethod
+            def is_available():
+                return False
+            @staticmethod
+            def device_count():
+                return 0
+        torch.xpu = _MockXPU()
+except ImportError:
+    pass  # torch not installed, Docling will handle this
+
+# Import Docling components
+# PdfFormatOption and PdfPipelineOptions allow CPU-only configuration
+try:
+    from docling.document_converter import DocumentConverter, PdfFormatOption
     from docling.datamodel.base_models import InputFormat
+    from docling.datamodel.pipeline_options import PdfPipelineOptions
     DOCLING_AVAILABLE = True
 except ImportError:
     DOCLING_AVAILABLE = False
@@ -74,7 +93,18 @@ class DoclingProcessor:
         
         # Initialize Docling converter once for efficiency
         if DOCLING_AVAILABLE:
-            self.converter = DocumentConverter()
+            # Configure pipeline to use CPU only (avoids torch.xpu errors on macOS)
+            # PdfPipelineOptions provides control over OCR and table extraction
+            pipeline_options = PdfPipelineOptions()
+            pipeline_options.do_ocr = True  # Enable OCR for scanned documents
+            pipeline_options.do_table_structure = True  # Enable table extraction
+            
+            # Create converter with PDF-specific options
+            self.converter = DocumentConverter(
+                format_options={
+                    InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
+                }
+            )
         else:
             self.converter = None
             print("⚠️  Docling not available - will use fallback processor")
@@ -324,6 +354,233 @@ class DoclingProcessor:
         
         return [s.strip() for s in sentences if s.strip()]
     
+    def convert_to_html(self, file_path: str) -> Dict[str, any]:
+        """
+        Convert a document to HTML suitable for rich text editors
+
+        This method exports the document as HTML rather than chunks,
+        preserving formatting for use in Tiptap or similar editors.
+
+        Args:
+            file_path: Path to document (PDF, DOCX, etc.)
+
+        Returns:
+            Dict with 'html' content and 'warnings' list
+        """
+        file_name = Path(file_path).name
+        print(f"  📄 Converting to HTML with Docling: {file_name}")
+        warnings = []
+
+        if not DOCLING_AVAILABLE or self.converter is None:
+            # Fallback: basic text extraction wrapped in paragraphs
+            print(f"    ⚠️  Docling not available, using fallback")
+            warnings.append("Docling not available - using basic text extraction")
+            return self._fallback_convert_to_html(file_path, warnings)
+
+        try:
+            # Convert document
+            result = self.converter.convert(file_path)
+            doc = result.document
+
+            # Export to markdown first (preserves structure)
+            markdown_text = doc.export_to_markdown()
+
+            # Convert markdown to HTML
+            html = self._markdown_to_html(markdown_text)
+
+            print(f"    ✓ Converted to HTML ({len(html)} chars)")
+
+            return {
+                'html': html,
+                'warnings': warnings
+            }
+
+        except Exception as e:
+            print(f"    ⚠️  Error converting with Docling: {e}")
+            warnings.append(f"Docling conversion error: {str(e)}")
+            return self._fallback_convert_to_html(file_path, warnings)
+
+    def _markdown_to_html(self, markdown_text: str) -> str:
+        """
+        Convert markdown to HTML suitable for Tiptap editor
+
+        Args:
+            markdown_text: Markdown formatted text
+
+        Returns:
+            HTML string
+        """
+        try:
+            import markdown
+
+            # Configure markdown processor with extensions for better conversion
+            md = markdown.Markdown(extensions=[
+                'tables',
+                'fenced_code',
+                'nl2br',  # Convert newlines to <br>
+                'sane_lists',
+            ])
+
+            html = md.convert(markdown_text)
+
+            # Ensure content is wrapped appropriately for Tiptap
+            if not html.strip():
+                return '<p></p>'
+
+            # Enhance tables with styling for better rendering in Tiptap
+            html = self._enhance_html_tables(html)
+
+            # Detect bold paragraphs that should be headings
+            html = self._detect_and_convert_headings(html)
+
+            return html
+
+        except ImportError:
+            # Fallback: basic conversion without markdown library
+            import re
+
+            # Basic markdown to HTML conversion
+            html = markdown_text
+
+            # Headers
+            html = re.sub(r'^### (.+)$', r'<h3>\1</h3>', html, flags=re.MULTILINE)
+            html = re.sub(r'^## (.+)$', r'<h2>\1</h2>', html, flags=re.MULTILINE)
+            html = re.sub(r'^# (.+)$', r'<h1>\1</h1>', html, flags=re.MULTILINE)
+
+            # Bold and italic
+            html = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html)
+            html = re.sub(r'\*(.+?)\*', r'<em>\1</em>', html)
+
+            # Paragraphs
+            paragraphs = html.split('\n\n')
+            html = ''.join(
+                f'<p>{p.strip()}</p>' if not p.strip().startswith('<') else p
+                for p in paragraphs if p.strip()
+            )
+
+            # Apply enhancements even in fallback
+            html = self._enhance_html_tables(html)
+            html = self._detect_and_convert_headings(html)
+
+            return html
+
+    def _enhance_html_tables(self, html: str) -> str:
+        """
+        Add styling to HTML tables for better rendering in Tiptap editor
+
+        Args:
+            html: HTML content with tables
+
+        Returns:
+            HTML with enhanced table styling
+        """
+        import re
+
+        # Add classes to table elements for consistent styling
+        html = re.sub(r'<table>', '<table class="border-collapse w-full">', html)
+        html = re.sub(r'<td>', '<td class="border border-slate-300 p-2">', html)
+        html = re.sub(r'<td ', '<td class="border border-slate-300 p-2" ', html)
+        html = re.sub(r'<th>', '<th class="border border-slate-300 p-2 bg-slate-100 font-semibold">', html)
+        html = re.sub(r'<th ', '<th class="border border-slate-300 p-2 bg-slate-100 font-semibold" ', html)
+
+        return html
+
+    def _detect_and_convert_headings(self, html: str) -> str:
+        """
+        Detect bold-only paragraphs and convert to headings
+
+        Heuristics:
+        - Paragraph contains only <strong> or <b> tag
+        - Text is short (< 100 chars)
+        - Not ending with : (likely a label)
+        - Not a single short word
+        """
+        import re
+
+        # Pattern: <p><strong>Short text</strong></p>
+        pattern = r'<p>\s*<(strong|b)>([^<]+)</\1>\s*</p>'
+
+        def replace_heading(match):
+            text = match.group(2).strip()
+
+            # Skip if too long
+            if len(text) > 100:
+                return match.group(0)
+
+            # Skip if ends with : (label)
+            if text.endswith(':'):
+                return match.group(0)
+
+            # Skip single short words
+            if ' ' not in text and len(text) < 15:
+                return match.group(0)
+
+            return f'<h2>{text}</h2>'
+
+        return re.sub(pattern, replace_heading, html, flags=re.IGNORECASE)
+
+    def _fallback_convert_to_html(self, file_path: str, warnings: List[str]) -> Dict[str, any]:
+        """
+        Fallback HTML conversion using basic text extraction
+
+        Args:
+            file_path: Path to file
+            warnings: List to append warnings to
+
+        Returns:
+            Dict with 'html' and 'warnings'
+        """
+        try:
+            suffix = Path(file_path).suffix.lower()
+            text = ""
+
+            if suffix == '.pdf':
+                try:
+                    import PyPDF2
+                    with open(file_path, 'rb') as f:
+                        reader = PyPDF2.PdfReader(f)
+                        for page in reader.pages:
+                            text += page.extract_text() + "\n\n"
+                except Exception as e:
+                    warnings.append(f"PDF extraction error: {str(e)}")
+
+            elif suffix == '.docx':
+                try:
+                    from docx import Document
+                    doc = Document(file_path)
+                    for para in doc.paragraphs:
+                        text += para.text + "\n\n"
+                    # Extract tables
+                    for table in doc.tables:
+                        text += "\n"
+                        for row in table.rows:
+                            cells = [cell.text for cell in row.cells]
+                            text += " | ".join(cells) + "\n"
+                        text += "\n"
+                except Exception as e:
+                    warnings.append(f"DOCX extraction error: {str(e)}")
+
+            elif suffix in ['.txt', '.md']:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    text = f.read()
+            else:
+                warnings.append(f"Unsupported file type: {suffix}")
+                return {'html': '<p>Unable to convert this file type.</p>', 'warnings': warnings}
+
+            # Convert plain text to HTML paragraphs
+            paragraphs = text.split('\n\n')
+            html = ''.join(f'<p>{p.strip()}</p>' for p in paragraphs if p.strip())
+
+            if not html:
+                html = '<p>No text content could be extracted from this document.</p>'
+                warnings.append("No text content extracted")
+
+            return {'html': html, 'warnings': warnings}
+
+        except Exception as e:
+            warnings.append(f"Conversion failed: {str(e)}")
+            return {'html': '<p>Failed to convert document.</p>', 'warnings': warnings}
+
     def _fallback_process(self, file_path: str) -> List[DocumentChunk]:
         """
         Fallback to basic processing if Docling fails or is unavailable
