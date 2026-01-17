@@ -70,62 +70,39 @@ def seed_document_templates(db):
     print("📄 Seeding document templates...")
 
     templates = [
-        # Pre-Solicitation Phase - Required documents for phase gate transition
-        # These document names MUST match phase_definitions.yaml required_documents
+        # Pre-Solicitation Phase
         DocumentChecklistTemplate(
             contract_type=ProjectType.RFP,
-            document_name="Market Research Report",  # Required for phase gate
-            description="Comprehensive market research documenting available sources, pricing benchmarks, and market conditions per FAR Part 10",
-            category="Market Research",
-            phase=PhaseName.PRE_SOLICITATION,
-            is_required=True,
-            typical_deadline_days=20,
-            requires_approval=True,
-            display_order=1
-        ),
-        DocumentChecklistTemplate(
-            contract_type=ProjectType.RFP,
-            document_name="Acquisition Plan",  # Required for phase gate
-            description="Comprehensive acquisition planning document per FAR Part 7, outlining approach, timeline, milestones, and resources",
+            document_name="Acquisition Strategy",
+            description="Comprehensive acquisition strategy document outlining approach, timeline, and resources",
             category="Strategic",
             phase=PhaseName.PRE_SOLICITATION,
             is_required=True,
             typical_deadline_days=30,
             requires_approval=True,
-            display_order=2
+            display_order=1
         ),
         DocumentChecklistTemplate(
             contract_type=ProjectType.RFP,
-            document_name="Acquisition Strategy",  # Additional strategic document
-            description="High-level acquisition strategy document outlining overall approach and key decisions",
-            category="Strategic",
-            phase=PhaseName.PRE_SOLICITATION,
-            is_required=False,  # Not required for phase gate
-            typical_deadline_days=25,
-            requires_approval=True,
-            display_order=3
-        ),
-        DocumentChecklistTemplate(
-            contract_type=ProjectType.RFP,
-            document_name="Performance Work Statement (PWS)",  # Required for phase gate
-            description="Performance-based work requirements and objectives per FAR Part 11",
+            document_name="Performance Work Statement (PWS)",
+            description="Performance-based work requirements and objectives",
             category="Technical",
             phase=PhaseName.PRE_SOLICITATION,
             is_required=True,
             typical_deadline_days=45,
             requires_approval=True,
-            display_order=4
+            display_order=2
         ),
         DocumentChecklistTemplate(
             contract_type=ProjectType.RFP,
-            document_name="Independent Government Cost Estimate (IGCE)",  # Required for phase gate
-            description="Detailed cost estimate prepared by government team for budget validation",
+            document_name="Independent Government Cost Estimate (IGCE)",
+            description="Detailed cost estimate prepared by government team",
             category="Financial",
             phase=PhaseName.PRE_SOLICITATION,
             is_required=True,
             typical_deadline_days=45,
             requires_approval=True,
-            display_order=5
+            display_order=3
         ),
         # Solicitation Phase
         DocumentChecklistTemplate(
@@ -137,7 +114,7 @@ def seed_document_templates(db):
             is_required=True,
             typical_deadline_days=15,
             requires_approval=True,
-            display_order=10
+            display_order=4
         ),
         DocumentChecklistTemplate(
             contract_type=ProjectType.RFP,
@@ -148,75 +125,7 @@ def seed_document_templates(db):
             is_required=True,
             typical_deadline_days=30,
             requires_approval=True,
-            display_order=11
-        ),
-        # Post-Solicitation Phase - Documents for evaluation and award
-        # These are initialized when transitioning from solicitation to post_solicitation
-        DocumentChecklistTemplate(
-            contract_type=ProjectType.RFP,
-            document_name="Technical Evaluation Report",
-            description="Comprehensive evaluation of technical proposals per FAR 15.305, documenting strengths, weaknesses, and ratings",
-            category="Evaluation",
-            phase=PhaseName.POST_SOLICITATION,
-            is_required=True,
-            typical_deadline_days=45,
-            requires_approval=True,
-            display_order=20
-        ),
-        DocumentChecklistTemplate(
-            contract_type=ProjectType.RFP,
-            document_name="Past Performance Evaluation",
-            description="Assessment of offerors' past performance on similar contracts per FAR 15.305(a)(2)",
-            category="Evaluation",
-            phase=PhaseName.POST_SOLICITATION,
-            is_required=True,
-            typical_deadline_days=30,
-            requires_approval=True,
-            display_order=21
-        ),
-        DocumentChecklistTemplate(
-            contract_type=ProjectType.RFP,
-            document_name="Cost/Price Analysis",
-            description="Detailed analysis of proposed costs and pricing per FAR 15.404, ensuring fair and reasonable pricing",
-            category="Financial",
-            phase=PhaseName.POST_SOLICITATION,
-            is_required=True,
-            typical_deadline_days=30,
-            requires_approval=True,
-            display_order=22
-        ),
-        DocumentChecklistTemplate(
-            contract_type=ProjectType.RFP,
-            document_name="Competitive Range Determination",
-            description="Documentation of competitive range decision identifying offerors for discussions per FAR 15.306",
-            category="Administrative",
-            phase=PhaseName.POST_SOLICITATION,
-            is_required=True,
-            typical_deadline_days=15,
-            requires_approval=True,
-            display_order=23
-        ),
-        DocumentChecklistTemplate(
-            contract_type=ProjectType.RFP,
-            document_name="Source Selection Decision Document (SSDD)",
-            description="Final source selection decision and rationale documenting the award determination per FAR 15.308",
-            category="Administrative",
-            phase=PhaseName.POST_SOLICITATION,
-            is_required=True,
-            typical_deadline_days=30,
-            requires_approval=True,
-            display_order=24
-        ),
-        DocumentChecklistTemplate(
-            contract_type=ProjectType.RFP,
-            document_name="Contract Award Documentation",
-            description="Complete contract award package including SF-26, award notification, and supporting documents",
-            category="Legal",
-            phase=PhaseName.POST_SOLICITATION,
-            is_required=True,
-            typical_deadline_days=15,
-            requires_approval=True,
-            display_order=25
+            display_order=5
         ),
     ]
 

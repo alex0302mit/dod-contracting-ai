@@ -2696,6 +2696,36 @@ def approve_phase_transition(
     db.add(notification)
     db.commit()
     
+    # Initialize documents for the new phase
+    # This ensures the document checklist for the new phase is populated
+    # with the appropriate templates when transitioning phases
+    from backend.services.document_initializer import get_document_initializer
+    from backend.models.procurement import ProcurementProject
+    
+    try:
+        # Query the project to get contract type for document initialization
+        project = db.query(ProcurementProject).filter(
+            ProcurementProject.id == transition.project_id
+        ).first()
+        
+        if project:
+            # Initialize documents for the new phase using templates
+            # skip_existing=True ensures we don't duplicate existing documents
+            initializer = get_document_initializer()
+            created_docs = initializer.initialize_project_documents(
+                db=db,
+                project_id=str(project.id),
+                contract_type=project.project_type,
+                phase=transition.to_phase,
+                skip_existing=True
+            )
+            if created_docs:
+                print(f"Initialized {len(created_docs)} documents for phase {transition.to_phase.value}")
+    except Exception as e:
+        # Don't fail the transition if document initialization fails
+        # Log warning for debugging purposes
+        print(f"Warning: Failed to initialize documents for new phase: {e}")
+    
     return {
         "message": "Phase transition approved successfully",
         "transition_request": updated_transition.to_dict()
