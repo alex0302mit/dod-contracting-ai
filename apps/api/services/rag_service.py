@@ -9,12 +9,49 @@ to make them available via API endpoints.
 """
 
 import os
+import re
 from pathlib import Path
 from typing import List, Dict, Optional
 from datetime import datetime
 
 from backend.rag.docling_processor import DoclingProcessor
 from backend.rag.vector_store import VectorStore
+
+
+def validate_and_sanitize_filename(filename: str, upload_dir: Path) -> str:
+    """
+    Validate and sanitize a filename to prevent path traversal attacks.
+
+    Args:
+        filename: User-provided filename
+        upload_dir: The allowed upload directory
+
+    Returns:
+        Sanitized filename
+
+    Raises:
+        ValueError: If filename is invalid or attempts path traversal
+    """
+    if not filename:
+        raise ValueError("Filename cannot be empty")
+
+    # Remove any path components - keep only the base filename
+    filename = Path(filename).name
+
+    # Check for path traversal sequences
+    if '..' in filename or filename.startswith('.'):
+        raise ValueError("Invalid filename: path traversal not allowed")
+
+    # Only allow safe characters: alphanumeric, dash, underscore, dot
+    if not re.match(r'^[a-zA-Z0-9][a-zA-Z0-9._-]*$', filename):
+        raise ValueError("Invalid filename: contains disallowed characters")
+
+    # Verify the resulting path is within upload_dir
+    safe_path = (upload_dir / filename).resolve()
+    if not str(safe_path).startswith(str(upload_dir.resolve())):
+        raise ValueError("Invalid filename: path outside upload directory")
+
+    return filename
 
 
 class RAGService:
@@ -82,10 +119,20 @@ class RAGService:
             Dict with upload results, processing info, and chunk_ids for lineage tracking
         """
         import uuid
-        
+
+        # Validate and sanitize the filename to prevent path traversal
+        try:
+            base_filename = validate_and_sanitize_filename(filename, self.upload_dir)
+        except ValueError as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "filename": filename
+            }
+
         # Generate unique filename to avoid collisions
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        safe_filename = f"{timestamp}_{filename}"
+        safe_filename = f"{timestamp}_{base_filename}"
         file_path = self.upload_dir / safe_filename
 
         # Save file to disk
@@ -440,7 +487,7 @@ class RAGService:
                 
                 documents.append({
                     "filename": filename,
-                    "file_path": str(file_path),
+                    # Note: file_path removed for security - prevents server path disclosure
                     "file_size": stat.st_size,
                     "upload_date": datetime.fromtimestamp(stat.st_mtime).isoformat(),
                     "file_type": file_path.suffix[1:] if file_path.suffix else "unknown",
@@ -480,22 +527,30 @@ class RAGService:
     def delete_document(self, document_id: str) -> Dict:
         """
         Delete a document from the RAG system
-        
+
         Removes the document file from disk and its associated chunks
         from the vector store.
-        
+
         Args:
-            document_id: The filename/identifier of the document to delete
-            
+            document_id: The exact filename of the document to delete
+
         Returns:
             Dict with success status and deletion details
         """
-        # Find the document file - document_id could be the full filename or partial
+        # Validate document_id to prevent path traversal
+        try:
+            # Only allow safe characters in document_id
+            if not re.match(r'^[a-zA-Z0-9][a-zA-Z0-9._-]*$', document_id):
+                return {"success": False, "error": "Invalid document ID format", "deleted_chunks": 0}
+        except Exception:
+            return {"success": False, "error": "Invalid document ID", "deleted_chunks": 0}
+
+        # Find the document file - EXACT match only for security
         matching_files = []
         for file_path in self.upload_dir.glob("*"):
             if file_path.is_file():
-                # Check if document_id matches the filename (full or partial)
-                if document_id == file_path.name or document_id in file_path.name:
+                # EXACT match only - no substring matching to prevent deletion attacks
+                if document_id == file_path.name:
                     matching_files.append(file_path)
         
         if not matching_files:

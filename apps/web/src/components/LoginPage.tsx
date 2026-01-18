@@ -1,25 +1,60 @@
 import { useState } from 'react';
+import { Lock, Clock, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AcesLogo } from '@/components/shared/AcesLogo';
+import { ApiError } from '@/services/api';
+
+type ErrorType = 'credentials' | 'locked' | 'rate_limit' | 'password' | null;
 
 export function LoginPage() {
   const { signIn, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [errorType, setErrorType] = useState<ErrorType>(null);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [lockoutMinutes, setLockoutMinutes] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setErrorType(null);
+    setErrorMessage('');
     setIsLoading(true);
 
     try {
       await signIn(email, password);
     } catch (err) {
-      setError('Invalid email or password');
       console.error('Login error:', err);
+
+      if (err instanceof ApiError) {
+        switch (err.status) {
+          case 423: // Account locked
+            setErrorType('locked');
+            // Extract minutes from message like "Try again in X minutes"
+            const minuteMatch = err.detail.match(/(\d+)\s*minute/);
+            setLockoutMinutes(minuteMatch ? parseInt(minuteMatch[1]) : 15);
+            setErrorMessage(err.detail);
+            break;
+          case 429: // Rate limited
+            setErrorType('rate_limit');
+            setErrorMessage(err.detail);
+            break;
+          case 400: // Password validation error
+            setErrorType('password');
+            setErrorMessage(err.detail);
+            break;
+          case 401: // Invalid credentials
+          default:
+            setErrorType('credentials');
+            setErrorMessage('Invalid email or password');
+            break;
+        }
+      } else {
+        setErrorType('credentials');
+        setErrorMessage('An error occurred. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -29,9 +64,25 @@ export function LoginPage() {
   const quickLogin = (userEmail: string, userPassword: string) => {
     setEmail(userEmail);
     setPassword(userPassword);
+    setErrorType(null);
+    setErrorMessage('');
     setTimeout(() => {
       signIn(userEmail, userPassword).catch((err) => {
-        setError('Login failed');
+        if (err instanceof ApiError) {
+          if (err.status === 423) {
+            setErrorType('locked');
+            const minuteMatch = err.detail.match(/(\d+)\s*minute/);
+            setLockoutMinutes(minuteMatch ? parseInt(minuteMatch[1]) : 15);
+          } else if (err.status === 429) {
+            setErrorType('rate_limit');
+          } else {
+            setErrorType('credentials');
+          }
+          setErrorMessage(err.detail);
+        } else {
+          setErrorType('credentials');
+          setErrorMessage('Login failed');
+        }
         console.error(err);
       });
     }, 100);
@@ -95,10 +146,33 @@ export function LoginPage() {
               />
             </div>
 
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                {error}
-              </div>
+            {errorType === 'locked' && (
+              <Alert variant="destructive" className="bg-red-50 border-red-200">
+                <Lock className="h-4 w-4" />
+                <AlertTitle>Account Locked</AlertTitle>
+                <AlertDescription>
+                  Your account has been temporarily locked due to too many failed login attempts.
+                  Please try again in {lockoutMinutes} minute{lockoutMinutes !== 1 ? 's' : ''}.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {errorType === 'rate_limit' && (
+              <Alert variant="destructive" className="bg-amber-50 border-amber-200">
+                <Clock className="h-4 w-4 text-amber-600" />
+                <AlertTitle className="text-amber-800">Rate Limited</AlertTitle>
+                <AlertDescription className="text-amber-700">
+                  Too many requests. Please wait a moment before trying again.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {(errorType === 'credentials' || errorType === 'password') && (
+              <Alert variant="destructive" className="bg-red-50 border-red-200">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Login Failed</AlertTitle>
+                <AlertDescription>{errorMessage}</AlertDescription>
+              </Alert>
             )}
 
             <Button
@@ -127,7 +201,7 @@ export function LoginPage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => quickLogin('john.contracting@navy.mil', 'password123')}
+                onClick={() => quickLogin('john.contracting@navy.mil', 'SecureTest123!')}
                 className="w-full text-xs"
               >
                 Contracting Officer
@@ -136,7 +210,7 @@ export function LoginPage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => quickLogin('sarah.pm@navy.mil', 'password123')}
+                onClick={() => quickLogin('sarah.pm@navy.mil', 'SecureTest123!')}
                 className="w-full text-xs"
               >
                 Program Manager
@@ -145,7 +219,7 @@ export function LoginPage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => quickLogin('viewer@navy.mil', 'password123')}
+                onClick={() => quickLogin('viewer@navy.mil', 'SecureTest123!')}
                 className="w-full text-xs"
               >
                 Viewer

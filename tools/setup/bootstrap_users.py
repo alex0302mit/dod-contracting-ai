@@ -6,7 +6,7 @@ Creates test users with various roles for development and testing.
 Run from the project root directory:
     PYTHONPATH=. python backend/scripts/bootstrap_users.py
 
-All users are created with password: password123
+All users are created with password: SecureTest123!
 """
 
 import sys
@@ -60,7 +60,7 @@ TEST_USERS = [
     },
 ]
 
-DEFAULT_PASSWORD = "password123"
+DEFAULT_PASSWORD = "SecureTest123!"
 
 
 def bootstrap_users():

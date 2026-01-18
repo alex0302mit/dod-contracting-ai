@@ -51,10 +51,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { adminApi, type User } from '@/services/api';
+import { adminApi, ApiError, type User } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { PasswordRequirements, validatePassword } from '@/components/shared/PasswordRequirements';
 
 // Available roles for the dropdown
 const ROLES = [
@@ -157,9 +158,15 @@ export function AdminUserManagement() {
   // Handle create user
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!newUser.email || !newUser.name || !newUser.password) {
       toast.error('Please fill in all fields');
+      return;
+    }
+
+    // Client-side password validation
+    if (!validatePassword(newUser.password)) {
+      toast.error('Password does not meet all requirements');
       return;
     }
 
@@ -175,9 +182,15 @@ export function AdminUserManagement() {
       setCreateDialogOpen(false);
       setNewUser({ email: '', name: '', password: '', role: 'viewer' });
       fetchUsers();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating user:', error);
-      toast.error(error.message || 'Failed to create user');
+      if (error instanceof ApiError) {
+        toast.error(error.detail || 'Failed to create user');
+      } else if (error instanceof Error) {
+        toast.error(error.message || 'Failed to create user');
+      } else {
+        toast.error('Failed to create user');
+      }
     } finally {
       setCreating(false);
     }
@@ -285,6 +298,7 @@ export function AdminUserManagement() {
                         )}
                       </Button>
                     </div>
+                    <PasswordRequirements password={newUser.password} className="mt-2" />
                   </div>
                   
                   <div className="space-y-2">

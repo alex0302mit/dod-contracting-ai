@@ -1,7 +1,7 @@
 """
 User model for authentication and authorization
 """
-from sqlalchemy import Column, String, DateTime, JSON, Enum, Boolean
+from sqlalchemy import Column, String, DateTime, JSON, Enum, Boolean, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
@@ -34,6 +34,11 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Login tracking fields for account lockout security
+    failed_login_attempts = Column(Integer, default=0)
+    locked_until = Column(DateTime(timezone=True), nullable=True)
+    last_failed_login = Column(DateTime(timezone=True), nullable=True)
 
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email}, role={self.role})>"

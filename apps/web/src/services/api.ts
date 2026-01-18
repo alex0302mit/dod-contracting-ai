@@ -7,6 +7,26 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const WS_BASE_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000';
 
 // ============================================================================
+// API Error Class
+// ============================================================================
+
+/**
+ * Custom error class for API responses with status codes.
+ * Allows components to handle specific error types (locked, rate limited, etc.)
+ */
+export class ApiError extends Error {
+  status: number;
+  detail: string;
+
+  constructor(status: number, detail: string) {
+    super(detail);
+    this.name = 'ApiError';
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
+// ============================================================================
 // Authentication Helpers
 // ============================================================================
 
@@ -41,13 +61,46 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
   });
 
   if (!response.ok) {
-    if (response.status === 401) {
-      // Unauthorized - clear token and redirect to login
-      clearAuthToken();
-      window.location.href = '/login';
+    // Try to parse JSON error response for detail field
+    let detail = response.statusText;
+    try {
+      const errorData = await response.json();
+      detail = errorData.detail || detail;
+    } catch {
+      // If JSON parsing fails, try text
+      try {
+        detail = await response.text() || detail;
+      } catch {
+        // Use statusText as fallback
+      }
     }
-    const error = await response.text();
-    throw new Error(`API Error: ${response.statusText} - ${error}`);
+
+    // Handle specific status codes
+    if (response.status === 401) {
+      // Unauthorized - clear token and redirect to login (unless it's the login endpoint)
+      if (!endpoint.includes('/auth/login')) {
+        clearAuthToken();
+        window.location.href = '/login';
+      }
+      throw new ApiError(401, detail);
+    }
+
+    if (response.status === 423) {
+      // Account locked
+      throw new ApiError(423, detail);
+    }
+
+    if (response.status === 429) {
+      // Rate limited
+      throw new ApiError(429, detail);
+    }
+
+    if (response.status === 400) {
+      // Validation error
+      throw new ApiError(400, detail);
+    }
+
+    throw new ApiError(response.status, detail);
   }
 
   return response.json();
@@ -155,6 +208,114 @@ export const adminApi = {
     return apiRequest(`/api/admin/bootstrap?${params}`, {
       method: 'POST',
     });
+  },
+};
+
+// ============================================================================
+// Audit Logs API
+// ============================================================================
+
+/**
+ * Single audit log entry from the backend
+ */
+export interface AuditLogEntry {
+  id: string;
+  user_id: string | null;
+  user_email?: string;
+  action: string;
+  entity_type: string | null;
+  entity_id: string | null;
+  details: string | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  changes: Record<string, unknown> | null;
+  created_at: string;
+}
+
+/**
+ * Response from the audit logs endpoint
+ */
+export interface AuditLogsResponse {
+  total: number;
+  limit: number;
+  offset: number;
+  logs: AuditLogEntry[];
+}
+
+export const auditLogsApi = {
+  /**
+   * Get audit logs with optional filters (Admin only)
+   *
+   * @param action - Filter by action type (login_success, login_failed, user_registered, etc.)
+   * @param entityType - Filter by entity type (user, document, project)
+   * @param limit - Maximum number of results (default 100, max 1000)
+   * @param offset - Number of results to skip for pagination
+   */
+  getLogs: async (
+    action?: string,
+    entityType?: string,
+    limit: number = 100,
+    offset: number = 0
+  ): Promise<AuditLogsResponse> => {
+    const params = new URLSearchParams();
+    if (action) params.append('action', action);
+    if (entityType) params.append('entity_type', entityType);
+    params.append('limit', limit.toString());
+    params.append('offset', offset.toString());
+
+    return apiRequest(`/api/admin/audit-logs?${params}`);
+  },
+
+  /**
+   * Export audit logs as CSV file (Admin only)
+   * Downloads the file directly to the browser
+   *
+   * @param action - Filter by action type
+   * @param entityType - Filter by entity type
+   */
+  exportCsv: async (action?: string, entityType?: string): Promise<void> => {
+    const token = getAuthToken();
+    const params = new URLSearchParams();
+    if (action) params.append('action', action);
+    if (entityType) params.append('entity_type', entityType);
+
+    const response = await fetch(`${API_BASE_URL}/api/admin/audit-logs/export?${params}`, {
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        clearAuthToken();
+        window.location.href = '/login';
+      }
+      const error = await response.text();
+      throw new ApiError(response.status, error || 'Export failed');
+    }
+
+    // Download the CSV file
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+
+    // Extract filename from Content-Disposition header or use default
+    const contentDisposition = response.headers.get('Content-Disposition');
+    let filename = 'audit_logs.csv';
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename=(.+)/);
+      if (match) {
+        filename = match[1].replace(/['"]/g, '');
+      }
+    }
+
+    // Create download link and trigger download
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   },
 };
 

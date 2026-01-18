@@ -26,6 +26,7 @@ import { EditorNavigationProvider, useEditorNavigation } from "@/contexts/Editor
 import { LoginPage } from "./LoginPage";
 import { AppShell } from "./layout/AppShell";
 import { AdminUserManagement } from "./admin/AdminUserManagement";
+import { AdminAuditLogs } from "./admin/AdminAuditLogs";
 
 // Import all screens
 import {
@@ -268,7 +269,10 @@ function MainApp() {
       
       case 'SETTINGS':
         return <AdminUserManagement />;
-      
+
+      case 'ADMIN_AUDIT_LOGS':
+        return <AdminAuditLogs />;
+
       // Legacy routes for backwards compatibility
       case 'GENERATING' as any:
         return <GeneratingView progress={generationProgress} />;

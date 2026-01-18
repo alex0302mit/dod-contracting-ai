@@ -37,6 +37,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { QuickReviewStepProps } from "./types";
+import { sanitizeHtml } from "@/lib/sanitizeHtml";
 
 /**
  * QuickReviewStep displays the final generated documents for review.
@@ -327,9 +328,9 @@ export function QuickReviewStep({
           <CardContent>
             <ScrollArea className="h-[400px]">
               {selectedSection ? (
-                <div 
+                <div
                   className="prose prose-sm max-w-none"
-                  dangerouslySetInnerHTML={{ __html: sections[selectedSection] }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(sections[selectedSection] || '') }}
                 />
               ) : (
                 <div className="h-full flex items-center justify-center text-muted-foreground">

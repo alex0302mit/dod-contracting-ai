@@ -30,28 +30,28 @@ def seed_users(db):
         User(
             email="john.contracting@navy.mil",
             name="John Smith",
-            hashed_password=get_password_hash("password123"),
+            hashed_password=get_password_hash("SecureTest123!"),
             role=UserRole.CONTRACTING_OFFICER,
             department="Navy Acquisition"
         ),
         User(
             email="sarah.pm@navy.mil",
             name="Sarah Johnson",
-            hashed_password=get_password_hash("password123"),
+            hashed_password=get_password_hash("SecureTest123!"),
             role=UserRole.PROGRAM_MANAGER,
             department="Navy Programs"
         ),
         User(
             email="mike.approver@navy.mil",
             name="Mike Wilson",
-            hashed_password=get_password_hash("password123"),
+            hashed_password=get_password_hash("SecureTest123!"),
             role=UserRole.APPROVER,
             department="Navy Legal"
         ),
         User(
             email="viewer@navy.mil",
             name="Demo Viewer",
-            hashed_password=get_password_hash("password123"),
+            hashed_password=get_password_hash("SecureTest123!"),
             role=UserRole.VIEWER,
             department="Navy Oversight"
         ),
@@ -369,10 +369,10 @@ def main():
         print("✅ Database seeding completed successfully!")
         print()
         print("📧 Test User Credentials:")
-        print("   Contracting Officer: john.contracting@navy.mil / password123")
-        print("   Program Manager: sarah.pm@navy.mil / password123")
-        print("   Approver: mike.approver@navy.mil / password123")
-        print("   Viewer: viewer@navy.mil / password123")
+        print("   Contracting Officer: john.contracting@navy.mil / SecureTest123!")
+        print("   Program Manager: sarah.pm@navy.mil / SecureTest123!")
+        print("   Approver: mike.approver@navy.mil / SecureTest123!")
+        print("   Viewer: viewer@navy.mil / SecureTest123!")
         print()
         print("🚀 You can now start the API server:")
         print("   cd backend && python main.py")

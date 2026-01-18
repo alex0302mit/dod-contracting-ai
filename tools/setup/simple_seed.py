@@ -15,46 +15,46 @@ def create_user_direct():
         # Contracting Officers (can create/manage projects)
         {
             "email": "john.contracting@navy.mil",
-            "password": "password123",
+            "password": "SecureTest123!",
             "name": "John Smith",
             "role": "contracting_officer"
         },
         {
             "email": "jane.co@navy.mil",
-            "password": "password123",
+            "password": "SecureTest123!",
             "name": "Jane Doe",
             "role": "contracting_officer"
         },
         {
             "email": "robert.co@navy.mil",
-            "password": "password123",
+            "password": "SecureTest123!",
             "name": "Robert Chen",
             "role": "contracting_officer"
         },
         # Program Managers (can create/manage projects)
         {
             "email": "sarah.pm@navy.mil",
-            "password": "password123",
+            "password": "SecureTest123!",
             "name": "Sarah Johnson",
             "role": "program_manager"
         },
         {
             "email": "michael.pm@navy.mil",
-            "password": "password123",
+            "password": "SecureTest123!",
             "name": "Michael Torres",
             "role": "program_manager"
         },
         # Approvers (can approve documents)
         {
             "email": "mike.approver@navy.mil",
-            "password": "password123",
+            "password": "SecureTest123!",
             "name": "Mike Wilson",
             "role": "approver"
         },
         # Viewers (read-only access)
         {
             "email": "viewer@navy.mil",
-            "password": "password123",
+            "password": "SecureTest123!",
             "name": "Demo Viewer",
             "role": "viewer"
         }
@@ -144,7 +144,7 @@ def main():
 
     if not users:
         print("\n❌ No users created. Database might already be seeded.")
-        print("   Try logging in with: john.contracting@navy.mil / password123")
+        print("   Try logging in with: john.contracting@navy.mil / SecureTest123!")
         return
 
     # Login with first user (contracting officer)
@@ -164,16 +164,16 @@ def main():
     print("✅ Database seeding completed successfully!\n")
     print("📧 Test User Credentials:")
     print("   Contracting Officers:")
-    print("     - john.contracting@navy.mil / password123 (John Smith)")
-    print("     - jane.co@navy.mil / password123 (Jane Doe)")
-    print("     - robert.co@navy.mil / password123 (Robert Chen)")
+    print("     - john.contracting@navy.mil / SecureTest123! (John Smith)")
+    print("     - jane.co@navy.mil / SecureTest123! (Jane Doe)")
+    print("     - robert.co@navy.mil / SecureTest123! (Robert Chen)")
     print("   Program Managers:")
-    print("     - sarah.pm@navy.mil / password123 (Sarah Johnson)")
-    print("     - michael.pm@navy.mil / password123 (Michael Torres)")
+    print("     - sarah.pm@navy.mil / SecureTest123! (Sarah Johnson)")
+    print("     - michael.pm@navy.mil / SecureTest123! (Michael Torres)")
     print("   Approver:")
-    print("     - mike.approver@navy.mil / password123 (Mike Wilson)")
+    print("     - mike.approver@navy.mil / SecureTest123! (Mike Wilson)")
     print("   Viewer:")
-    print("     - viewer@navy.mil / password123 (Demo Viewer)")
+    print("     - viewer@navy.mil / SecureTest123! (Demo Viewer)")
     print("\n🚀 You can now:")
     print("   1. Visit http://localhost:8000/docs to test the API")
     print("   2. Start the frontend and login with the credentials above")

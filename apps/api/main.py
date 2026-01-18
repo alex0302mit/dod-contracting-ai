@@ -1,16 +1,21 @@
 """
 Main FastAPI application - DoD Procurement Document Generation System
 """
-from fastapi import FastAPI, Depends, HTTPException, status, WebSocket, WebSocketDisconnect, Query, UploadFile, File, Body, BackgroundTasks
+from fastapi import FastAPI, Depends, HTTPException, status, WebSocket, WebSocketDisconnect, Query, UploadFile, File, Body, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List, Dict, Optional, Any
 from contextlib import asynccontextmanager  # For modern FastAPI lifespan events
 from pydantic import BaseModel
-from datetime import datetime  # For timestamp generation in exports
+from datetime import datetime, timedelta  # For timestamp generation in exports
 import os
+import re
 import uvicorn
 from dotenv import load_dotenv
 
@@ -21,6 +26,7 @@ from backend.models.procurement import ProcurementProject, ProcurementPhase, Pro
 # GenerationStatus enum needed for filtering generated documents in export
 from backend.models.document import ProjectDocument, DocumentUpload, GenerationStatus
 from backend.models.notification import Notification
+from backend.models.audit import AuditLog
 from backend.services.websocket_manager import WebSocketManager
 from backend.services.rag_service import get_rag_service, initialize_rag_service
 from backend.services.generation_coordinator import get_generation_coordinator, GenerationTask
@@ -89,9 +95,33 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
 )
+
+
+# Security Headers Middleware
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Add security headers to all responses for NIST 800-53 compliance."""
+
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        return response
+
+
+app.add_middleware(SecurityHeadersMiddleware)
+
+
+# Rate Limiting Configuration
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 
 # WebSocket Manager
 ws_manager = WebSocketManager()
@@ -103,21 +133,161 @@ app.mount("/files", StaticFiles(directory=UPLOAD_DIR), name="files")
 
 
 # ============================================================================
+# Security Helper Functions
+# ============================================================================
+
+# Account lockout settings
+MAX_FAILED_ATTEMPTS = 5
+LOCKOUT_DURATION_MINUTES = 15
+
+
+def validate_password_strength(password: str) -> None:
+    """
+    Validate password meets security requirements.
+    Raises HTTPException if password is too weak.
+
+    Requirements:
+    - Minimum 12 characters
+    - At least one uppercase letter
+    - At least one lowercase letter
+    - At least one digit
+    - At least one special character
+    """
+    if len(password) < 12:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 12 characters long"
+        )
+    if not re.search(r'[A-Z]', password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must contain at least one uppercase letter"
+        )
+    if not re.search(r'[a-z]', password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must contain at least one lowercase letter"
+        )
+    if not re.search(r'[0-9]', password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must contain at least one digit"
+        )
+    if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='Password must contain at least one special character (!@#$%^&*(),.?":{}|<>)'
+        )
+
+
+def check_account_lockout(user: User) -> None:
+    """Check if account is locked and raise exception if so."""
+    from datetime import timezone
+    now = datetime.now(timezone.utc)
+    if user.locked_until and user.locked_until > now:
+        remaining = (user.locked_until - now).seconds // 60 + 1
+        raise HTTPException(
+            status_code=status.HTTP_423_LOCKED,
+            detail=f"Account locked due to too many failed attempts. Try again in {remaining} minutes."
+        )
+
+
+def record_failed_login(db: Session, user: User) -> None:
+    """Record a failed login attempt and lock account if threshold exceeded."""
+    from datetime import timezone
+    now = datetime.now(timezone.utc)
+    user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
+    user.last_failed_login = now
+
+    if user.failed_login_attempts >= MAX_FAILED_ATTEMPTS:
+        user.locked_until = now + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
+
+    db.commit()
+
+
+def reset_failed_attempts(db: Session, user: User) -> None:
+    """Reset failed login attempts on successful login."""
+    if user.failed_login_attempts or user.locked_until:
+        user.failed_login_attempts = 0
+        user.locked_until = None
+        user.last_failed_login = None
+        db.commit()
+
+
+def log_audit_event(
+    db: Session,
+    user_id: str,
+    action: str,
+    entity_type: str,
+    entity_id: str = None,
+    changes: dict = None,
+    project_id: str = None
+) -> None:
+    """
+    Log an audit event to the database.
+
+    Args:
+        db: Database session
+        user_id: ID of the user performing the action (can be None for anonymous events)
+        action: Type of action (login_success, login_failed, user_registered, role_changed, etc.)
+        entity_type: Type of entity affected (user, document, project, etc.)
+        entity_id: ID of the affected entity (optional)
+        changes: Dictionary of changes made (optional)
+        project_id: Associated project ID (optional)
+    """
+    from backend.database.base import SessionLocal
+
+    # Use a separate session to avoid affecting the main transaction
+    audit_db = SessionLocal()
+    try:
+        audit_entry = AuditLog(
+            user_id=user_id,
+            project_id=project_id,
+            action=action,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            changes=changes or {}
+        )
+        audit_db.add(audit_entry)
+        audit_db.commit()
+    except Exception as e:
+        # Don't fail the main operation if audit logging fails
+        print(f"Warning: Failed to log audit event: {e}")
+        audit_db.rollback()
+    finally:
+        audit_db.close()
+
+
+# ============================================================================
 # Authentication Endpoints
 # ============================================================================
 
 @app.post("/api/auth/register", tags=["Authentication"])
+@limiter.limit("3/minute")
 def register(
+    request: Request,
     email: str,
     password: str,
     name: str,
     db: Session = Depends(get_db)
 ):
     """Register a new user.
-    
+
     All new users are created with 'viewer' role by default.
     An admin must upgrade their role to contracting_officer, program_manager, etc.
+
+    Rate limited to 3 requests per minute per IP address.
+
+    Password Requirements:
+    - Minimum 12 characters
+    - At least one uppercase letter
+    - At least one lowercase letter
+    - At least one digit
+    - At least one special character
     """
+    # Validate password strength
+    validate_password_strength(password)
+
     # Check if user already exists
     existing_user = db.query(User).filter(User.email == email).first()
     if existing_user:
@@ -138,21 +308,105 @@ def register(
     db.commit()
     db.refresh(new_user)
 
+    # Log audit event for user registration
+    log_audit_event(
+        db=db,
+        user_id=str(new_user.id),
+        action="user_registered",
+        entity_type="user",
+        entity_id=str(new_user.id),
+        changes={"email": email, "role": UserRole.VIEWER.value, "ip": request.client.host if request.client else "unknown"}
+    )
+
     return {"message": "User created successfully", "user": new_user.to_dict()}
 
 
 @app.post("/api/auth/login", tags=["Authentication"])
-def login(email: str, password: str, db: Session = Depends(get_db)):
-    """Login and get access token"""
-    user = authenticate_user(db, email, password)
+@limiter.limit("5/minute")
+def login(request: Request, email: str, password: str, db: Session = Depends(get_db)):
+    """Login and get access token.
+
+    Rate limited to 5 requests per minute per IP address to prevent brute force attacks.
+    Account is locked for 15 minutes after 5 failed login attempts.
+    """
+    from backend.middleware.auth import verify_password
+
+    # First, find the user by email
+    user = db.query(User).filter(User.email == email).first()
+
     if not user:
+        # Log failed attempt for unknown email (don't reveal if email exists)
+        log_audit_event(
+            db=db,
+            user_id=None,
+            action="login_failed",
+            entity_type="user",
+            entity_id=None,
+            changes={"email": email, "reason": "user_not_found", "ip": request.client.host if request.client else "unknown"}
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
         )
 
+    # Check if account is locked
+    check_account_lockout(user)
+
+    # Verify password
+    if not verify_password(password, user.hashed_password):
+        # Record failed login attempt
+        record_failed_login(db, user)
+
+        # Log failed attempt
+        log_audit_event(
+            db=db,
+            user_id=str(user.id),
+            action="login_failed",
+            entity_type="user",
+            entity_id=str(user.id),
+            changes={
+                "email": email,
+                "reason": "invalid_password",
+                "failed_attempts": user.failed_login_attempts,
+                "ip": request.client.host if request.client else "unknown"
+            }
+        )
+
+        # Check if account is now locked after this failed attempt
+        from datetime import timezone
+        if user.locked_until and user.locked_until > datetime.now(timezone.utc):
+            raise HTTPException(
+                status_code=status.HTTP_423_LOCKED,
+                detail=f"Account locked due to too many failed attempts. Try again in {LOCKOUT_DURATION_MINUTES} minutes."
+            )
+
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+        )
+
+    # Check if user is active
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is deactivated"
+        )
+
+    # Reset failed login attempts on successful login
+    reset_failed_attempts(db, user)
+
     # Create access token
     access_token = create_access_token(data={"sub": str(user.id)})
+
+    # Log successful login
+    log_audit_event(
+        db=db,
+        user_id=str(user.id),
+        action="login_success",
+        entity_type="user",
+        entity_id=str(user.id),
+        changes={"ip": request.client.host if request.client else "unknown"}
+    )
 
     return {
         "access_token": access_token,
@@ -263,7 +517,22 @@ def admin_update_user_role(
     user.role = new_role
     db.commit()
     db.refresh(user)
-    
+
+    # Audit log the role change
+    log_audit_event(
+        db=db,
+        user_id=str(current_user.id),
+        action="role_changed",
+        entity_type="user",
+        entity_id=str(user_id),
+        changes={
+            "old_role": old_role,
+            "new_role": new_role.value,
+            "changed_by": current_user.email,
+            "target_user_email": user.email
+        }
+    )
+
     return {
         "message": f"User role updated from {old_role} to {new_role.value}",
         "user": user.to_dict()
@@ -271,17 +540,21 @@ def admin_update_user_role(
 
 
 @app.post("/api/admin/bootstrap", tags=["Admin"])
+@limiter.limit("1/minute")
 def bootstrap_first_admin(
+    request: Request,
     email: str,
     password: str,
     name: str,
     db: Session = Depends(get_db)
 ):
     """Create the first admin user (only works if no admin exists).
-    
+
     This is a one-time setup endpoint that allows creating the first admin
     when the system has no admin users. Once an admin exists, this endpoint
     will reject all requests.
+
+    Rate limited to 1 request per minute per IP address.
     """
     # Check if any admin already exists
     existing_admin = db.query(User).filter(User.role == UserRole.ADMIN).first()
@@ -406,8 +679,145 @@ def admin_delete_user(
     
     user.is_active = False
     db.commit()
-    
+
+    # Audit log the user deactivation
+    log_audit_event(
+        db=db,
+        user_id=str(current_user.id),
+        action="user_deactivated",
+        entity_type="user",
+        entity_id=str(user_id),
+        changes={
+            "deactivated_by": current_user.email,
+            "deactivated_user_email": user.email
+        }
+    )
+
     return {"message": f"User {user.email} has been deactivated"}
+
+
+@app.get("/api/admin/audit-logs", tags=["Admin"])
+def get_audit_logs(
+    action: str = None,
+    entity_type: str = None,
+    user_id: str = None,
+    limit: int = Query(100, le=1000),
+    offset: int = 0,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get audit logs (Admin only).
+
+    Query parameters:
+    - action: Filter by action type (login_success, login_failed, user_registered, role_changed, user_deactivated)
+    - entity_type: Filter by entity type (user, document, project)
+    - user_id: Filter by the user who performed the action
+    - limit: Maximum number of results (default 100, max 1000)
+    - offset: Number of results to skip for pagination
+    """
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    query = db.query(AuditLog)
+
+    if action:
+        query = query.filter(AuditLog.action == action)
+    if entity_type:
+        query = query.filter(AuditLog.entity_type == entity_type)
+    if user_id:
+        query = query.filter(AuditLog.user_id == user_id)
+
+    total = query.count()
+    logs = query.order_by(AuditLog.created_at.desc()).offset(offset).limit(limit).all()
+
+    return {
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "logs": [log.to_dict() for log in logs]
+    }
+
+
+@app.get("/api/admin/audit-logs/export", tags=["Admin"])
+def export_audit_logs(
+    action: str = None,
+    entity_type: str = None,
+    user_id: str = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Export audit logs as CSV file (Admin only).
+
+    Query parameters:
+    - action: Filter by action type (login_success, login_failed, user_registered, etc.)
+    - entity_type: Filter by entity type (user, document, project)
+    - user_id: Filter by the user who performed the action
+
+    Returns a CSV file with a maximum of 10,000 records.
+    """
+    import csv
+    import io
+
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    # Build query with filters
+    query = db.query(AuditLog)
+
+    if action:
+        query = query.filter(AuditLog.action == action)
+    if entity_type:
+        query = query.filter(AuditLog.entity_type == entity_type)
+    if user_id:
+        query = query.filter(AuditLog.user_id == user_id)
+
+    # Limit to 10,000 records max for export
+    logs = query.order_by(AuditLog.created_at.desc()).limit(10000).all()
+
+    # Create CSV in memory
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Write header
+    writer.writerow([
+        'Timestamp',
+        'User ID',
+        'User Email',
+        'Action',
+        'Entity Type',
+        'Entity ID',
+        'Details',
+        'IP Address',
+        'User Agent'
+    ])
+
+    # Write data rows
+    for log in logs:
+        log_dict = log.to_dict()
+        writer.writerow([
+            log_dict.get('created_at', ''),
+            log_dict.get('user_id', ''),
+            log_dict.get('user_email', ''),
+            log_dict.get('action', ''),
+            log_dict.get('entity_type', ''),
+            log_dict.get('entity_id', ''),
+            log_dict.get('details', ''),
+            log_dict.get('ip_address', ''),
+            log_dict.get('user_agent', '')
+        ])
+
+    # Generate filename with date
+    filename = f"audit_logs_{datetime.now().strftime('%Y%m%d')}.csv"
+
+    # Return as streaming response
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}"
+        }
+    )
 
 
 @app.post("/api/admin/reset-database", tags=["Admin"])
@@ -2956,11 +3366,31 @@ def delete_notification(
 # ============================================================================
 
 @app.websocket("/ws/{project_id}")
-async def websocket_endpoint(websocket: WebSocket, project_id: str):
+async def websocket_endpoint(
+    websocket: WebSocket,
+    project_id: str,
+    token: str = Query(None)
+):
     """
-    WebSocket endpoint for real-time document generation progress
-    Front-end connects here to receive live updates during document generation
+    WebSocket endpoint for real-time document generation progress.
+    Front-end connects here to receive live updates during document generation.
+
+    Security: Validates JWT token if provided. For backwards compatibility,
+    connections without tokens are allowed but should be deprecated.
     """
+    # Validate token if provided
+    if token:
+        try:
+            from backend.middleware.auth import decode_token
+            payload = decode_token(token)
+            user_id = payload.get("sub")
+            if not user_id:
+                await websocket.close(code=1008)  # Policy Violation
+                return
+        except Exception:
+            await websocket.close(code=1008)  # Policy Violation
+            return
+
     await ws_manager.connect(websocket, project_id)
 
     try:
@@ -5046,15 +5476,35 @@ async def get_field_suggestion(request: GuidedFlowSuggestionRequest):
 
 # WebSocket for Real-Time Collaboration
 @app.websocket("/api/ws/guided-flow/{document_id}")
-async def guided_flow_websocket(websocket: WebSocket, document_id: str):
+async def guided_flow_websocket(
+    websocket: WebSocket,
+    document_id: str,
+    token: str = Query(None)
+):
     """
-    WebSocket endpoint for real-time guided flow collaboration
+    WebSocket endpoint for real-time guided flow collaboration.
 
     Handles:
     - Field updates from collaborators
     - Field locking when someone is editing
     - Collaborator presence (join/leave)
+
+    Security: Validates JWT token if provided. For backwards compatibility,
+    connections without tokens are allowed but should be deprecated.
     """
+    # Validate token if provided
+    if token:
+        try:
+            from backend.middleware.auth import decode_token
+            payload = decode_token(token)
+            user_id = payload.get("sub")
+            if not user_id:
+                await websocket.close(code=1008)  # Policy Violation
+                return
+        except Exception:
+            await websocket.close(code=1008)  # Policy Violation
+            return
+
     await ws_manager.connect(websocket, room=f"guided-flow-{document_id}")
 
     try:

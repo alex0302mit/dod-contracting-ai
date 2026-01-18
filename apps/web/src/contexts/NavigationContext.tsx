@@ -16,17 +16,18 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 
 // ACES Route types - matches screens in the application
-export type RouteType = 
-  | 'OVERVIEW'       // Dashboard/Overview screen
-  | 'QUICK_GENERATE' // Quick Generate wizard
-  | 'EDITOR'         // Document editor
-  | 'DOCUMENTS'      // Documents grid/list view
-  | 'TRACKER'        // Procurement tracker
-  | 'APPROVALS'      // Pending approvals
-  | 'SOURCES'        // Knowledge sources/RAG
-  | 'EXPORT'         // Export view
-  | 'SETTINGS'       // Admin settings
-  | 'GENERATING';    // Generation progress view
+export type RouteType =
+  | 'OVERVIEW'         // Dashboard/Overview screen
+  | 'QUICK_GENERATE'   // Quick Generate wizard
+  | 'EDITOR'           // Document editor
+  | 'DOCUMENTS'        // Documents grid/list view
+  | 'TRACKER'          // Procurement tracker
+  | 'APPROVALS'        // Pending approvals
+  | 'SOURCES'          // Knowledge sources/RAG
+  | 'EXPORT'           // Export view
+  | 'SETTINGS'         // Admin settings
+  | 'ADMIN_AUDIT_LOGS' // Admin audit logs view
+  | 'GENERATING';      // Generation progress view
 
 // Context type definition
 interface NavigationContextType {

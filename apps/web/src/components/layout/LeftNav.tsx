@@ -27,6 +27,7 @@ import {
   Database,
   Download,
   Settings,
+  ScrollText,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -64,6 +65,7 @@ const navItems: NavItem[] = [
 
 // Bottom navigation items (settings, admin)
 const bottomNavItems: NavItem[] = [
+  { id: 'audit-logs', label: 'Audit Logs', icon: ScrollText, route: 'ADMIN_AUDIT_LOGS', adminOnly: true },
   { id: 'settings', label: 'Settings', icon: Settings, route: 'SETTINGS', adminOnly: true },
 ];
 
