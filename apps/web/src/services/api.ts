@@ -131,6 +131,17 @@ export interface User {
   created_at: string;
 }
 
+/**
+ * User personal analytics stats returned from /api/users/me/stats
+ * Used in profile dropdown to show activity summary
+ */
+export interface UserStats {
+  documents_generated: number;      // Count of AI-generated documents this month
+  estimated_hours_saved: number;    // Estimated hours saved by AI generation
+  projects_contributed: number;     // Distinct projects with generated docs
+  period: string;                   // Time period (currently "month")
+}
+
 export const authApi = {
   login: async (email: string, password: string): Promise<LoginResponse> => {
     // Backend expects query parameters, not JSON body
@@ -158,6 +169,15 @@ export const authApi = {
   getUsers: async (role?: string): Promise<{ users: User[] }> => {
     const url = role ? `/api/users?role=${role}` : '/api/users';
     return apiRequest(url);
+  },
+
+  /**
+   * Get personal analytics for the current user.
+   * Returns documents generated, time saved, and projects contributed
+   * for the current calendar month.
+   */
+  getUserStats: async (): Promise<UserStats> => {
+    return apiRequest('/api/users/me/stats');
   },
 
   logout: (): void => {
@@ -208,6 +228,198 @@ export const adminApi = {
     return apiRequest(`/api/admin/bootstrap?${params}`, {
       method: 'POST',
     });
+  },
+};
+
+// ============================================================================
+// Admin Analytics API - Organization-wide metrics dashboard
+// ============================================================================
+
+/**
+ * Analytics period information
+ */
+export interface AnalyticsPeriod {
+  start: string;
+  end: string;
+  days: number;
+}
+
+/**
+ * Summary statistics for the analytics dashboard
+ */
+export interface AnalyticsSummary {
+  total_documents_generated: number;
+  success_rate: number;
+  failed_generations: number;
+  total_hours_saved: number;
+  projects_active: number;
+  avg_phase_days: number;
+}
+
+/**
+ * Document type breakdown with counts and hours saved
+ */
+export interface DocumentTypeStats {
+  type: string;
+  count: number;
+  hours_saved: number;
+}
+
+/**
+ * Daily trend data point for charts
+ */
+export interface DailyTrendPoint {
+  date: string;
+  generated: number;
+  failed: number;
+  hours_saved: number;
+}
+
+/**
+ * Phase velocity statistics
+ */
+export interface PhaseVelocityStats {
+  avg_days: number;
+  count: number;
+}
+
+/**
+ * Top contributor user data
+ */
+export interface TopContributor {
+  user_id: string;
+  name: string;
+  documents: number;
+  hours_saved: number;
+}
+
+/**
+ * Complete admin analytics response from /api/admin/analytics
+ */
+export interface AdminAnalyticsData {
+  period: AnalyticsPeriod;
+  summary: AnalyticsSummary;
+  documents_by_type: DocumentTypeStats[];
+  daily_trend: DailyTrendPoint[];
+  phase_velocity: {
+    pre_solicitation: PhaseVelocityStats;
+    solicitation: PhaseVelocityStats;
+    post_solicitation: PhaseVelocityStats;
+  };
+  top_contributors: TopContributor[];
+}
+
+/**
+ * Admin Analytics API functions
+ */
+export const analyticsApi = {
+  /**
+   * Get organization-wide analytics for the admin dashboard.
+   * Returns summary stats, daily trends, documents by type, phase velocity,
+   * and top contributors for the specified time period.
+   * 
+   * @param days - Number of days to include (7-365, default 30)
+   */
+  getAnalytics: async (days: number = 30): Promise<AdminAnalyticsData> => {
+    return apiRequest(`/api/admin/analytics?days=${days}`);
+  },
+};
+
+// ============================================================================
+// Agent Feedback API
+// ============================================================================
+
+/**
+ * Feedback submission request
+ */
+export interface FeedbackSubmitRequest {
+  document_id: string;
+  section_name?: string;
+  agent_name: string;
+  rating: 'positive' | 'negative';
+  comment?: string;
+}
+
+/**
+ * Single feedback entry
+ */
+export interface FeedbackEntry {
+  id: string;
+  document_id: string;
+  section_name?: string;
+  agent_name: string;
+  rating: string;
+  comment?: string;
+  user_id: string;
+  project_id?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+/**
+ * Agent performance stats
+ */
+export interface AgentPerformanceStats {
+  name: string;
+  positive_count: number;
+  negative_count: number;
+  total: number;
+  rating_percentage: number;
+}
+
+/**
+ * Agent performance response
+ */
+export interface AgentPerformanceResponse {
+  agents: AgentPerformanceStats[];
+  period_days: number;
+  total_feedback: number;
+}
+
+/**
+ * Agent feedback comments response
+ */
+export interface AgentFeedbackCommentsResponse {
+  comments: FeedbackEntry[];
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+}
+
+/**
+ * Agent Feedback API - for rating AI-generated content
+ */
+export const feedbackApi = {
+  /**
+   * Submit feedback (thumbs up/down) for AI-generated content
+   */
+  submit: async (data: FeedbackSubmitRequest): Promise<{ success: boolean; feedback_id: string }> => {
+    return apiRequest('/api/feedback', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Get all feedback for a specific document
+   */
+  getForDocument: async (documentId: string): Promise<{ feedback: FeedbackEntry[] }> => {
+    return apiRequest(`/api/documents/${documentId}/feedback`);
+  },
+
+  /**
+   * Get aggregated agent performance stats (Admin only)
+   */
+  getAgentPerformance: async (days: number = 30): Promise<AgentPerformanceResponse> => {
+    return apiRequest(`/api/admin/agent-performance?days=${days}`);
+  },
+
+  /**
+   * Get feedback comments for a specific agent (Admin only)
+   */
+  getAgentComments: async (agentName: string, page: number = 1, limit: number = 20): Promise<AgentFeedbackCommentsResponse> => {
+    return apiRequest(`/api/admin/agent-feedback/${encodeURIComponent(agentName)}?page=${page}&limit=${limit}`);
   },
 };
 
@@ -263,7 +475,8 @@ export const auditLogsApi = {
     params.append('limit', limit.toString());
     params.append('offset', offset.toString());
 
-    return apiRequest(`/api/admin/audit-logs?${params}`);
+    const url = `/api/admin/audit-logs?${params}`;
+    return apiRequest<AuditLogsResponse>(url);
   },
 
   /**
@@ -1723,7 +1936,10 @@ export const lineageApi = {
 
 // Type definitions for Copilot actions
 // fix_issue: AI-powered contextual fix for placeholders like TBD
-export type CopilotAction = 'answer' | 'rewrite' | 'expand' | 'summarize' | 'citations' | 'compliance' | 'custom' | 'web_search' | 'fix_issue';
+// fix_hallucination: AI-powered fix for potentially unsourced claims
+// fix_compliance: AI-powered fix to add FAR/DFARS citations
+// fix_vague_language: AI-powered fix to replace vague terms with specific language
+export type CopilotAction = 'answer' | 'rewrite' | 'expand' | 'summarize' | 'citations' | 'compliance' | 'custom' | 'web_search' | 'fix_issue' | 'fix_hallucination' | 'fix_compliance' | 'fix_vague_language';
 
 // Type definitions for web search types
 export type WebSearchType = 'general' | 'vendor' | 'pricing' | 'awards' | 'small_business';
@@ -1927,6 +2143,107 @@ export const exportApi = {
 };
 
 // ============================================================================
+// Document Version API
+// ============================================================================
+
+/**
+ * Represents a version snapshot of document content
+ */
+export interface DocumentVersion {
+  id: string;
+  project_document_id: string;
+  version_number: number;
+  is_current: boolean;
+  content: string;
+  sections_json?: string;
+  message?: string;
+  author?: string;
+  created_by?: string;
+  created_at: string;
+  ai_quality_score?: number;
+  word_count?: number;
+}
+
+/**
+ * Paginated response for version listing
+ */
+export interface DocumentVersionsResponse {
+  versions: DocumentVersion[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+/**
+ * Version History API for managing document content snapshots
+ */
+export const versionApi = {
+  /**
+   * Create a new version snapshot for a document
+   *
+   * @param documentId - The document ID
+   * @param data - Version data including content and optional metadata
+   * @returns The created version
+   */
+  create: async (
+    documentId: string,
+    data: {
+      content: string;
+      sections?: Record<string, string>;
+      message?: string;
+      author?: string;
+    }
+  ): Promise<DocumentVersion> => {
+    return apiRequest(`/api/documents/${documentId}/versions`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Get paginated version history for a document
+   *
+   * @param documentId - The document ID
+   * @param limit - Maximum versions to return (default 50)
+   * @param offset - Offset for pagination (default 0)
+   * @returns Paginated list of versions
+   */
+  list: async (
+    documentId: string,
+    limit = 50,
+    offset = 0
+  ): Promise<DocumentVersionsResponse> => {
+    return apiRequest(`/api/documents/${documentId}/versions?limit=${limit}&offset=${offset}`);
+  },
+
+  /**
+   * Get a specific version by ID
+   *
+   * @param documentId - The document ID
+   * @param versionId - The version ID
+   * @returns The version details including content
+   */
+  get: async (documentId: string, versionId: string): Promise<DocumentVersion> => {
+    return apiRequest(`/api/documents/${documentId}/versions/${versionId}`);
+  },
+
+  /**
+   * Restore document to a previous version
+   *
+   * Creates a new version with the restored content and updates the document.
+   *
+   * @param documentId - The document ID
+   * @param versionId - The version ID to restore
+   * @returns The newly created version (with restored content)
+   */
+  restore: async (documentId: string, versionId: string): Promise<DocumentVersion> => {
+    return apiRequest(`/api/documents/${documentId}/versions/${versionId}/restore`, {
+      method: 'POST',
+    });
+  },
+};
+
+// ============================================================================
 // Export all APIs
 // ============================================================================
 
@@ -1944,5 +2261,6 @@ export default {
   lineage: lineageApi,
   copilot: copilotApi,
   quality: qualityApi,
+  version: versionApi,
   createWebSocket,
 };

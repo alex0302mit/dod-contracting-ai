@@ -2,6 +2,7 @@
 
 # DoD Contracting Backend Startup Script
 # This script handles all backend initialization and startup
+# Includes optional Celery worker for distributed task processing
 
 set -e  # Exit on error
 
@@ -11,6 +12,38 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Track background processes for cleanup
+CELERY_PID=""
+
+# Cleanup function to stop background processes on exit
+cleanup() {
+    echo ""
+    echo -e "${YELLOW}Shutting down...${NC}"
+
+    if [ -n "$CELERY_PID" ] && kill -0 "$CELERY_PID" 2>/dev/null; then
+        echo -e "${YELLOW}Stopping Celery worker (PID: $CELERY_PID)...${NC}"
+        kill -TERM "$CELERY_PID" 2>/dev/null || true
+        # Wait up to 10 seconds for graceful shutdown
+        for i in {1..10}; do
+            if ! kill -0 "$CELERY_PID" 2>/dev/null; then
+                break
+            fi
+            sleep 1
+        done
+        # Force kill if still running
+        if kill -0 "$CELERY_PID" 2>/dev/null; then
+            kill -9 "$CELERY_PID" 2>/dev/null || true
+        fi
+        echo -e "${GREEN}✓ Celery worker stopped${NC}"
+    fi
+
+    echo -e "${GREEN}✓ Shutdown complete${NC}"
+    exit 0
+}
+
+# Set up trap to catch SIGINT (Ctrl+C) and SIGTERM
+trap cleanup SIGINT SIGTERM
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}DoD Contracting Backend Startup${NC}"
@@ -22,13 +55,13 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR"
 
 # Step 1: Check Python version
-echo -e "${YELLOW}[1/6] Checking Python version...${NC}"
+echo -e "${YELLOW}[1/7] Checking Python version...${NC}"
 PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}')
 echo -e "${GREEN}✓ Python $PYTHON_VERSION${NC}"
 echo ""
 
 # Step 2: Check/Activate virtual environment
-echo -e "${YELLOW}[2/6] Setting up virtual environment...${NC}"
+echo -e "${YELLOW}[2/7] Setting up virtual environment...${NC}"
 if [ ! -d "apps/api/venv" ]; then
     echo "   Creating virtual environment..."
     python3 -m venv apps/api/venv
@@ -47,7 +80,7 @@ echo -e "${GREEN}✓ Virtual environment activated${NC}"
 echo ""
 
 # Step 3: Install/Update dependencies
-echo -e "${YELLOW}[3/6] Checking dependencies...${NC}"
+echo -e "${YELLOW}[3/7] Checking dependencies...${NC}"
 if [ ! -f "apps/api/venv/.deps_installed" ]; then
     echo "   Installing dependencies (this may take a few minutes)..."
     pip install -q --upgrade pip
@@ -60,10 +93,10 @@ fi
 echo ""
 
 # Step 4: Check environment variables
-echo -e "${YELLOW}[4/6] Checking environment variables...${NC}"
+echo -e "${YELLOW}[4/7] Checking environment variables...${NC}"
 if [ -z "$ANTHROPIC_API_KEY" ]; then
     echo -e "${YELLOW}⚠  ANTHROPIC_API_KEY not set${NC}"
-    echo "   Set it with: export ANTHROPIC_API_KEY='your-key-here'"
+    echo "   Set it with: export ANTHROPIC_API_KEY=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"
     echo "   (AI features will not work without this)"
 else
     echo -e "${GREEN}✓ ANTHROPIC_API_KEY is set${NC}"
@@ -79,8 +112,24 @@ export CORS_ORIGINS=${CORS_ORIGINS:-"http://localhost:5173,http://localhost:5174
 echo -e "${GREEN}✓ Environment configured${NC}"
 echo ""
 
+# Check Redis status (optional - for caching and Celery)
+echo -e "${YELLOW}Checking optional services...${NC}"
+if command -v redis-cli &> /dev/null && redis-cli ping &> /dev/null; then
+    echo -e "${GREEN}✓ Redis is running (caching & task queue enabled)${NC}"
+    export REDIS_CACHE_ENABLED=true
+    export USE_CELERY_TASKS=true
+    REDIS_AVAILABLE=true
+else
+    echo -e "${YELLOW}⚠  Redis not running (caching & Celery disabled - app will still work)${NC}"
+    echo "   To enable Redis: brew install redis && brew services start redis"
+    export REDIS_CACHE_ENABLED=false
+    export USE_CELERY_TASKS=false
+    REDIS_AVAILABLE=false
+fi
+echo ""
+
 # Step 5: Initialize database
-echo -e "${YELLOW}[5/6] Initializing database...${NC}"
+echo -e "${YELLOW}[5/7] Initializing database...${NC}"
 if [ ! -f "dod_procurement.db" ]; then
     echo "   Creating new database..."
     python3 -c "from backend.database.base import init_db; init_db()"
@@ -91,7 +140,7 @@ fi
 echo ""
 
 # Step 6: Check if database needs seeding
-echo -e "${YELLOW}[6/6] Checking database users...${NC}"
+echo -e "${YELLOW}[6/7] Checking database users...${NC}"
 USER_COUNT=$(python3 -c "
 from backend.database.base import SessionLocal
 from backend.models.user import User
@@ -114,6 +163,32 @@ else
 fi
 echo ""
 
+# Start Celery worker if Redis is available
+if [ "$REDIS_AVAILABLE" = "true" ]; then
+    echo -e "${YELLOW}[7/7] Starting Celery worker...${NC}"
+
+    # Start Celery worker in background with output logging
+    celery -A backend.celery_app worker \
+        --loglevel=info \
+        --concurrency=2 \
+        --queues=dod.generation.high,dod.generation.batch,dod.quality,celery \
+        --hostname=worker@%h \
+        > celery_worker.log 2>&1 &
+
+    CELERY_PID=$!
+
+    # Wait a moment and check if worker started
+    sleep 2
+    if kill -0 "$CELERY_PID" 2>/dev/null; then
+        echo -e "${GREEN}✓ Celery worker started (PID: $CELERY_PID)${NC}"
+        echo "   Logs: tail -f celery_worker.log"
+    else
+        echo -e "${YELLOW}⚠  Celery worker failed to start (check celery_worker.log)${NC}"
+        CELERY_PID=""
+    fi
+    echo ""
+fi
+
 # Start the server
 echo -e "${BLUE}========================================${NC}"
 echo -e "${GREEN}🚀 Starting Backend Server...${NC}"
@@ -122,10 +197,17 @@ echo ""
 echo -e "${GREEN}API Server:${NC} http://localhost:$API_PORT"
 echo -e "${GREEN}API Docs:${NC} http://localhost:$API_PORT/docs"
 echo -e "${GREEN}Health Check:${NC} http://localhost:$API_PORT/health"
+if [ "$REDIS_CACHE_ENABLED" = "true" ]; then
+    echo -e "${GREEN}Cache Stats:${NC} http://localhost:$API_PORT/api/cache/stats"
+fi
+if [ -n "$CELERY_PID" ]; then
+    echo -e "${GREEN}Celery Worker:${NC} Running (PID: $CELERY_PID)"
+    echo -e "${GREEN}Celery Logs:${NC} tail -f celery_worker.log"
+fi
 echo ""
-echo -e "${YELLOW}Press Ctrl+C to stop the server${NC}"
+echo -e "${YELLOW}Press Ctrl+C to stop all services${NC}"
 echo ""
 
-# Start the server
+# Start the server (this blocks until Ctrl+C)
 python3 apps/api/main.py
 

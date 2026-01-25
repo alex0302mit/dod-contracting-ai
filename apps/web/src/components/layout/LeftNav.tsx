@@ -30,6 +30,7 @@ import {
   ScrollText,
   ChevronLeft,
   ChevronRight,
+  BarChart3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -65,6 +66,7 @@ const navItems: NavItem[] = [
 
 // Bottom navigation items (settings, admin)
 const bottomNavItems: NavItem[] = [
+  { id: 'analytics', label: 'Analytics', icon: BarChart3, route: 'ADMIN_ANALYTICS', adminOnly: true },
   { id: 'audit-logs', label: 'Audit Logs', icon: ScrollText, route: 'ADMIN_AUDIT_LOGS', adminOnly: true },
   { id: 'settings', label: 'Settings', icon: Settings, route: 'SETTINGS', adminOnly: true },
 ];

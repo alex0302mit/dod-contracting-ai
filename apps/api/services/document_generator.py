@@ -170,7 +170,8 @@ class DocumentGenerator:
                 if doc.generated_content:
                     dependency_content[doc.document_name] = doc.generated_content
 
-            return {
+        # Build and return context dictionary
+        return {
             "project_name": project.name,
             "project_description": project.description,
             "project_type": project.project_type.value if project.project_type else None,
@@ -194,18 +195,23 @@ class DocumentGenerator:
         document: ProjectDocument,
         assumptions: List[Dict[str, str]],
         additional_context: Optional[str] = None,
-        progress_callback: Optional[callable] = None
+        progress_callback: Optional[callable] = None,
+        force_regenerate: bool = False
     ) -> Tuple[bool, str, Optional[Dict]]:
         """
         Generate AI content for a single document.
-        
+
+        Features incremental generation - if inputs haven't changed,
+        returns cached result instead of regenerating.
+
         Args:
             db: Database session
             document: ProjectDocument to generate content for
             assumptions: List of assumption dictionaries
             additional_context: Optional additional context from user
             progress_callback: Optional callback for progress updates
-            
+            force_regenerate: Skip cache check and always regenerate
+
         Returns:
             Tuple of (success, content_or_error, metadata)
         """
@@ -214,6 +220,18 @@ class DocumentGenerator:
             deps_met, missing_deps, available_deps = self.check_dependencies(
                 db, str(document.project_id), document.document_name
             )
+
+            # Incremental generation: check if inputs have changed
+            if not force_regenerate:
+                cached_result = await self._check_incremental_cache(
+                    db=db,
+                    document=document,
+                    assumptions=assumptions,
+                    additional_context=additional_context,
+                    progress_callback=progress_callback
+                )
+                if cached_result is not None:
+                    return cached_result
             
             if not deps_met:
                 return False, f"Missing dependencies: {', '.join(missing_deps)}", None
@@ -307,7 +325,17 @@ class DocumentGenerator:
                     task=completed_task,
                     project_context=project_context
                 )
-                
+
+                # Store result in incremental generation cache
+                await self._store_incremental_result(
+                    document=document,
+                    assumptions=assumptions,
+                    additional_context=additional_context,
+                    content=content,
+                    metadata=metadata,
+                    project_context=project_context
+                )
+
                 return True, content, metadata
             else:
                 error_msg = completed_task.errors[0] if completed_task.errors else "Generation failed - no sections returned"
@@ -507,10 +535,10 @@ class DocumentGenerator:
     def get_generation_estimate(self, document_name: str) -> Dict:
         """
         Get estimated generation time and info for a document.
-        
+
         Args:
             document_name: Name of the document
-            
+
         Returns:
             Dictionary with estimate info
         """
@@ -524,15 +552,172 @@ class DocumentGenerator:
             "Section L - Instructions to Offerors": 3,
             "Section M - Evaluation Factors": 3,
         }
-        
+
         deps = self.dependencies.get(document_name, [])
-        
+
         return {
             "document_name": document_name,
             "estimated_minutes": time_estimates.get(document_name, 2),
             "dependencies": deps,
             "has_dependencies": len(deps) > 0
         }
+
+    def sort_by_dependencies(self, document_names: List[str]) -> List[str]:
+        """
+        Sort document names by their dependencies (public method for Celery tasks).
+
+        Args:
+            document_names: List of document names
+
+        Returns:
+            Sorted list of document names
+        """
+        result = []
+        visited = set()
+
+        def visit(doc_name: str):
+            if doc_name in visited:
+                return
+            visited.add(doc_name)
+
+            # Visit dependencies first
+            for dep in self.dependencies.get(doc_name, []):
+                if dep in document_names:
+                    visit(dep)
+
+            result.append(doc_name)
+
+        for name in document_names:
+            visit(name)
+
+        return result
+
+    # ========================================
+    # Incremental Generation Methods
+    # ========================================
+
+    async def _check_incremental_cache(
+        self,
+        db: Session,
+        document: ProjectDocument,
+        assumptions: List[Dict[str, str]],
+        additional_context: Optional[str],
+        progress_callback: Optional[callable]
+    ) -> Optional[Tuple[bool, str, Optional[Dict]]]:
+        """
+        Check if we can return a cached result for incremental generation.
+
+        Returns:
+            Tuple of (success, content, metadata) if cache hit, None otherwise
+        """
+        try:
+            from backend.services.generation_hash import (
+                get_generation_hash_service,
+                is_incremental_generation_enabled
+            )
+
+            if not is_incremental_generation_enabled():
+                return None
+
+            hash_service = get_generation_hash_service()
+
+            # Get project context for hash computation
+            project_context = self.get_project_context(
+                db, str(document.project_id), document.document_name
+            )
+
+            # Compute dependency content hashes
+            dep_names = self.dependencies.get(document.document_name, [])
+            dep_hashes = hash_service.get_dependency_hashes(
+                db, str(document.project_id), dep_names
+            )
+
+            # Compute current input hash
+            input_hash = hash_service.compute_generation_hash(
+                document_name=document.document_name,
+                assumptions=assumptions,
+                dependency_contents=dep_hashes,
+                project_id=str(document.project_id),
+                phase=project_context.get("current_phase"),
+                additional_context=additional_context
+            )
+
+            # Check cache
+            cached = hash_service.check_cache(str(document.id), input_hash)
+
+            if cached:
+                content = cached.get("content")
+                metadata = cached.get("metadata")
+
+                if content:
+                    # Update progress to show cache hit
+                    if progress_callback:
+                        class CacheHitTask:
+                            progress = 100
+                            message = "Retrieved from cache (no changes detected)"
+                        progress_callback(CacheHitTask())
+
+                    print(f"[IncrementalGen] Returning cached result for {document.document_name}")
+                    return True, content, metadata
+
+        except ImportError:
+            pass  # Generation hash service not available
+        except Exception as e:
+            print(f"[IncrementalGen] Cache check error: {e}")
+
+        return None
+
+    async def _store_incremental_result(
+        self,
+        document: ProjectDocument,
+        assumptions: List[Dict[str, str]],
+        additional_context: Optional[str],
+        content: str,
+        metadata: Optional[Dict],
+        project_context: Dict
+    ) -> None:
+        """
+        Store generation result for incremental generation cache.
+        """
+        try:
+            from backend.services.generation_hash import (
+                get_generation_hash_service,
+                is_incremental_generation_enabled
+            )
+
+            if not is_incremental_generation_enabled():
+                return
+
+            hash_service = get_generation_hash_service()
+
+            # Compute dependency hashes from context
+            dep_hashes = {}
+            for dep_name, dep_content in project_context.get("dependency_documents", {}).items():
+                dep_hashes[dep_name] = hash_service.compute_content_hash(dep_content)
+
+            # Compute input hash
+            input_hash = hash_service.compute_generation_hash(
+                document_name=document.document_name,
+                assumptions=assumptions,
+                dependency_contents=dep_hashes,
+                project_id=str(document.project_id),
+                phase=project_context.get("current_phase"),
+                additional_context=additional_context
+            )
+
+            # Store result
+            result = {
+                "content": content,
+                "metadata": metadata,
+                "generated_at": datetime.utcnow().isoformat()
+            }
+
+            hash_service.store_result(str(document.id), input_hash, result)
+
+        except ImportError:
+            pass  # Generation hash service not available
+        except Exception as e:
+            print(f"[IncrementalGen] Store error: {e}")
 
 
 # Singleton instance

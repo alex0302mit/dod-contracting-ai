@@ -26,6 +26,7 @@ export type RouteType =
   | 'SOURCES'          // Knowledge sources/RAG
   | 'EXPORT'           // Export view
   | 'SETTINGS'         // Admin settings
+  | 'ADMIN_ANALYTICS'  // Admin analytics dashboard
   | 'ADMIN_AUDIT_LOGS' // Admin audit logs view
   | 'GENERATING';      // Generation progress view
 

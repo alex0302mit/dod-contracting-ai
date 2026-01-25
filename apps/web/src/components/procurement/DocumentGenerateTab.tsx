@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -19,12 +19,16 @@ import {
   Save,
   XCircle,
   Info,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 import { ProjectDocument } from '@/hooks/useProjectDocuments';
 import {
   documentGenerationApi,
+  createWebSocket,
   type GenerationTaskInfo,
   type DependencyCheckResult,
+  type WebSocketMessage,
 } from '@/services/api';
 import { markdownToHtml } from '@/lib/markdownToHtml';
 
@@ -50,52 +54,254 @@ export function DocumentGenerateTab({
   const [taskInfo, setTaskInfo] = useState<GenerationTaskInfo | null>(null);
   const [dependencyCheck, setDependencyCheck] = useState<DependencyCheckResult | null>(null);
   const [loadingDeps, setLoadingDeps] = useState(true);
+  const [wsConnected, setWsConnected] = useState(false);
+
+  // WebSocket reference
+  const wsRef = useRef<WebSocket | null>(null);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Ref to store current taskId - avoids stale closure issues in callbacks
+  // When WebSocket closes, the startPolling callback may have stale taskId from closure
+  // Using a ref ensures we always have the current value
+  const taskIdRef = useRef<string | null>(null);
 
   // Check dependencies on mount
   useEffect(() => {
     checkDependencies();
   }, [document.id]);
 
-  // Poll for task status when generating
+  // Setup WebSocket connection when generating starts AND we have a task ID
+  // We need taskId before connecting so we can filter messages properly
   useEffect(() => {
-    if (!taskId || !isGenerating) return;
+    // #region agent log
+    // [DEBUG] Log every useEffect run to track WebSocket setup timing
+    fetch('http://127.0.0.1:7244/ingest/9015424d-319b-4106-b807-78d5a4f24cad',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DocumentGenerateTab.tsx:useEffect:wsSetup',message:'WebSocket useEffect triggered',data:{isGenerating,projectId:!!projectId,taskId,taskIdRef:taskIdRef.current,willConnect:isGenerating&&!!projectId&&!!taskId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'useEffect'})}).catch(()=>{});
+    // #endregion
+    // Don't connect WebSocket until we have a taskId - prevents premature connection/closure
+    if (!isGenerating || !projectId || !taskId) return;
 
-    const pollInterval = setInterval(async () => {
+    // Connect to WebSocket for real-time updates
+    const ws = createWebSocket(projectId);
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      console.log('📡 WebSocket connected for generation updates');
+      // #region agent log
+      // [DEBUG] Log WebSocket open
+      fetch('http://127.0.0.1:7244/ingest/9015424d-319b-4106-b807-78d5a4f24cad',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DocumentGenerateTab.tsx:ws.onopen',message:'WebSocket connected',data:{taskIdRef:taskIdRef.current},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'ws-connect'})}).catch(()=>{});
+      // #endregion
+      setWsConnected(true);
+      // Clear polling when WebSocket connects
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
+
+    ws.onmessage = (event) => {
       try {
-        const status = await documentGenerationApi.getTaskStatus(taskId);
+        const data: WebSocketMessage = JSON.parse(event.data);
+        // Get current taskId from ref to avoid stale closure
+        const currentTaskId = taskIdRef.current;
+
+        // #region agent log
+        // [DEBUG] Log all incoming WebSocket messages to test hypotheses A, B, E
+        fetch('http://127.0.0.1:7244/ingest/9015424d-319b-4106-b807-78d5a4f24cad',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DocumentGenerateTab.tsx:ws.onmessage',message:'WS message received',data:{msgType:data.type,msgTaskId:data.task_id,taskIdFromRef:currentTaskId,taskIdFromClosure:taskId,willFilter:data.task_id && data.task_id !== currentTaskId,hasContent:!!data.content,rawData:JSON.stringify(data).slice(0,500)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A,B,E'})}).catch(()=>{});
+        // #endregion
+
+        // Only process messages for our current task (use ref to avoid stale closure)
+        if (data.task_id && data.task_id !== currentTaskId) return;
+
+        switch (data.type) {
+          case 'progress':
+            setTaskInfo((prev) => ({
+              ...(prev || { task_id: taskId || '', status: 'in_progress' }),
+              progress: data.percentage || data.progress || 0,
+              message: data.message || 'Processing...',
+              status: 'in_progress',
+            }));
+            break;
+
+          case 'generation_complete':
+          case 'task_complete':
+            // #region agent log
+            // [DEBUG] Log when completion handler is called - tests hypothesis A
+            fetch('http://127.0.0.1:7244/ingest/9015424d-319b-4106-b807-78d5a4f24cad',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DocumentGenerateTab.tsx:completion-case',message:'Calling handleGenerationComplete',data:{type:data.type,hasContent:!!data.content},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
+            handleGenerationComplete(data);
+            break;
+
+          case 'error':
+            handleGenerationError(data.message || 'Unknown error');
+            break;
+        }
+      } catch (e) {
+        console.error('Error parsing WebSocket message:', e);
+      }
+    };
+
+    ws.onerror = () => {
+      console.warn('⚠️ WebSocket error, falling back to polling');
+      setWsConnected(false);
+      startPolling();
+    };
+
+    ws.onclose = () => {
+      console.log('🔌 WebSocket disconnected');
+      // Get current values from refs to avoid stale closures
+      const currentTaskId = taskIdRef.current;
+      // #region agent log
+      // [DEBUG] Log WebSocket close - tests hypothesis C
+      fetch('http://127.0.0.1:7244/ingest/9015424d-319b-4106-b807-78d5a4f24cad',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DocumentGenerateTab.tsx:ws.onclose',message:'WebSocket closed',data:{isGenerating,taskIdFromRef:currentTaskId,willStartPolling:isGenerating && !!currentTaskId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
+      setWsConnected(false);
+      // Start polling as fallback if still generating AND we have a taskId
+      if (isGenerating && currentTaskId) {
+        startPolling();
+      }
+    };
+
+    return () => {
+      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+        ws.close();
+      }
+      wsRef.current = null;
+    };
+  }, [isGenerating, projectId, taskId]);
+
+  // Polling fallback (starts only if WebSocket disconnects)
+  // Uses taskIdRef.current instead of taskId to avoid stale closure issues
+  const startPolling = useCallback(() => {
+    // Get current taskId from ref to avoid stale closure
+    const currentTaskId = taskIdRef.current;
+    
+    // #region agent log
+    // [DEBUG] Log startPolling entry - tests stale closure hypothesis
+    fetch('http://127.0.0.1:7244/ingest/9015424d-319b-4106-b807-78d5a4f24cad',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DocumentGenerateTab.tsx:startPolling:entry',message:'startPolling called',data:{taskIdFromRef:currentTaskId,taskIdFromClosure:taskId,isGenerating,alreadyPolling:!!pollIntervalRef.current,willEarlyReturn:!!pollIntervalRef.current||!currentTaskId||!isGenerating},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A-polling'})}).catch(()=>{});
+    // #endregion
+    if (pollIntervalRef.current) return; // Already polling
+    if (!currentTaskId || !isGenerating) return;
+
+    console.log('📊 Starting polling fallback');
+    // #region agent log
+    // [DEBUG] Log polling actually started
+    fetch('http://127.0.0.1:7244/ingest/9015424d-319b-4106-b807-78d5a4f24cad',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DocumentGenerateTab.tsx:startPolling:started',message:'Polling interval started',data:{taskId:currentTaskId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A-polling'})}).catch(()=>{});
+    // #endregion
+    pollIntervalRef.current = setInterval(async () => {
+      try {
+        // Use ref for current taskId in interval callback as well
+        const pollingTaskId = taskIdRef.current;
+        if (!pollingTaskId) return;
+        
+        const status = await documentGenerationApi.getTaskStatus(pollingTaskId);
+        // #region agent log
+        // [DEBUG] Log polling response
+        fetch('http://127.0.0.1:7244/ingest/9015424d-319b-4106-b807-78d5a4f24cad',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DocumentGenerateTab.tsx:polling:response',message:'Polling got status',data:{taskId:pollingTaskId,status:status.status,progress:status.progress,hasResult:!!status.result,error:status.error},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'polling'})}).catch(()=>{});
+        // #endregion
         setTaskInfo(status);
 
         if (status.status === 'completed') {
-          setIsGenerating(false);
-          clearInterval(pollInterval);
-
-          if (status.result?.content) {
-            if (outputOption === 'editor') {
-              onGenerated(status.result.content, true);
-              toast.success('Document generated! Opening in editor...');
-            } else {
-              // Save to document
-              await documentGenerationApi.saveContent(
-                document.id,
-                status.result.content,
-                status.result.quality_score
-              );
-              toast.success('Document generated and saved!');
-              onUpdate();
-            }
-          }
+          handleGenerationComplete(status.result);
         } else if (status.status === 'failed') {
-          setIsGenerating(false);
-          clearInterval(pollInterval);
-          toast.error(`Generation failed: ${status.error || 'Unknown error'}`);
+          handleGenerationError(status.error || 'Unknown error');
         }
       } catch (error) {
         console.error('Error polling task status:', error);
+        // #region agent log
+        // [DEBUG] Log polling error
+        fetch('http://127.0.0.1:7244/ingest/9015424d-319b-4106-b807-78d5a4f24cad',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DocumentGenerateTab.tsx:polling:error',message:'Polling failed',data:{error:String(error)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'polling'})}).catch(()=>{});
+        // #endregion
       }
     }, 2000);
+  }, [isGenerating]); // Removed taskId from deps since we use ref now
 
-    return () => clearInterval(pollInterval);
-  }, [taskId, isGenerating, outputOption, document.id, onGenerated, onUpdate]);
+  // Cleanup polling on unmount or when generation ends
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
+  }, []);
+
+  const handleGenerationComplete = async (result: any) => {
+    // #region agent log
+    // [DEBUG] Log entry to handleGenerationComplete - tests hypothesis D
+    fetch('http://127.0.0.1:7244/ingest/9015424d-319b-4106-b807-78d5a4f24cad',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DocumentGenerateTab.tsx:handleGenerationComplete:entry',message:'handleGenerationComplete called',data:{hasResult:!!result,hasContent:!!result?.content,outputOption,contentLength:result?.content?.length||0},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
+    setIsGenerating(false);
+
+    // Clear polling
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+
+    // Close WebSocket
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.close();
+    }
+
+    const content = result?.content;
+    if (content) {
+      // #region agent log
+      // [DEBUG] Log content branch taken
+      fetch('http://127.0.0.1:7244/ingest/9015424d-319b-4106-b807-78d5a4f24cad',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DocumentGenerateTab.tsx:handleGenerationComplete:hasContent',message:'Content found, outputOption branch',data:{outputOption,willOpenEditor:outputOption==='editor'},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
+      if (outputOption === 'editor') {
+        onGenerated(content, true);
+        toast.success('Document generated! Opening in editor...');
+      } else {
+        // Save to document
+        try {
+          await documentGenerationApi.saveContent(
+            document.id,
+            content,
+            result?.quality_score
+          );
+          toast.success('Document generated and saved!');
+          onUpdate();
+        } catch (error) {
+          console.error('Error saving content:', error);
+          toast.error('Document generated but failed to save');
+        }
+      }
+    } else {
+      // #region agent log
+      // [DEBUG] Log fallback to API fetch - tests hypothesis D
+      fetch('http://127.0.0.1:7244/ingest/9015424d-319b-4106-b807-78d5a4f24cad',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DocumentGenerateTab.tsx:handleGenerationComplete:noContent',message:'No content in result, fetching from API',data:{taskId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
+      // No content in WebSocket message, fetch from API
+      try {
+        const status = await documentGenerationApi.getTaskStatus(taskId!);
+        if (status.result?.content) {
+          await handleGenerationComplete(status.result);
+        }
+      } catch (error) {
+        console.error('Error fetching final result:', error);
+      }
+    }
+  };
+
+  const handleGenerationError = (errorMessage: string) => {
+    setIsGenerating(false);
+    // Clear taskId ref to reset state
+    taskIdRef.current = null;
+
+    // Clear polling
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+
+    // Close WebSocket
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.close();
+    }
+
+    toast.error(`Generation failed: ${errorMessage}`);
+  };
 
   const checkDependencies = async () => {
     setLoadingDeps(true);
@@ -111,6 +317,10 @@ export function DocumentGenerateTab({
   };
 
   const handleGenerate = async () => {
+    // #region agent log
+    // [DEBUG] Log handleGenerate entry
+    fetch('http://127.0.0.1:7244/ingest/9015424d-319b-4106-b807-78d5a4f24cad',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DocumentGenerateTab.tsx:handleGenerate:entry',message:'handleGenerate called',data:{canGenerate:dependencyCheck?.can_generate,documentId:document.id},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'flow'})}).catch(()=>{});
+    // #endregion
     if (!dependencyCheck?.can_generate) {
       toast.error('Cannot generate - dependencies not met');
       return;
@@ -142,15 +352,29 @@ export function DocumentGenerateTab({
         });
       }
 
+      // #region agent log
+      // [DEBUG] Log before API call
+      fetch('http://127.0.0.1:7244/ingest/9015424d-319b-4106-b807-78d5a4f24cad',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DocumentGenerateTab.tsx:handleGenerate:beforeApi',message:'About to call generate API',data:{documentId:document.id,assumptionsCount:assumptions.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'flow'})}).catch(()=>{});
+      // #endregion
       const response = await documentGenerationApi.generate(
         document.id,
         assumptions,
         additionalContext || undefined
       );
 
+      // #region agent log
+      // [DEBUG] Log when task ID is set - tests hypothesis A (stale closure timing)
+      fetch('http://127.0.0.1:7244/ingest/9015424d-319b-4106-b807-78d5a4f24cad',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DocumentGenerateTab.tsx:handleGenerate:taskIdSet',message:'Task ID received from API',data:{newTaskId:response.task_id,previousTaskId:taskId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      // Update both state and ref - ref is used to avoid stale closure in startPolling
+      taskIdRef.current = response.task_id;
       setTaskId(response.task_id);
       toast.info(`Generating ${document.document_name}...`);
     } catch (error: any) {
+      // #region agent log
+      // [DEBUG] Log API error
+      fetch('http://127.0.0.1:7244/ingest/9015424d-319b-4106-b807-78d5a4f24cad',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DocumentGenerateTab.tsx:handleGenerate:catch',message:'API call failed',data:{errorMessage:error?.message,errorName:error?.name},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'API-error'})}).catch(()=>{});
+      // #endregion
       setIsGenerating(false);
       toast.error(`Failed to start generation: ${error.message}`);
     }
@@ -356,7 +580,17 @@ export function DocumentGenerateTab({
                   <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
                   <span className="font-medium text-blue-900">Generating...</span>
                 </div>
-                <span className="text-sm text-blue-700">{taskInfo.progress}%</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-blue-700">{taskInfo.progress}%</span>
+                  {/* WebSocket status indicator */}
+                  <div className="flex items-center gap-1" title={wsConnected ? 'Real-time updates' : 'Polling for updates'}>
+                    {wsConnected ? (
+                      <Wifi className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <WifiOff className="h-4 w-4 text-slate-400" />
+                    )}
+                  </div>
+                </div>
               </div>
               <Progress value={taskInfo.progress} className="h-2" />
               <p className="text-sm text-blue-700">{taskInfo.message}</p>

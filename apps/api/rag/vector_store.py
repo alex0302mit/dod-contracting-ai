@@ -2,6 +2,11 @@
 Vector Store: Manages embeddings and similarity search
 Uses FAISS for efficient vector similarity search
 
+Features:
+- Redis caching for embeddings (24 hour TTL)
+- Batch embedding retrieval with cache support
+- Automatic fallback when cache unavailable
+
 Dependencies:
 - anthropic: For generating embeddings via Claude (or use voyage-ai for dedicated embeddings)
 - faiss-cpu or faiss-gpu: Vector similarity search
@@ -11,9 +16,19 @@ Dependencies:
 import os
 import pickle
 import numpy as np
-from typing import List, Dict, Tuple, Any
+from typing import List, Dict, Tuple, Any, Optional
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
+
+
+# Lazy import of cache service to avoid circular imports
+def _get_cache():
+    """Lazy import of cache service."""
+    try:
+        from backend.services.cache_service import get_cache_service
+        return get_cache_service()
+    except ImportError:
+        return None
 
 try:
     import faiss
@@ -103,24 +118,68 @@ class VectorStore:
         
         print(f"✅ Added {len(chunks)} chunks to vector store")
     
-    def _generate_embeddings(self, texts: List[str]) -> List[List[float]]:
+    def _generate_embeddings(
+        self,
+        texts: List[str],
+        use_cache: bool = True
+    ) -> List[List[float]]:
         """
-        Generate embeddings for texts using sentence-transformers
-        
+        Generate embeddings for texts using sentence-transformers.
+
+        Features Redis caching (24 hour TTL) for improved performance.
+        Cached embeddings are retrieved in batch, and only uncached
+        texts are sent to the model.
+
         Args:
             texts: List of text strings
-            
+            use_cache: Whether to use Redis cache (default True)
+
         Returns:
             List of embedding vectors
         """
-        # Use sentence-transformers to generate embeddings
-        embeddings = self.embedding_model.encode(
-            texts,
-            convert_to_numpy=True,
-            show_progress_bar=False
-        )
-        
-        return embeddings.tolist()
+        cache = _get_cache() if use_cache else None
+        embeddings = [None] * len(texts)
+        texts_to_compute = []
+        indices_to_compute = []
+
+        # Try to get embeddings from cache
+        if cache and cache.is_connected:
+            cached = cache.get_batch_embeddings(texts)
+            for i, text in enumerate(texts):
+                if cached.get(text) is not None:
+                    embeddings[i] = cached[text]
+                else:
+                    texts_to_compute.append(text)
+                    indices_to_compute.append(i)
+
+            if texts_to_compute:
+                print(f"[VectorStore] Cache: {len(texts) - len(texts_to_compute)}/{len(texts)} hits")
+        else:
+            # No cache - compute all
+            texts_to_compute = texts
+            indices_to_compute = list(range(len(texts)))
+
+        # Compute embeddings for uncached texts
+        if texts_to_compute:
+            computed = self.embedding_model.encode(
+                texts_to_compute,
+                convert_to_numpy=True,
+                show_progress_bar=False
+            ).tolist()
+
+            # Store computed embeddings in result
+            for idx, embedding in zip(indices_to_compute, computed):
+                embeddings[idx] = embedding
+
+            # Cache the newly computed embeddings
+            if cache and cache.is_connected:
+                new_embeddings = {
+                    text: emb
+                    for text, emb in zip(texts_to_compute, computed)
+                }
+                cache.set_batch_embeddings(new_embeddings)
+
+        return embeddings
     
     def search(
         self,

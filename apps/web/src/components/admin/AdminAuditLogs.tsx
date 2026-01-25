@@ -46,8 +46,9 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 
 // Action type options for filtering
+// Note: Using '__all__' instead of '' because Radix UI Select doesn't allow empty string values
 const ACTION_TYPES = [
-  { value: '', label: 'All Actions' },
+  { value: '__all__', label: 'All Actions' },
   { value: 'login_success', label: 'Login Success' },
   { value: 'login_failed', label: 'Login Failed' },
   { value: 'user_registered', label: 'User Registered' },
@@ -58,8 +59,9 @@ const ACTION_TYPES = [
 ];
 
 // Entity type options for filtering
+// Note: Using '__all__' instead of '' because Radix UI Select doesn't allow empty string values
 const ENTITY_TYPES = [
-  { value: '', label: 'All Entities' },
+  { value: '__all__', label: 'All Entities' },
   { value: 'user', label: 'User' },
   { value: 'document', label: 'Document' },
   { value: 'project', label: 'Project' },
@@ -96,17 +98,18 @@ export function AdminAuditLogs() {
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
 
-  // Filter state
-  const [actionFilter, setActionFilter] = useState('');
-  const [entityFilter, setEntityFilter] = useState('');
+  // Filter state - using '__all__' as the "no filter" value (Radix UI Select doesn't allow empty strings)
+  const [actionFilter, setActionFilter] = useState('__all__');
+  const [entityFilter, setEntityFilter] = useState('__all__');
 
   // Fetch logs with current filters
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
+      // Convert '__all__' to undefined for API call (no filter)
       const response = await auditLogsApi.getLogs(
-        actionFilter || undefined,
-        entityFilter || undefined,
+        actionFilter === '__all__' ? undefined : actionFilter,
+        entityFilter === '__all__' ? undefined : entityFilter,
         ITEMS_PER_PAGE,
         offset
       );
@@ -134,9 +137,10 @@ export function AdminAuditLogs() {
   const handleExport = async () => {
     setExporting(true);
     try {
+      // Convert '__all__' to undefined for API call (no filter)
       await auditLogsApi.exportCsv(
-        actionFilter || undefined,
-        entityFilter || undefined
+        actionFilter === '__all__' ? undefined : actionFilter,
+        entityFilter === '__all__' ? undefined : entityFilter
       );
       toast.success('Audit logs exported successfully');
     } catch (error) {

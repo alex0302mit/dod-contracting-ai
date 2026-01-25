@@ -127,6 +127,63 @@ def seed_document_templates(db):
             requires_approval=True,
             display_order=5
         ),
+        # Pre-Solicitation Phase - Recommended documents
+        DocumentChecklistTemplate(
+            contract_type=ProjectType.RFP,
+            document_name="Sources Sought Notice",
+            description="Capability assessment notice for industry engagement per FAR Part 10",
+            category="Market Research",
+            phase=PhaseName.PRE_SOLICITATION,
+            is_required=False,  # Recommended, not required
+            typical_deadline_days=25,
+            requires_approval=False,
+            display_order=6
+        ),
+        DocumentChecklistTemplate(
+            contract_type=ProjectType.RFP,
+            document_name="Quality Assurance Surveillance Plan (QASP)",
+            description="Performance standards and monitoring methods for contract oversight",
+            category="Technical",
+            phase=PhaseName.PRE_SOLICITATION,
+            is_required=False,  # Recommended, not required
+            typical_deadline_days=50,
+            requires_approval=True,
+            display_order=7
+        ),
+        # Pre-Solicitation Phase - Optional documents
+        DocumentChecklistTemplate(
+            contract_type=ProjectType.RFP,
+            document_name="Pre-Solicitation Notice",
+            description="Early market notification to inform potential offerors",
+            category="Market Research",
+            phase=PhaseName.PRE_SOLICITATION,
+            is_required=False,  # Optional
+            typical_deadline_days=15,
+            requires_approval=False,
+            display_order=8
+        ),
+        DocumentChecklistTemplate(
+            contract_type=ProjectType.RFP,
+            document_name="Industry Day Materials",
+            description="Presentation and handout materials for vendor engagement events",
+            category="Market Research",
+            phase=PhaseName.PRE_SOLICITATION,
+            is_required=False,  # Optional
+            typical_deadline_days=20,
+            requires_approval=False,
+            display_order=9
+        ),
+        DocumentChecklistTemplate(
+            contract_type=ProjectType.RFP,
+            document_name="Request for Information (RFI)",
+            description="Market feedback request to gather industry input on requirements",
+            category="Market Research",
+            phase=PhaseName.PRE_SOLICITATION,
+            is_required=False,  # Optional
+            typical_deadline_days=18,
+            requires_approval=False,
+            display_order=10
+        ),
         # Solicitation Phase
         DocumentChecklistTemplate(
             contract_type=ProjectType.RFP,
@@ -137,7 +194,7 @@ def seed_document_templates(db):
             is_required=True,
             typical_deadline_days=15,
             requires_approval=True,
-            display_order=10
+            display_order=15
         ),
         DocumentChecklistTemplate(
             contract_type=ProjectType.RFP,
@@ -148,7 +205,108 @@ def seed_document_templates(db):
             is_required=True,
             typical_deadline_days=30,
             requires_approval=True,
-            display_order=11
+            display_order=16
+        ),
+        # Solicitation Phase - Required RFP Sections and Forms
+        DocumentChecklistTemplate(
+            contract_type=ProjectType.RFP,
+            document_name="SF33 - Solicitation, Offer and Award",
+            description="Standard Form 33 cover page for formal solicitations per FAR 53.214",
+            category="Forms",
+            phase=PhaseName.SOLICITATION,
+            is_required=True,
+            typical_deadline_days=20,
+            requires_approval=True,
+            display_order=17
+        ),
+        DocumentChecklistTemplate(
+            contract_type=ProjectType.RFP,
+            document_name="Section B - Supplies/Services and Prices",
+            description="Description of supplies/services with pricing structure per FAR 15.204-2",
+            category="RFP Sections",
+            phase=PhaseName.SOLICITATION,
+            is_required=True,
+            typical_deadline_days=25,
+            requires_approval=True,
+            display_order=18
+        ),
+        DocumentChecklistTemplate(
+            contract_type=ProjectType.RFP,
+            document_name="Section H - Special Contract Requirements",
+            description="Special contract requirements specific to the procurement per FAR 15.204-8",
+            category="RFP Sections",
+            phase=PhaseName.SOLICITATION,
+            is_required=True,
+            typical_deadline_days=25,
+            requires_approval=True,
+            display_order=19
+        ),
+        DocumentChecklistTemplate(
+            contract_type=ProjectType.RFP,
+            document_name="Section I - Contract Clauses",
+            description="Contract clauses incorporated by reference and full text per FAR 15.204-9",
+            category="RFP Sections",
+            phase=PhaseName.SOLICITATION,
+            is_required=True,
+            typical_deadline_days=20,
+            requires_approval=True,
+            display_order=20
+        ),
+        DocumentChecklistTemplate(
+            contract_type=ProjectType.RFP,
+            document_name="Section K - Representations and Certifications",
+            description="Offeror representations and certifications per FAR 15.204-11",
+            category="RFP Sections",
+            phase=PhaseName.SOLICITATION,
+            is_required=True,
+            typical_deadline_days=15,
+            requires_approval=True,
+            display_order=21
+        ),
+        DocumentChecklistTemplate(
+            contract_type=ProjectType.RFP,
+            document_name="Section M - Evaluation Factors",
+            description="Evaluation factors and significant subfactors for award per FAR 15.204-13",
+            category="RFP Sections",
+            phase=PhaseName.SOLICITATION,
+            is_required=True,
+            typical_deadline_days=25,
+            requires_approval=True,
+            display_order=22
+        ),
+        # Solicitation Phase - Optional documents
+        DocumentChecklistTemplate(
+            contract_type=ProjectType.RFP,
+            document_name="Draft RFP for Industry Review",
+            description="Draft solicitation released to industry for feedback before final issuance",
+            category="Administrative",
+            phase=PhaseName.SOLICITATION,
+            is_required=False,
+            typical_deadline_days=30,
+            requires_approval=False,
+            display_order=23
+        ),
+        DocumentChecklistTemplate(
+            contract_type=ProjectType.RFP,
+            document_name="Q&A Document",
+            description="Compilation of questions and answers from industry during solicitation period",
+            category="Administrative",
+            phase=PhaseName.SOLICITATION,
+            is_required=False,
+            typical_deadline_days=35,
+            requires_approval=False,
+            display_order=24
+        ),
+        DocumentChecklistTemplate(
+            contract_type=ProjectType.RFP,
+            document_name="Site Visit Materials",
+            description="Materials for site visit including agenda, safety requirements, and logistics",
+            category="Administrative",
+            phase=PhaseName.SOLICITATION,
+            is_required=False,
+            typical_deadline_days=20,
+            requires_approval=False,
+            display_order=25
         ),
         # Post-Solicitation Phase - Documents for evaluation and award
         # These are initialized when transitioning from solicitation to post_solicitation
@@ -161,7 +319,7 @@ def seed_document_templates(db):
             is_required=True,
             typical_deadline_days=45,
             requires_approval=True,
-            display_order=20
+            display_order=30
         ),
         DocumentChecklistTemplate(
             contract_type=ProjectType.RFP,
@@ -172,7 +330,7 @@ def seed_document_templates(db):
             is_required=True,
             typical_deadline_days=30,
             requires_approval=True,
-            display_order=21
+            display_order=31
         ),
         DocumentChecklistTemplate(
             contract_type=ProjectType.RFP,
@@ -183,7 +341,7 @@ def seed_document_templates(db):
             is_required=True,
             typical_deadline_days=30,
             requires_approval=True,
-            display_order=22
+            display_order=32
         ),
         DocumentChecklistTemplate(
             contract_type=ProjectType.RFP,
@@ -194,7 +352,7 @@ def seed_document_templates(db):
             is_required=True,
             typical_deadline_days=15,
             requires_approval=True,
-            display_order=23
+            display_order=33
         ),
         DocumentChecklistTemplate(
             contract_type=ProjectType.RFP,
@@ -205,7 +363,7 @@ def seed_document_templates(db):
             is_required=True,
             typical_deadline_days=30,
             requires_approval=True,
-            display_order=24
+            display_order=34
         ),
         DocumentChecklistTemplate(
             contract_type=ProjectType.RFP,
@@ -216,7 +374,112 @@ def seed_document_templates(db):
             is_required=True,
             typical_deadline_days=15,
             requires_approval=True,
-            display_order=25
+            display_order=35
+        ),
+        # Post-Solicitation Phase - Required evaluation documents
+        DocumentChecklistTemplate(
+            contract_type=ProjectType.RFP,
+            document_name="Evaluation Scorecard",
+            description="Standardized scorecard for evaluating proposals against stated criteria",
+            category="Evaluation",
+            phase=PhaseName.POST_SOLICITATION,
+            is_required=True,
+            typical_deadline_days=20,
+            requires_approval=True,
+            display_order=36
+        ),
+        # Post-Solicitation Phase - Recommended documents
+        DocumentChecklistTemplate(
+            contract_type=ProjectType.RFP,
+            document_name="Past Performance Questionnaire (PPQ)",
+            description="Questionnaire sent to offeror references to assess past performance",
+            category="Evaluation",
+            phase=PhaseName.POST_SOLICITATION,
+            is_required=False,
+            typical_deadline_days=25,
+            requires_approval=False,
+            display_order=37
+        ),
+        # Post-Solicitation Phase - Optional evaluation documents
+        DocumentChecklistTemplate(
+            contract_type=ProjectType.RFP,
+            document_name="Discussion Question Set",
+            description="Prepared questions for discussions/negotiations with offerors in competitive range",
+            category="Evaluation",
+            phase=PhaseName.POST_SOLICITATION,
+            is_required=False,
+            typical_deadline_days=15,
+            requires_approval=False,
+            display_order=38
+        ),
+        DocumentChecklistTemplate(
+            contract_type=ProjectType.RFP,
+            document_name="Clarification Requests",
+            description="Formal requests for clarification sent to offerors per FAR 15.306(a)",
+            category="Administrative",
+            phase=PhaseName.POST_SOLICITATION,
+            is_required=False,
+            typical_deadline_days=10,
+            requires_approval=False,
+            display_order=39
+        ),
+        # Post-Solicitation Phase - Award documents (Required)
+        DocumentChecklistTemplate(
+            contract_type=ProjectType.RFP,
+            document_name="SF26 - Award/Contract",
+            description="Standard Form 26 for contract award per FAR 53.214",
+            category="Forms",
+            phase=PhaseName.POST_SOLICITATION,
+            is_required=True,
+            typical_deadline_days=10,
+            requires_approval=True,
+            display_order=40
+        ),
+        DocumentChecklistTemplate(
+            contract_type=ProjectType.RFP,
+            document_name="Award Notification",
+            description="Official notification to successful offeror of contract award per FAR 15.503",
+            category="Award",
+            phase=PhaseName.POST_SOLICITATION,
+            is_required=True,
+            typical_deadline_days=5,
+            requires_approval=True,
+            display_order=41
+        ),
+        # Post-Solicitation Phase - Award documents (Recommended)
+        DocumentChecklistTemplate(
+            contract_type=ProjectType.RFP,
+            document_name="Debriefing Letter",
+            description="Written debriefing to unsuccessful offerors per FAR 15.506",
+            category="Award",
+            phase=PhaseName.POST_SOLICITATION,
+            is_required=False,
+            typical_deadline_days=10,
+            requires_approval=True,
+            display_order=42
+        ),
+        # Post-Solicitation Phase - Award documents (Optional)
+        DocumentChecklistTemplate(
+            contract_type=ProjectType.RFP,
+            document_name="Public Award Announcement",
+            description="Press release or public announcement of contract award",
+            category="Award",
+            phase=PhaseName.POST_SOLICITATION,
+            is_required=False,
+            typical_deadline_days=15,
+            requires_approval=False,
+            display_order=43
+        ),
+        DocumentChecklistTemplate(
+            contract_type=ProjectType.RFP,
+            document_name="Post-Award Orientation Materials",
+            description="Materials for post-award kickoff meeting including transition plan and key contacts",
+            category="Award",
+            phase=PhaseName.POST_SOLICITATION,
+            is_required=False,
+            typical_deadline_days=20,
+            requires_approval=False,
+            display_order=44
         ),
     ]
 

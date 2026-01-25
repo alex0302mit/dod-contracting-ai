@@ -16,6 +16,8 @@ from backend.models.document import (
 )
 from backend.models.notification import Notification
 from backend.models.audit import AuditLog
+from backend.models.agent_feedback import AgentFeedback
+from backend.models.document_version import DocumentContentVersion
 # Document lineage models for tracking AI generation sources
 from backend.models.lineage import (
     DocumentLineage,
@@ -36,6 +38,8 @@ __all__ = [
     "DocumentApproval",
     "Notification",
     "AuditLog",
+    "AgentFeedback",
+    "DocumentContentVersion",
     # Lineage models
     "DocumentLineage",
     "KnowledgeDocument",

@@ -7,13 +7,14 @@
  * - Global search input (placeholder for future)
  * - Sync status indicator
  * - Notification center
- * - User menu with sign out
+ * - User menu with sign out and personal analytics
  * 
  * Dependencies:
  * - useProcurementProjects for project list
  * - NotificationCenter component
  * - useAuth for user info
  * - useNavigation for project selection
+ * - useUserStats for personal analytics (lazy loaded on dropdown open)
  */
 
 import { useState, useEffect } from 'react';
@@ -23,7 +24,10 @@ import {
   User,
   LogOut,
   Check,
-  FolderKanban
+  FolderKanban,
+  Clock,
+  FileText,
+  Loader2
 } from 'lucide-react';
 import { AcesLogo } from '@/components/shared/AcesLogo';
 import { Button } from '@/components/ui/button';
@@ -45,6 +49,7 @@ import {
 } from '@/components/ui/select';
 import { NotificationCenter } from '@/components/procurement/NotificationCenter';
 import { useProcurementProjects } from '@/hooks/useProcurementProjects';
+import { useUserStats } from '@/hooks/useUserStats';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigation } from '@/contexts/NavigationContext';
 import { cn } from '@/lib/utils';
@@ -84,6 +89,16 @@ export function Header() {
   const { projects } = useProcurementProjects();
   const { selectedProjectId, setSelectedProjectId, navigateToProject } = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Personal analytics - lazy loaded when dropdown opens
+  const { stats, loading: statsLoading, fetchStats, hasLoaded } = useUserStats();
+  
+  // Fetch stats when user dropdown opens (lazy loading)
+  const handleDropdownOpenChange = (open: boolean) => {
+    if (open && !hasLoaded) {
+      fetchStats();
+    }
+  };
   
   // Handle project selection from dropdown
   const handleProjectSelect = (projectId: string) => {
@@ -165,9 +180,9 @@ export function Header() {
           {/* Notifications */}
           <NotificationCenter />
           
-          {/* User Menu */}
+          {/* User Menu with Personal Analytics */}
           {user && (
-            <DropdownMenu>
+            <DropdownMenu onOpenChange={handleDropdownOpenChange}>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="gap-2 h-8">
                   <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
@@ -179,7 +194,8 @@ export function Header() {
                   <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuContent align="end" className="w-72">
+                {/* User Info Section */}
                 <DropdownMenuLabel>
                   <div className="flex flex-col">
                     <span className="font-medium">{user.name}</span>
@@ -191,7 +207,72 @@ export function Header() {
                     </span>
                   </div>
                 </DropdownMenuLabel>
+                
                 <DropdownMenuSeparator />
+                
+                {/* Personal Analytics Section */}
+                <div className="px-2 py-3">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">
+                    Your Activity (this month)
+                  </p>
+                  
+                  {statsLoading ? (
+                    // Loading state
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : stats ? (
+                    // Stats loaded successfully
+                    <>
+                      <div className="grid grid-cols-2 gap-2 mb-2">
+                        {/* Time Saved Card */}
+                        <div className="bg-muted/50 rounded-md p-2.5 text-center">
+                          <div className="flex items-center justify-center gap-1 mb-1">
+                            <Clock className="h-3.5 w-3.5 text-primary" />
+                          </div>
+                          <p className="text-lg font-semibold">
+                            {stats.estimatedHoursSaved > 0 
+                              ? `~${stats.estimatedHoursSaved}` 
+                              : '0'}
+                            <span className="text-xs font-normal ml-0.5">hrs</span>
+                          </p>
+                          <p className="text-xs text-muted-foreground">Time saved</p>
+                        </div>
+                        
+                        {/* Documents Generated Card */}
+                        <div className="bg-muted/50 rounded-md p-2.5 text-center">
+                          <div className="flex items-center justify-center gap-1 mb-1">
+                            <FileText className="h-3.5 w-3.5 text-primary" />
+                          </div>
+                          <p className="text-lg font-semibold">
+                            {stats.documentsGenerated}
+                          </p>
+                          <p className="text-xs text-muted-foreground">Docs generated</p>
+                        </div>
+                      </div>
+                      
+                      {/* Projects Contributed Row */}
+                      <div className="bg-muted/50 rounded-md p-2 flex items-center justify-center gap-2">
+                        <FolderKanban className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-sm">
+                          <span className="font-medium">{stats.projectsContributed}</span>
+                          <span className="text-muted-foreground ml-1">
+                            {stats.projectsContributed === 1 ? 'project' : 'projects'} contributed
+                          </span>
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    // No stats or error - show empty state
+                    <div className="text-center py-2 text-sm text-muted-foreground">
+                      No activity yet this month
+                    </div>
+                  )}
+                </div>
+                
+                <DropdownMenuSeparator />
+                
+                {/* Sign Out Button */}
                 <DropdownMenuItem 
                   onClick={() => signOut()} 
                   className="text-destructive cursor-pointer focus:text-destructive focus:bg-destructive/10"

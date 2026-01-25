@@ -53,7 +53,8 @@ def init_db():
     from backend.models import (
         User, ProcurementProject, ProcurementPhase, ProcurementStep,
         ProjectPermission, Notification, AuditLog,
-        DocumentChecklistTemplate, ProjectDocument, DocumentUpload, DocumentApproval
+        DocumentChecklistTemplate, ProjectDocument, DocumentUpload, DocumentApproval,
+        AgentFeedback, DocumentContentVersion
     )
     Base.metadata.create_all(bind=engine)
     print("Database initialized successfully")

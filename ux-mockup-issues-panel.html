@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ACES - Issues Panel UX Mockup</title>
+  <style>
+    /* ACES Brand Colors */
+    :root {
+      --aces-navy: #1C3F6E;
+      --aces-slate: #435165;
+      --aces-green: #188365;
+      --aces-amber: #D1913C;
+      --aces-red: #C43C3F;
+      --aces-purple: #7C3AED;
+      --aces-orange: #EA580C;
+      --background: #f5f7f9;
+      --card: #ffffff;
+      --border: #d1d9e0;
+      --muted: #64748b;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Inter, system-ui, -apple-system, sans-serif;
+      background: var(--background);
+      color: var(--aces-navy);
+      line-height: 1.5;
+    }
+
+    /* Header */
+    .header {
+      background: var(--aces-navy);
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header h1 {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .header .subtitle {
+      font-size: 12px;
+      opacity: 0.8;
+    }
+
+    /* Tab Navigation */
+    .tabs {
+      display: flex;
+      background: white;
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      gap: 4px;
+      overflow-x: auto;
+    }
+
+    .tab {
+      padding: 12px 20px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--muted);
+      border-bottom: 2px solid transparent;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .tab:hover {
+      color: var(--aces-navy);
+      background: #f8fafc;
+    }
+
+    .tab.active {
+      color: var(--aces-navy);
+      border-bottom-color: var(--aces-navy);
+      font-weight: 500;
+    }
+
+    /* Main Layout */
+    .main-layout {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      height: calc(100vh - 110px);
+    }
+
+    /* Editor Panel */
+    .editor-panel {
+      padding: 24px;
+      overflow-y: auto;
+      background: var(--background);
+    }
+
+    .editor-content {
+      background: white;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      padding: 32px 48px;
+      min-height: 500px;
+      line-height: 1.8;
+      font-size: 14px;
+    }
+
+    /* Issues Panel */
+    .issues-panel {
+      background: white;
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      background: #fafbfc;
+    }
+
+    .panel-title {
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .issue-count {
+      background: var(--aces-amber);
+      color: white;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    .panel-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    /* Highlight Styles */
+    .highlight-sentence {
+      background: rgba(209, 145, 60, 0.25);
+      padding: 2px 0;
+    }
+
+    .highlight-word {
+      background: rgba(209, 145, 60, 0.4);
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-weight: 500;
+    }
+
+    .highlight-wavy {
+      text-decoration: underline wavy var(--aces-amber);
+      text-decoration-thickness: 2px;
+      text-underline-offset: 3px;
+    }
+
+    .highlight-wavy-red {
+      text-decoration: underline wavy var(--aces-red);
+      text-decoration-thickness: 2px;
+      text-underline-offset: 3px;
+    }
+
+    .highlight-wavy-orange {
+      text-decoration: underline wavy var(--aces-orange);
+      text-decoration-thickness: 2px;
+      text-underline-offset: 3px;
+    }
+
+    .highlight-two-level {
+      background: rgba(209, 145, 60, 0.15);
+      padding: 2px 0;
+    }
+
+    .highlight-two-level-word {
+      background: rgba(209, 145, 60, 0.5);
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-weight: 600;
+      box-shadow: 0 0 0 2px rgba(209, 145, 60, 0.3);
+    }
+
+    /* Issue Card */
+    .issue-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .issue-card:hover {
+      border-color: var(--aces-navy);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .issue-card.selected {
+      border-color: var(--aces-navy);
+      background: #f8fafc;
+    }
+
+    .issue-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .issue-badge {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 500;
+      text-transform: uppercase;
+    }
+
+    .badge-warning {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge-error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .badge-hallucination {
+      background: #ffedd5;
+      color: #9a3412;
+    }
+
+    .badge-compliance {
+      background: #f3e8ff;
+      color: #6b21a8;
+    }
+
+    .issue-label {
+      font-size: 13px;
+      color: var(--aces-navy);
+      margin-bottom: 6px;
+    }
+
+    .issue-pattern {
+      font-size: 11px;
+      color: var(--muted);
+      background: #f1f5f9;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-family: monospace;
+      margin-bottom: 10px;
+    }
+
+    .issue-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--aces-purple), #a855f7);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      filter: brightness(1.1);
+    }
+
+    .btn-outline {
+      background: white;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    .btn-outline:hover {
+      background: #f8fafc;
+      border-color: var(--aces-slate);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+    }
+
+    .btn-ghost:hover {
+      background: #f1f5f9;
+    }
+
+    .btn-navy {
+      background: var(--aces-navy);
+      color: white;
+    }
+
+    .btn-navy:hover {
+      background: #153156;
+    }
+
+    /* Sticky Action Bar */
+    .sticky-actions {
+      position: sticky;
+      top: 0;
+      background: white;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+      z-index: 10;
+    }
+
+    /* Filter Dropdown */
+    .filter-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .filter-select {
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 12px;
+      background: white;
+      color: var(--aces-navy);
+    }
+
+    /* Grouped Issues */
+    .issue-group {
+      margin-bottom: 16px;
+    }
+
+    .group-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      background: #f8fafc;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+
+    .group-header:hover {
+      background: #f1f5f9;
+    }
+
+    .group-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .group-count {
+      font-size: 11px;
+      color: var(--muted);
+      background: white;
+      padding: 2px 8px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .group-items {
+      padding-left: 12px;
+      border-left: 2px solid var(--border);
+      margin-left: 8px;
+    }
+
+    .group-item {
+      padding: 8px 12px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-radius: 6px;
+      margin-bottom: 4px;
+    }
+
+    .group-item:hover {
+      background: #f8fafc;
+    }
+
+    /* Floating Nav */
+    .floating-nav {
+      position: fixed;
+      top: 130px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+      z-index: 100;
+    }
+
+    .nav-arrow {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      background: white;
+      transition: all 0.15s;
+    }
+
+    .nav-arrow:hover {
+      background: var(--aces-navy);
+      color: white;
+      border-color: var(--aces-navy);
+    }
+
+    .nav-label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .nav-current {
+      font-weight: 500;
+      color: var(--aces-navy);
+    }
+
+    /* Inline Popover */
+    .inline-popover {
+      position: absolute;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+      width: 280px;
+      z-index: 1000;
+      animation: popIn 0.15s ease-out;
+    }
+
+    @keyframes popIn {
+      from {
+        opacity: 0;
+        transform: scale(0.95) translateY(5px);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    .popover-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      background: #fafbfc;
+      border-radius: 10px 10px 0 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .popover-content {
+      padding: 12px;
+    }
+
+    .popover-actions {
+      display: flex;
+      gap: 8px;
+      padding: 12px;
+      border-top: 1px solid var(--border);
+      background: #fafbfc;
+      border-radius: 0 0 10px 10px;
+    }
+
+    .popover-close {
+      width: 24px;
+      height: 24px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+    }
+
+    .popover-close:hover {
+      background: #e2e8f0;
+    }
+
+    /* Summary Header */
+    .summary-header {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+
+    .summary-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      cursor: pointer;
+    }
+
+    .summary-title:hover {
+      background: #fafbfc;
+    }
+
+    .summary-stats {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+    }
+
+    .stat-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    /* Checkbox Selection */
+    .checkbox-wrapper {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .checkbox {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .checkbox.checked {
+      background: var(--aces-navy);
+      border-color: var(--aces-navy);
+      color: white;
+    }
+
+    .selection-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* Dismiss Button */
+    .dismiss-btn {
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .issue-card:hover .dismiss-btn {
+      opacity: 1;
+    }
+
+    /* Section Header in Editor */
+    .section-header {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--aces-navy);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--aces-navy);
+    }
+
+    .section-content {
+      margin-bottom: 24px;
+    }
+
+    /* Hidden panels */
+    .panel-view {
+      display: none;
+    }
+
+    .panel-view.active {
+      display: block;
+    }
+
+    /* Icons (simple SVG placeholders) */
+    .icon {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* Description Text */
+    .description-text {
+      background: #f0f9ff;
+      border: 1px solid #bae6fd;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 24px;
+      font-size: 13px;
+      color: #0369a1;
+    }
+
+    .description-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Minimap */
+    .minimap {
+      position: absolute;
+      right: 8px;
+      top: 50px;
+      bottom: 50px;
+      width: 12px;
+      background: #f1f5f9;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      padding: 4px 0;
+    }
+
+    .minimap-marker {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin: 2px auto;
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+
+    .minimap-marker:hover {
+      transform: scale(1.3);
+    }
+
+    .minimap-amber { background: var(--aces-amber); }
+    .minimap-orange { background: var(--aces-orange); }
+    .minimap-purple { background: var(--aces-purple); }
+    .minimap-red { background: var(--aces-red); }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <h1>ACES - Issues Panel UX Mockup</h1>
+      <div class="subtitle">Interactive prototype - Click tabs to explore different UX concepts</div>
+    </div>
+  </div>
+
+  <!-- Tab Navigation -->
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('current')">Current State</button>
+    <button class="tab" onclick="showTab('highlight-precise')">A1: Precise Highlight</button>
+    <button class="tab" onclick="showTab('highlight-wavy')">A3: Wavy Underline</button>
+    <button class="tab" onclick="showTab('sticky-bar')">C1: Sticky Action Bar</button>
+    <button class="tab" onclick="showTab('grouped')">C2: Grouped Issues</button>
+    <button class="tab" onclick="showTab('checkboxes')">C3: Batch Selection</button>
+    <button class="tab" onclick="showTab('floating-nav')">B1: Floating Nav</button>
+    <button class="tab" onclick="showTab('combined')">Combined (Recommended)</button>
+  </div>
+
+  <!-- CURRENT STATE -->
+  <div id="tab-current" class="panel-view active">
+    <div class="description-text">
+      <div class="description-title">
+        <span>Current State</span>
+      </div>
+      This shows the current UX: entire sentences are highlighted (not just TBD), the Fix All button is at the bottom, and users must scroll through all issues.
+    </div>
+    <div class="main-layout">
+      <div class="editor-panel">
+        <div class="editor-content">
+          <div class="section-header">3.1 Staffing Requirements</div>
+          <div class="section-content">
+            <p><span class="highlight-sentence">The contractor shall provide TBD personnel with appropriate security clearances to support the program office within the specified timeframe.</span></p>
+            <p style="margin-top: 16px;">All contractor personnel must complete required training within 30 days of contract award.</p>
+            <p style="margin-top: 16px;"><span class="highlight-sentence">The Government anticipates requiring TBD full-time equivalents (FTEs) for the base period of performance.</span></p>
+          </div>
+
+          <div class="section-header">3.2 Technical Requirements</div>
+          <div class="section-content">
+            <p><span class="highlight-sentence">According to industry standards, the system shall achieve 99.9% uptime availability during operational hours.</span></p>
+            <p style="margin-top: 16px;">The contractor shall implement security controls in accordance with NIST 800-53.</p>
+          </div>
+        </div>
+      </div>
+      <div class="issues-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            Issues
+            <span class="issue-count">12</span>
+          </div>
+        </div>
+        <div class="panel-content">
+          <div class="issue-card selected">
+            <div class="issue-header">
+              <span class="issue-badge badge-warning">Warning</span>
+            </div>
+            <div class="issue-label">TBD placeholder needs to be filled in</div>
+            <div class="issue-pattern">"TBD personnel"</div>
+            <div class="issue-actions">
+              <button class="btn btn-primary">Fix with AI</button>
+              <button class="btn btn-outline">View</button>
+            </div>
+          </div>
+
+          <div class="issue-card">
+            <div class="issue-header">
+              <span class="issue-badge badge-warning">Warning</span>
+            </div>
+            <div class="issue-label">TBD placeholder needs to be filled in</div>
+            <div class="issue-pattern">"TBD full-time equivalents"</div>
+            <div class="issue-actions">
+              <button class="btn btn-primary">Fix with AI</button>
+              <button class="btn btn-outline">View</button>
+            </div>
+          </div>
+
+          <div class="issue-card">
+            <div class="issue-header">
+              <span class="issue-badge badge-hallucination">Hallucination</span>
+            </div>
+            <div class="issue-label">Unsourced claim - "industry standards"</div>
+            <div class="issue-pattern">"According to industry standards"</div>
+            <div class="issue-actions">
+              <button class="btn btn-primary">Fix with AI</button>
+              <button class="btn btn-outline">View</button>
+            </div>
+          </div>
+
+          <!-- More issues... -->
+          <div class="issue-card">
+            <div class="issue-header">
+              <span class="issue-badge badge-warning">Warning</span>
+            </div>
+            <div class="issue-label">TBD placeholder #3</div>
+            <div class="issue-pattern">"TBD"</div>
+            <div class="issue-actions">
+              <button class="btn btn-primary">Fix with AI</button>
+              <button class="btn btn-outline">View</button>
+            </div>
+          </div>
+
+          <div class="issue-card">
+            <div class="issue-header">
+              <span class="issue-badge badge-warning">Warning</span>
+            </div>
+            <div class="issue-label">TBD placeholder #4</div>
+            <div class="issue-pattern">"TBD"</div>
+            <div class="issue-actions">
+              <button class="btn btn-primary">Fix with AI</button>
+              <button class="btn btn-outline">View</button>
+            </div>
+          </div>
+
+          <div style="padding: 16px; text-align: center; margin-top: 24px; border-top: 1px solid var(--border);">
+            <button class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px;">
+              Fix All Issues with AI (12)
+            </button>
+            <p style="font-size: 11px; color: var(--muted); margin-top: 8px;">
+              User has to scroll all the way down to find this button!
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- A1: PRECISE HIGHLIGHT -->
+  <div id="tab-highlight-precise" class="panel-view">
+    <div class="description-text">
+      <div class="description-title">A1: Precise Highlighting</div>
+      Only the exact word/phrase (e.g., "TBD") is highlighted, not the entire sentence. Much cleaner and less visually overwhelming.
+    </div>
+    <div class="main-layout">
+      <div class="editor-panel">
+        <div class="editor-content">
+          <div class="section-header">3.1 Staffing Requirements</div>
+          <div class="section-content">
+            <p>The contractor shall provide <span class="highlight-word">TBD</span> personnel with appropriate security clearances to support the program office within the specified timeframe.</p>
+            <p style="margin-top: 16px;">All contractor personnel must complete required training within 30 days of contract award.</p>
+            <p style="margin-top: 16px;">The Government anticipates requiring <span class="highlight-word">TBD</span> full-time equivalents (FTEs) for the base period of performance.</p>
+          </div>
+
+          <div class="section-header">3.2 Technical Requirements</div>
+          <div class="section-content">
+            <p><span class="highlight-word" style="background: rgba(234, 88, 12, 0.3);">According to industry standards</span>, the system shall achieve 99.9% uptime availability during operational hours.</p>
+            <p style="margin-top: 16px;">The contractor shall implement security controls in accordance with NIST 800-53.</p>
+          </div>
+        </div>
+      </div>
+      <div class="issues-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            Issues
+            <span class="issue-count">12</span>
+          </div>
+        </div>
+        <div class="panel-content">
+          <div class="issue-card selected">
+            <div class="issue-header">
+              <span class="issue-badge badge-warning">Warning</span>
+            </div>
+            <div class="issue-label">TBD placeholder needs specific value</div>
+            <div class="issue-pattern">"TBD"</div>
+            <div class="issue-actions">
+              <button class="btn btn-primary">Fix with AI</button>
+              <button class="btn btn-outline">View</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- A3: WAVY UNDERLINE -->
+  <div id="tab-highlight-wavy" class="panel-view">
+    <div class="description-text">
+      <div class="description-title">A3: Wavy Underline (like spell-check)</div>
+      Instead of background highlighting, use wavy underlines like Microsoft Word's spell check. Different colors for different issue types. Very familiar pattern for users.
+    </div>
+    <div class="main-layout">
+      <div class="editor-panel">
+        <div class="editor-content">
+          <div class="section-header">3.1 Staffing Requirements</div>
+          <div class="section-content">
+            <p>The contractor shall provide <span class="highlight-wavy">TBD</span> personnel with appropriate security clearances to support the program office within the specified timeframe.</p>
+            <p style="margin-top: 16px;">All contractor personnel must complete required training within 30 days of contract award.</p>
+            <p style="margin-top: 16px;">The Government anticipates requiring <span class="highlight-wavy">TBD</span> full-time equivalents (FTEs) for the base period of performance.</p>
+          </div>
+
+          <div class="section-header">3.2 Technical Requirements</div>
+          <div class="section-content">
+            <p><span class="highlight-wavy-orange">According to industry standards</span>, the system shall achieve 99.9% uptime availability during operational hours.</p>
+            <p style="margin-top: 16px;">The contractor shall implement security controls in accordance with <span class="highlight-wavy-red">NIST 800-53</span>.</p>
+          </div>
+
+          <div style="margin-top: 32px; padding: 16px; background: #f8fafc; border-radius: 8px; font-size: 12px;">
+            <strong>Legend:</strong>
+            <span style="margin-left: 16px;"><span class="highlight-wavy">amber wavy</span> = TBD/placeholder</span>
+            <span style="margin-left: 16px;"><span class="highlight-wavy-orange">orange wavy</span> = hallucination</span>
+            <span style="margin-left: 16px;"><span class="highlight-wavy-red">red wavy</span> = compliance</span>
+          </div>
+        </div>
+      </div>
+      <div class="issues-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            Issues
+            <span class="issue-count">4</span>
+          </div>
+        </div>
+        <div class="panel-content">
+          <div class="issue-card">
+            <div class="issue-header">
+              <span class="issue-badge badge-warning">TBD</span>
+            </div>
+            <div class="issue-label">Placeholder needs specific value</div>
+            <div class="issue-pattern">"TBD" (Section 3.1)</div>
+            <div class="issue-actions">
+              <button class="btn btn-primary">Fix with AI</button>
+            </div>
+          </div>
+          <div class="issue-card">
+            <div class="issue-header">
+              <span class="issue-badge badge-hallucination">Hallucination</span>
+            </div>
+            <div class="issue-label">Unsourced claim</div>
+            <div class="issue-pattern">"According to industry standards"</div>
+            <div class="issue-actions">
+              <button class="btn btn-primary">Fix with AI</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- C1: STICKY ACTION BAR -->
+  <div id="tab-sticky-bar" class="panel-view">
+    <div class="description-text">
+      <div class="description-title">C1: Sticky Action Bar at Top</div>
+      The "Fix All" button is now sticky at the top of the issues panel, always visible regardless of scroll position.
+    </div>
+    <div class="main-layout">
+      <div class="editor-panel">
+        <div class="editor-content">
+          <div class="section-header">3.1 Staffing Requirements</div>
+          <div class="section-content">
+            <p>The contractor shall provide <span class="highlight-word">TBD</span> personnel with appropriate security clearances.</p>
+            <p style="margin-top: 16px;">The Government anticipates requiring <span class="highlight-word">TBD</span> full-time equivalents (FTEs).</p>
+          </div>
+        </div>
+      </div>
+      <div class="issues-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            Issues
+            <span class="issue-count">12</span>
+          </div>
+        </div>
+        <!-- STICKY ACTION BAR -->
+        <div class="sticky-actions">
+          <button class="btn btn-primary" style="flex: 1; justify-content: center;">
+            Fix All with AI (12)
+          </button>
+          <button class="btn btn-outline">
+            Review All
+          </button>
+        </div>
+        <div class="panel-content">
+          <div class="filter-row">
+            <span style="font-size: 12px; color: var(--muted);">Filter:</span>
+            <select class="filter-select">
+              <option>All Issues (12)</option>
+              <option>TBD Placeholders (8)</option>
+              <option>Hallucinations (3)</option>
+              <option>Compliance (1)</option>
+            </select>
+          </div>
+
+          <div class="issue-card">
+            <div class="issue-header">
+              <span class="issue-badge badge-warning">Warning</span>
+            </div>
+            <div class="issue-label">TBD placeholder #1</div>
+            <div class="issue-actions">
+              <button class="btn btn-primary">Fix with AI</button>
+              <button class="btn btn-outline">View</button>
+              <button class="btn btn-ghost dismiss-btn">Dismiss</button>
+            </div>
+          </div>
+
+          <div class="issue-card">
+            <div class="issue-header">
+              <span class="issue-badge badge-warning">Warning</span>
+            </div>
+            <div class="issue-label">TBD placeholder #2</div>
+            <div class="issue-actions">
+              <button class="btn btn-primary">Fix with AI</button>
+              <button class="btn btn-outline">View</button>
+              <button class="btn btn-ghost dismiss-btn">Dismiss</button>
+            </div>
+          </div>
+
+          <div class="issue-card">
+            <div class="issue-header">
+              <span class="issue-badge badge-hallucination">Hallucination</span>
+            </div>
+            <div class="issue-label">Unsourced claim</div>
+            <div class="issue-actions">
+              <button class="btn btn-primary">Fix with AI</button>
+              <button class="btn btn-outline">View</button>
+              <button class="btn btn-ghost dismiss-btn">Dismiss</button>
+            </div>
+          </div>
+
+          <p style="text-align: center; font-size: 11px; color: var(--aces-green); margin-top: 16px; padding: 12px; background: #f0fdf4; border-radius: 8px;">
+            The "Fix All" button stays visible as you scroll!
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- C2: GROUPED ISSUES -->
+  <div id="tab-grouped" class="panel-view">
+    <div class="description-text">
+      <div class="description-title">C2: Grouped Issues with Collapsible Sections</div>
+      Issues are grouped by type (TBD, Hallucination, Compliance). Each group can be collapsed and has its own "Fix All" button.
+    </div>
+    <div class="main-layout">
+      <div class="editor-panel">
+        <div class="editor-content">
+          <div class="section-header">3.1 Staffing Requirements</div>
+          <div class="section-content">
+            <p>The contractor shall provide <span class="highlight-word">TBD</span> personnel with appropriate security clearances.</p>
+          </div>
+        </div>
+      </div>
+      <div class="issues-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            Issues
+            <span class="issue-count">12</span>
+          </div>
+        </div>
+        <div class="sticky-actions">
+          <button class="btn btn-primary" style="flex: 1; justify-content: center;">
+            Fix All with AI (12)
+          </button>
+        </div>
+        <div class="panel-content">
+          <!-- Summary Header -->
+          <div class="summary-header">
+            <div class="summary-title">
+              <span style="font-weight: 500; font-size: 13px;">Issues Summary</span>
+              <span style="font-size: 11px; color: var(--muted);">Click to expand</span>
+            </div>
+            <div class="summary-stats">
+              <div class="stat-item">
+                <div class="stat-dot" style="background: var(--aces-amber);"></div>
+                <span>8 TBD placeholders</span>
+              </div>
+              <div class="stat-item">
+                <div class="stat-dot" style="background: var(--aces-orange);"></div>
+                <span>3 Hallucinations</span>
+              </div>
+              <div class="stat-item">
+                <div class="stat-dot" style="background: var(--aces-purple);"></div>
+                <span>1 Compliance</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Grouped Issues -->
+          <div class="issue-group">
+            <div class="group-header">
+              <div class="group-title">
+                <div class="stat-dot" style="background: var(--aces-amber);"></div>
+                TBD Placeholders
+                <span class="group-count">8</span>
+              </div>
+              <button class="btn btn-primary" style="font-size: 11px; padding: 4px 10px;">Fix All</button>
+            </div>
+            <div class="group-items">
+              <div class="group-item">
+                <span>Section 3.1: "TBD personnel"</span>
+                <button class="btn btn-outline" style="font-size: 10px; padding: 3px 8px;">Fix</button>
+              </div>
+              <div class="group-item">
+                <span>Section 3.1: "TBD FTEs"</span>
+                <button class="btn btn-outline" style="font-size: 10px; padding: 3px 8px;">Fix</button>
+              </div>
+              <div class="group-item">
+                <span>Section 4.2: "TBD date"</span>
+                <button class="btn btn-outline" style="font-size: 10px; padding: 3px 8px;">Fix</button>
+              </div>
+              <div class="group-item" style="color: var(--muted);">
+                + 5 more...
+              </div>
+            </div>
+          </div>
+
+          <div class="issue-group">
+            <div class="group-header">
+              <div class="group-title">
+                <div class="stat-dot" style="background: var(--aces-orange);"></div>
+                Hallucinations
+                <span class="group-count">3</span>
+              </div>
+              <button class="btn btn-primary" style="font-size: 11px; padding: 4px 10px;">Fix All</button>
+            </div>
+            <div class="group-items">
+              <div class="group-item">
+                <span>"According to industry standards..."</span>
+                <button class="btn btn-outline" style="font-size: 10px; padding: 3px 8px;">Fix</button>
+              </div>
+              <div class="group-item">
+                <span>"Research indicates..."</span>
+                <button class="btn btn-outline" style="font-size: 10px; padding: 3px 8px;">Fix</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="issue-group">
+            <div class="group-header">
+              <div class="group-title">
+                <div class="stat-dot" style="background: var(--aces-purple);"></div>
+                Compliance
+                <span class="group-count">1</span>
+              </div>
+              <button class="btn btn-primary" style="font-size: 11px; padding: 4px 10px;">Fix All</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- C3: CHECKBOX SELECTION -->
+  <div id="tab-checkboxes" class="panel-view">
+    <div class="description-text">
+      <div class="description-title">C3: Batch Selection with Checkboxes</div>
+      Users can select specific issues to fix. A counter shows how many are selected, and the "Fix Selected" button appears.
+    </div>
+    <div class="main-layout">
+      <div class="editor-panel">
+        <div class="editor-content">
+          <div class="section-header">3.1 Staffing Requirements</div>
+          <div class="section-content">
+            <p>The contractor shall provide <span class="highlight-word">TBD</span> personnel with appropriate security clearances.</p>
+          </div>
+        </div>
+      </div>
+      <div class="issues-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            Issues
+            <span class="issue-count">12</span>
+          </div>
+        </div>
+        <div class="selection-bar">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div class="checkbox checked">
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+                <path d="M1 5L4 8L9 2" stroke="white" stroke-width="2" fill="none"/>
+              </svg>
+            </div>
+            <span style="font-size: 12px;">3 selected</span>
+          </div>
+          <button class="btn btn-primary">Fix 3 Selected</button>
+        </div>
+        <div class="panel-content">
+          <div class="issue-card" style="display: flex; gap: 12px;">
+            <div class="checkbox checked">
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+                <path d="M1 5L4 8L9 2" stroke="white" stroke-width="2" fill="none"/>
+              </svg>
+            </div>
+            <div style="flex: 1;">
+              <div class="issue-header">
+                <span class="issue-badge badge-warning">Warning</span>
+              </div>
+              <div class="issue-label">TBD placeholder in section 3.1</div>
+              <div class="issue-pattern">"TBD personnel"</div>
+            </div>
+          </div>
+
+          <div class="issue-card" style="display: flex; gap: 12px;">
+            <div class="checkbox checked">
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+                <path d="M1 5L4 8L9 2" stroke="white" stroke-width="2" fill="none"/>
+              </svg>
+            </div>
+            <div style="flex: 1;">
+              <div class="issue-header">
+                <span class="issue-badge badge-warning">Warning</span>
+              </div>
+              <div class="issue-label">TBD placeholder in section 3.1</div>
+              <div class="issue-pattern">"TBD FTEs"</div>
+            </div>
+          </div>
+
+          <div class="issue-card" style="display: flex; gap: 12px;">
+            <div class="checkbox"></div>
+            <div style="flex: 1;">
+              <div class="issue-header">
+                <span class="issue-badge badge-hallucination">Hallucination</span>
+              </div>
+              <div class="issue-label">Unsourced claim</div>
+              <div class="issue-pattern">"According to industry standards"</div>
+            </div>
+          </div>
+
+          <div class="issue-card" style="display: flex; gap: 12px;">
+            <div class="checkbox checked">
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+                <path d="M1 5L4 8L9 2" stroke="white" stroke-width="2" fill="none"/>
+              </svg>
+            </div>
+            <div style="flex: 1;">
+              <div class="issue-header">
+                <span class="issue-badge badge-warning">Warning</span>
+              </div>
+              <div class="issue-label">TBD placeholder in section 4.1</div>
+              <div class="issue-pattern">"TBD amount"</div>
+            </div>
+          </div>
+
+          <div class="issue-card" style="display: flex; gap: 12px;">
+            <div class="checkbox"></div>
+            <div style="flex: 1;">
+              <div class="issue-header">
+                <span class="issue-badge badge-compliance">Compliance</span>
+              </div>
+              <div class="issue-label">Missing FAR clause reference</div>
+              <div class="issue-pattern">"NIST 800-53"</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B1: FLOATING NAV -->
+  <div id="tab-floating-nav" class="panel-view">
+    <div class="description-text">
+      <div class="description-title">B1: Floating Navigation Bar</div>
+      A floating bar shows current issue position and provides Previous/Next buttons to jump between issues. Also includes a minimap on the right side of the editor.
+    </div>
+    <div class="main-layout">
+      <div class="editor-panel" style="position: relative;">
+        <!-- Floating Nav -->
+        <div class="floating-nav">
+          <div class="nav-arrow">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 18l-6-6 6-6"/>
+            </svg>
+          </div>
+          <div style="text-align: center;">
+            <div class="nav-label">Issue <span class="nav-current">3</span> of 12</div>
+            <div style="font-size: 11px; color: var(--aces-amber);">TBD placeholder</div>
+          </div>
+          <div class="nav-arrow">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="editor-content" style="position: relative;">
+          <!-- Minimap -->
+          <div class="minimap">
+            <div class="minimap-marker minimap-amber" title="TBD #1" style="margin-top: 20px;"></div>
+            <div class="minimap-marker minimap-amber" title="TBD #2" style="margin-top: 15px;"></div>
+            <div class="minimap-marker minimap-amber" title="TBD #3 (current)" style="margin-top: 30px; transform: scale(1.4); box-shadow: 0 0 0 3px rgba(209, 145, 60, 0.3);"></div>
+            <div class="minimap-marker minimap-orange" title="Hallucination" style="margin-top: 40px;"></div>
+            <div class="minimap-marker minimap-amber" title="TBD #4" style="margin-top: 20px;"></div>
+            <div class="minimap-marker minimap-purple" title="Compliance" style="margin-top: 30px;"></div>
+            <div class="minimap-marker minimap-amber" title="TBD #5" style="margin-top: 25px;"></div>
+          </div>
+
+          <div class="section-header">3.1 Staffing Requirements</div>
+          <div class="section-content">
+            <p>The contractor shall provide <span class="highlight-wavy">TBD</span> personnel with appropriate security clearances to support the program office within the specified timeframe.</p>
+            <p style="margin-top: 16px;">All contractor personnel must complete required training within 30 days of contract award.</p>
+            <p style="margin-top: 16px;">The Government anticipates requiring <span class="highlight-wavy">TBD</span> full-time equivalents (FTEs) for the base period of performance.</p>
+          </div>
+
+          <div class="section-header">3.2 Technical Requirements</div>
+          <div class="section-content">
+            <p>The system must support <span class="highlight-word" style="box-shadow: 0 0 0 3px rgba(209, 145, 60, 0.4);">TBD</span> concurrent users during peak hours.</p>
+            <p style="margin-top: 16px;"><span class="highlight-wavy-orange">According to industry standards</span>, the system shall achieve 99.9% uptime.</p>
+          </div>
+        </div>
+      </div>
+      <div class="issues-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            Issues
+            <span class="issue-count">12</span>
+          </div>
+        </div>
+        <div class="sticky-actions">
+          <button class="btn btn-primary" style="flex: 1; justify-content: center;">
+            Fix All with AI
+          </button>
+        </div>
+        <div class="panel-content">
+          <p style="font-size: 12px; color: var(--muted); margin-bottom: 12px;">
+            Use &#8984;[ and &#8984;] to navigate between issues
+          </p>
+          <div class="issue-card">
+            <div class="issue-header">
+              <span class="issue-badge badge-warning">Warning</span>
+            </div>
+            <div class="issue-label">TBD placeholder #1</div>
+          </div>
+          <div class="issue-card">
+            <div class="issue-header">
+              <span class="issue-badge badge-warning">Warning</span>
+            </div>
+            <div class="issue-label">TBD placeholder #2</div>
+          </div>
+          <div class="issue-card selected">
+            <div class="issue-header">
+              <span class="issue-badge badge-warning">Warning</span>
+              <span style="font-size: 10px; color: var(--aces-green); margin-left: auto;">Current</span>
+            </div>
+            <div class="issue-label">TBD placeholder #3</div>
+            <div class="issue-actions">
+              <button class="btn btn-primary">Fix with AI</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMBINED RECOMMENDED -->
+  <div id="tab-combined" class="panel-view">
+    <div class="description-text">
+      <div class="description-title">Combined Recommended UX</div>
+      This combines the best features: precise wavy underlines, sticky action bar, grouped issues, dismiss button, filter, and inline popover on click.
+    </div>
+    <div class="main-layout">
+      <div class="editor-panel" style="position: relative;">
+        <!-- Floating Nav -->
+        <div class="floating-nav">
+          <div class="nav-arrow">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 18l-6-6 6-6"/>
+            </svg>
+          </div>
+          <div style="text-align: center;">
+            <div class="nav-label">Issue <span class="nav-current">3</span> of 12</div>
+            <div style="font-size: 11px; color: var(--aces-amber);">TBD placeholder</div>
+          </div>
+          <div class="nav-arrow">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="editor-content" style="position: relative;">
+          <div class="section-header">3.1 Staffing Requirements</div>
+          <div class="section-content">
+            <p>The contractor shall provide <span class="highlight-wavy" style="cursor: pointer;" onclick="showPopover(event)">TBD</span> personnel with appropriate security clearances to support the program office within the specified timeframe.</p>
+            <p style="margin-top: 16px;">All contractor personnel must complete required training within 30 days of contract award.</p>
+            <p style="margin-top: 16px;">The Government anticipates requiring <span class="highlight-wavy" style="cursor: pointer;" onclick="showPopover(event)">TBD</span> full-time equivalents (FTEs) for the base period of performance.</p>
+          </div>
+
+          <div class="section-header">3.2 Technical Requirements</div>
+          <div class="section-content">
+            <p>The system must support <span class="highlight-wavy" style="cursor: pointer;" onclick="showPopover(event)">TBD</span> concurrent users during peak hours.</p>
+            <p style="margin-top: 16px;"><span class="highlight-wavy-orange" style="cursor: pointer;" onclick="showPopoverHallucination(event)">According to industry standards</span>, the system shall achieve 99.9% uptime availability.</p>
+          </div>
+
+          <!-- Inline Popover (hidden by default) -->
+          <div id="inline-popover" class="inline-popover" style="display: none; top: 200px; left: 300px;">
+            <div class="popover-header">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--aces-amber)">
+                  <path d="M12 2L2 22h20L12 2zm0 4l7.5 14h-15L12 6z"/>
+                </svg>
+                <span class="issue-badge badge-warning" style="margin: 0;">Warning</span>
+              </div>
+              <button class="popover-close" onclick="hidePopover()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+            <div class="popover-content">
+              <p style="font-size: 13px; color: var(--aces-navy); margin-bottom: 8px;">TBD placeholder needs specific value</p>
+              <div class="issue-pattern">"TBD"</div>
+            </div>
+            <div class="popover-actions">
+              <button class="btn btn-primary" style="flex: 1; justify-content: center;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2L9 9H2l6 4.5L5.5 22 12 17l6.5 5-2.5-8.5L22 9h-7L12 2z"/>
+                </svg>
+                Fix with AI
+              </button>
+              <button class="btn btn-outline" onclick="hidePopover()">Dismiss</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="issues-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            Issues
+            <span class="issue-count">12</span>
+          </div>
+        </div>
+        <!-- STICKY ACTION BAR -->
+        <div class="sticky-actions">
+          <button class="btn btn-primary" style="flex: 1; justify-content: center;">
+            Fix All with AI (12)
+          </button>
+        </div>
+        <div class="panel-content">
+          <div class="filter-row">
+            <select class="filter-select">
+              <option>All Issues (12)</option>
+              <option>TBD only (8)</option>
+              <option>Hallucinations (3)</option>
+              <option>Compliance (1)</option>
+            </select>
+          </div>
+
+          <!-- Grouped Issues -->
+          <div class="issue-group">
+            <div class="group-header">
+              <div class="group-title">
+                <div class="stat-dot" style="background: var(--aces-amber);"></div>
+                TBD Placeholders
+                <span class="group-count">8</span>
+              </div>
+              <button class="btn btn-primary" style="font-size: 11px; padding: 4px 10px;">Fix All</button>
+            </div>
+            <div class="group-items">
+              <div class="group-item">
+                <span>Section 3.1: "TBD personnel"</span>
+                <div style="display: flex; gap: 4px;">
+                  <button class="btn btn-outline" style="font-size: 10px; padding: 3px 8px;">Fix</button>
+                  <button class="btn btn-ghost" style="font-size: 10px; padding: 3px 6px; color: var(--muted);">Dismiss</button>
+                </div>
+              </div>
+              <div class="group-item">
+                <span>Section 3.1: "TBD FTEs"</span>
+                <div style="display: flex; gap: 4px;">
+                  <button class="btn btn-outline" style="font-size: 10px; padding: 3px 8px;">Fix</button>
+                  <button class="btn btn-ghost" style="font-size: 10px; padding: 3px 6px; color: var(--muted);">Dismiss</button>
+                </div>
+              </div>
+              <div class="group-item">
+                <span>Section 3.2: "TBD users"</span>
+                <div style="display: flex; gap: 4px;">
+                  <button class="btn btn-outline" style="font-size: 10px; padding: 3px 8px;">Fix</button>
+                  <button class="btn btn-ghost" style="font-size: 10px; padding: 3px 6px; color: var(--muted);">Dismiss</button>
+                </div>
+              </div>
+              <div class="group-item" style="color: var(--muted); cursor: pointer;">
+                + 5 more...
+              </div>
+            </div>
+          </div>
+
+          <div class="issue-group">
+            <div class="group-header">
+              <div class="group-title">
+                <div class="stat-dot" style="background: var(--aces-orange);"></div>
+                Hallucinations
+                <span class="group-count">3</span>
+              </div>
+              <button class="btn btn-primary" style="font-size: 11px; padding: 4px 10px;">Fix All</button>
+            </div>
+            <div class="group-items">
+              <div class="group-item">
+                <span>"According to industry standards..."</span>
+                <button class="btn btn-outline" style="font-size: 10px; padding: 3px 8px;">Fix</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="issue-group">
+            <div class="group-header">
+              <div class="group-title">
+                <div class="stat-dot" style="background: var(--aces-purple);"></div>
+                Compliance
+                <span class="group-count">1</span>
+              </div>
+              <button class="btn btn-primary" style="font-size: 11px; padding: 4px 10px;">Fix</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Tab switching
+    function showTab(tabId) {
+      // Hide all panels
+      document.querySelectorAll('.panel-view').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+
+      // Show selected panel
+      document.getElementById('tab-' + tabId).classList.add('active');
+      event.target.classList.add('active');
+
+      // Hide popover when switching tabs
+      hidePopover();
+    }
+
+    // Inline popover
+    function showPopover(e) {
+      const popover = document.getElementById('inline-popover');
+      const rect = e.target.getBoundingClientRect();
+
+      // Update popover content for TBD
+      popover.querySelector('.popover-content p').textContent = 'TBD placeholder needs specific value';
+      popover.querySelector('.issue-badge').className = 'issue-badge badge-warning';
+      popover.querySelector('.issue-badge').textContent = 'Warning';
+
+      popover.style.display = 'block';
+      popover.style.left = (rect.left + window.scrollX) + 'px';
+      popover.style.top = (rect.bottom + window.scrollY + 10) + 'px';
+
+      e.stopPropagation();
+    }
+
+    function showPopoverHallucination(e) {
+      const popover = document.getElementById('inline-popover');
+      const rect = e.target.getBoundingClientRect();
+
+      // Update popover content for hallucination
+      popover.querySelector('.popover-content p').textContent = 'Unsourced claim - needs citation or rewrite';
+      popover.querySelector('.issue-badge').className = 'issue-badge badge-hallucination';
+      popover.querySelector('.issue-badge').textContent = 'Hallucination';
+      popover.querySelector('.issue-pattern').textContent = '"According to industry standards"';
+
+      popover.style.display = 'block';
+      popover.style.left = (rect.left + window.scrollX) + 'px';
+      popover.style.top = (rect.bottom + window.scrollY + 10) + 'px';
+
+      e.stopPropagation();
+    }
+
+    function hidePopover() {
+      document.getElementById('inline-popover').style.display = 'none';
+    }
+
+    // Close popover when clicking outside
+    document.addEventListener('click', function(e) {
+      const popover = document.getElementById('inline-popover');
+      if (!popover.contains(e.target) && !e.target.classList.contains('highlight-wavy') && !e.target.classList.contains('highlight-wavy-orange')) {
+        hidePopover();
+      }
+    });
+
+    // Keyboard navigation
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        hidePopover();
+      }
+    });
+  </script>
+</body>
+</html>

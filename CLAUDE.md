@@ -40,17 +40,17 @@ AI-powered DoD acquisition document generation system that automates procurement
 │   │   └── templates/            # 29 document templates
 │   └── web/                      # React frontend
 │       └── src/
-│           ├── components/       # 157 React components
-│           │   ├── admin/        # Admin panel
+│           ├── components/       # 162 React components
+│           │   ├── admin/        # Admin panel & analytics
 │           │   ├── dashboard/    # Dashboard views
-│           │   ├── editor/       # Live editor components
+│           │   ├── editor/       # Live editor & issue management
 │           │   ├── procurement/  # Procurement workflow
 │           │   ├── guided/       # Guided workflow flows
 │           │   ├── comparison/   # Agent comparison view
 │           │   └── ui/           # shadcn/ui components
-│           ├── services/api.ts   # 50+ API client methods
-│           ├── hooks/            # Custom React hooks
-│           └── contexts/         # Auth & state contexts
+│           ├── services/api.ts   # 55+ API client methods
+│           ├── hooks/            # Custom React hooks (analytics, stats)
+│           └── contexts/         # Auth, navigation & state contexts
 ├── tools/
 │   ├── testing/                  # 40+ test files
 │   ├── migrations/               # Database migrations
@@ -148,18 +148,20 @@ A/B testing framework for comparing agent variants.
 - `AuditLog` - All system changes for compliance
 - `Notification` - User alerts and system messages
 
-## API Endpoints (90+ Total)
+## API Endpoints (95+ Total)
 
-### Authentication
+### Authentication & User
 - `POST /api/auth/register` - User registration
 - `POST /api/auth/login` - User login
 - `GET /api/auth/me` - Current user info
+- `GET /api/users/me/stats` - Personal analytics (documents generated, hours saved)
 
 ### Admin
 - `GET /api/admin/users` - List all users
 - `PUT /api/admin/users/{id}/role` - Update user role
 - `POST /api/admin/bootstrap` - Create first admin
 - `DELETE /api/admin/users/{id}` - Delete user
+- `GET /api/admin/analytics` - Organization-wide analytics dashboard
 
 ### Projects & Documents
 - `GET/POST /api/projects` - List/create projects
@@ -317,6 +319,20 @@ cd apps/api && black . && isort .
 
 ## Recent Enhancements
 
+### Analytics & Reporting
+- Admin analytics dashboard with KPIs, trends, and top contributors
+- Personal user statistics (documents generated, hours saved, projects)
+- CSV export for analytics data
+- Time savings calculation based on document types
+
+### Editor Issue Management
+- Grouped issues panel with collapsible sections by type
+- Batch fix preview modal with parallel AI fix generation
+- Inline issue popover on highlighted text
+- Floating navigation bar for issue traversal (keyboard shortcuts)
+- Enhanced vague language detection patterns
+
+### Core Features
 - Document lineage tracking with RAG chunk references
 - Docling-based advanced PDF processing
 - Agent comparison service for A/B testing
@@ -326,3 +342,20 @@ cd apps/api && black . && isort .
 - Guided workflow with step-by-step instructions
 - Audit logging for DoD compliance
 - Notification system with email integration
+
+## Frontend Components (New)
+
+### Admin Components
+- `AdminAnalytics` - Organization-wide analytics dashboard with charts
+
+### Editor Components
+- `BatchFixPreviewModal` - Preview and apply AI-generated fixes for multiple issues
+- `GroupedIssuesPanel` - Issues organized by type with bulk fix actions
+- `IssueFloatingNav` - Floating navigation for issue traversal
+- `IssueInlinePopover` - Popover for highlighted issues with fix/dismiss actions
+
+## React Hooks
+
+### Analytics Hooks
+- `useAdminAnalytics` - Fetches org-wide analytics with configurable time period
+- `useUserStats` - Fetches personal user statistics with lazy loading

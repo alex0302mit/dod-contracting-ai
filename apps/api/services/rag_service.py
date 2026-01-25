@@ -6,6 +6,11 @@ for document upload, processing, and retrieval.
 
 This module wraps the existing Docling processor and VectorStore
 to make them available via API endpoints.
+
+Features:
+- Redis caching for search results (30 min TTL)
+- Redis caching for document lists (1 hour TTL)
+- Automatic cache invalidation on uploads/deletes
 """
 
 import os
@@ -16,6 +21,23 @@ from datetime import datetime
 
 from backend.rag.docling_processor import DoclingProcessor
 from backend.rag.vector_store import VectorStore
+
+# Import cache services (lazy to avoid circular imports)
+def _get_cache():
+    """Lazy import of cache service to avoid circular imports."""
+    try:
+        from backend.services.cache_service import get_cache_service
+        return get_cache_service()
+    except ImportError:
+        return None
+
+def _get_invalidation():
+    """Lazy import of invalidation service."""
+    try:
+        from backend.services.cache_invalidation import get_invalidation_service
+        return get_invalidation_service()
+    except ImportError:
+        return None
 
 
 def validate_and_sanitize_filename(filename: str, upload_dir: Path) -> str:
@@ -178,6 +200,15 @@ class RAGService:
             # Save updated vector store
             self.vector_store.save()
 
+            # Invalidate caches after successful upload
+            invalidation = _get_invalidation()
+            if invalidation:
+                project_id = metadata.get("project_id") if metadata else None
+                invalidation.invalidate_on_document_upload(
+                    project_id=project_id,
+                    document_id=safe_filename
+                )
+
             return {
                 "success": True,
                 "filename": filename,
@@ -206,13 +237,16 @@ class RAGService:
         k: int = 5,
         score_threshold: Optional[float] = None,
         project_id: Optional[str] = None,
-        phase: Optional[str] = None
+        phase: Optional[str] = None,
+        use_cache: bool = True
     ) -> List[Dict]:
         """
         Search for relevant document chunks with optional project/phase filtering
-        
+
         Phase-aware search enables more relevant retrieval by prioritizing
         documents attached to the current phase of the acquisition workflow.
+
+        Features Redis caching (30 min TTL) for improved performance.
 
         Args:
             query: Search query
@@ -220,14 +254,23 @@ class RAGService:
             score_threshold: Optional similarity threshold
             project_id: Optional project ID to filter by
             phase: Optional phase to filter by (e.g., "pre_solicitation", "solicitation", "post_solicitation")
+            use_cache: Whether to use Redis cache (default True)
 
         Returns:
             List of relevant chunks with metadata
         """
+        # Try to get from cache first
+        cache = _get_cache() if use_cache else None
+        if cache and cache.is_connected:
+            cached_results = cache.get_rag_search(query, project_id, phase, k)
+            if cached_results is not None:
+                print(f"[RAG] Cache HIT for query: {query[:50]}...")
+                return cached_results
+
         # Get more results initially if filtering will be applied
         # This ensures we still have enough results after filtering
         search_k = k * 3 if (project_id or phase) else k
-        
+
         results = self.vector_store.search(
             query=query,
             k=search_k,
@@ -238,10 +281,10 @@ class RAGService:
         formatted_results = []
         phase_matched_results = []
         fallback_results = []
-        
+
         for chunk_dict, score in results:
             chunk_metadata = chunk_dict.get("metadata", {})
-            
+
             # Build result object
             result = {
                 "content": chunk_dict["content"],
@@ -249,13 +292,13 @@ class RAGService:
                 "score": score,
                 "chunk_id": chunk_dict.get("chunk_id") or chunk_metadata.get("chunk_id")
             }
-            
+
             # Apply project filter if specified
             if project_id:
                 chunk_project = chunk_metadata.get("project_id")
                 if chunk_project and chunk_project != project_id:
                     continue  # Skip chunks from different projects
-            
+
             # Apply phase filter with fallback logic
             if phase:
                 chunk_phase = chunk_metadata.get("phase")
@@ -268,21 +311,28 @@ class RAGService:
             else:
                 # No phase filter - include all
                 formatted_results.append(result)
-        
+
         # If phase filtering was applied, combine results with phase matches first
         if phase:
             # Log phase filtering for debugging
             print(f"[RAG] Phase filter '{phase}': {len(phase_matched_results)} matches, {len(fallback_results)} fallback")
-            
+
             # Prioritize phase-matched results, then add fallbacks if needed
             formatted_results = phase_matched_results
             if len(formatted_results) < k:
                 # Not enough phase matches - add fallbacks
                 remaining_slots = k - len(formatted_results)
                 formatted_results.extend(fallback_results[:remaining_slots])
-        
+
         # Limit to requested number of results
-        return formatted_results[:k]
+        final_results = formatted_results[:k]
+
+        # Cache the results
+        if cache and cache.is_connected:
+            cache.set_rag_search(query, final_results, project_id, phase, k)
+            print(f"[RAG] Cache SET for query: {query[:50]}...")
+
+        return final_results
 
     def get_documents_by_project(self, project_id: str) -> List[Dict]:
         """
@@ -443,20 +493,33 @@ class RAGService:
                 "chunk_id": getattr(chunk, "chunk_id", None) or getattr(chunk, "metadata", {}).get("chunk_id")
             }
 
-    def list_uploaded_documents(self) -> List[Dict]:
+    def list_uploaded_documents(self, use_cache: bool = True) -> List[Dict]:
         """
         List all documents that have been uploaded via this service.
-        
+
+        Features Redis caching (1 hour TTL) for improved performance.
+
         Retrieves metadata from vector store chunks to include:
         - project_id, phase, purpose (for project-scoped documents)
         - chunk_ids for lineage tracking
         - uploaded_by and upload_timestamp
 
+        Args:
+            use_cache: Whether to use Redis cache (default True)
+
         Returns:
             List of document info dictionaries with full metadata
         """
+        # Try to get from cache first
+        cache = _get_cache() if use_cache else None
+        if cache and cache.is_connected:
+            cached_docs = cache.get_docs_list(project_id=None)
+            if cached_docs is not None:
+                print("[RAG] Cache HIT for document list")
+                return cached_docs
+
         documents = []
-        
+
         # Build a map of document metadata from vector store chunks
         # This gives us access to project_id, phase, purpose, etc.
         doc_metadata_map = {}
@@ -480,11 +543,11 @@ class RAGService:
             if file_path.is_file():
                 stat = file_path.stat()
                 filename = file_path.name
-                
+
                 # Get metadata from vector store if available
                 doc_meta = doc_metadata_map.get(filename, {})
                 chunk_metadata = doc_meta.get("metadata", {})
-                
+
                 documents.append({
                     "filename": filename,
                     # Note: file_path removed for security - prevents server path disclosure
@@ -507,6 +570,11 @@ class RAGService:
 
         # Sort by upload date (newest first)
         documents.sort(key=lambda x: x["upload_date"], reverse=True)
+
+        # Cache the results
+        if cache and cache.is_connected:
+            cache.set_docs_list(documents, project_id=None)
+            print("[RAG] Cache SET for document list")
 
         return documents
 
@@ -594,7 +662,12 @@ class RAGService:
         
         # Save updated vector store
         self.vector_store.save()
-        
+
+        # Invalidate caches after successful deletion
+        invalidation = _get_invalidation()
+        if invalidation:
+            invalidation.invalidate_on_document_delete(document_id=filename)
+
         return {
             "success": True,
             "deleted_file": filename,

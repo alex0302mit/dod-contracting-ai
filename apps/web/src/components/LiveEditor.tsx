@@ -2,9 +2,9 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 // Icons - Loader2 added for bulk fix loading spinner, ChevronDown for collapsible panels
 // AlertTriangle for hallucination, MessageSquare for vague language, RefreshCw for loading
 // ChevronLeft/ChevronRight for collapsible sidebars (used for both expand and collapse)
-import { ArrowLeft, Save, Sparkles, FileText, Clock, GitCompare, GitBranch, Tag, ShieldCheck, FormInput, MessageCircle, Layers, Loader2, Check, ChevronDown, ChevronLeft, ChevronRight, AlertTriangle, RefreshCw, Download } from "lucide-react";
+import { ArrowLeft, Save, Sparkles, FileText, Clock, GitCompare, GitBranch, Tag, ShieldCheck, FormInput, MessageCircle, Layers, Loader2, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, AlertTriangle, RefreshCw, Download, X, Filter, Eye, EyeOff } from "lucide-react";
 // API services for AI-powered features
-import { copilotApi, qualityApi, exportApi, QualityAnalysisResponse } from "@/services/api";
+import { copilotApi, qualityApi, exportApi, versionApi, QualityAnalysisResponse, DocumentVersion } from "@/services/api";
 import { ComplianceGateDialog } from "@/components/ComplianceGateDialog";
 import { performComplianceAnalysis } from "@/lib/complianceUtils";
 import {
@@ -25,6 +25,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AgentBadge, AgentStats } from "@/components/AgentBadge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { computeQualityScore, computeIssues, autoImproveText, generateDiff, generateInlineDiff, DiffLine, detectFillableFields, replaceFillableField, FillableField, DocumentIssue } from "@/lib/editorUtils";
 import { sanitizeHtml } from "@/lib/sanitizeHtml";
 import { applyHighlightsWithEditor, clearHighlightsWithEditor, applyHighlightsDOM, clearHighlightsDOM, scrollToHighlight, getIssueColors, IssueKind } from "@/lib/issueHighlightUtils";
@@ -39,6 +41,9 @@ import { AnnotationPanel } from "./editor/AnnotationPanel";
 import { AgentSelector } from "./comparison/AgentSelector";
 import { ComparisonViewer } from "./comparison/ComparisonViewer";
 import { FixPreviewModal } from "./editor/FixPreviewModal";
+import { BatchFixPreviewModal } from "./editor/BatchFixPreviewModal";
+import { IssueInlinePopover, InlinePopoverIssue } from "./editor/IssueInlinePopover";
+import { FeedbackButtons } from "./editor/FeedbackButtons";
 import { Editor } from '@tiptap/react';
 import { ValidationEngine, ValidationResult } from '@/lib/ValidationEngine';
 import { validationRules } from '@/lib/validationRules';
@@ -137,6 +142,9 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
     },
   ]);
   const [compareVersion, setCompareVersion] = useState<typeof versionHistory[0] | null>(null);
+  // Version API integration state
+  const [isLoadingVersions, setIsLoadingVersions] = useState(false);
+  const [versionSaveInProgress, setVersionSaveInProgress] = useState(false);
   const [proposedChanges, setProposedChanges] = useState<any>(null);
   const [showAutoImprove, setShowAutoImprove] = useState(false);
   const [currentEditor, setCurrentEditor] = useState<Editor | null>(null);
@@ -193,6 +201,16 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
     currentLabel: string;
   } | null>(null);
 
+  // Batch fix preview modal state - shows all fixable issues with preview before applying
+  const [showBatchFixPreview, setShowBatchFixPreview] = useState(false);
+
+  // Inline popover state - tracks which highlighted text was clicked in the editor
+  // Shows a popover with issue details and "Fix with AI" button at click coordinates
+  const [inlinePopover, setInlinePopover] = useState<{
+    issue: InlinePopoverIssue;
+    position: { x: number; y: number };
+  } | null>(null);
+
   // Issue highlight state - tracks which issue card is selected for highlighting
   // When an issue is selected, all instances are highlighted and we scroll to the target
   const [selectedIssue, setSelectedIssue] = useState<{
@@ -201,6 +219,18 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
     kind: IssueKind;
     occurrenceIndex?: number;
   } | null>(null);
+
+  // Issue finder toggle - allows users to enable/disable issue detection
+  const [issueFinderEnabled, setIssueFinderEnabled] = useState(true);
+
+  // Dismissed issues - session-only tracking of false positives
+  const [dismissedIssueIds, setDismissedIssueIds] = useState<Set<string>>(new Set());
+
+  // Issue filter state - filter by type (all, tbd, hallucination, compliance)
+  const [issueFilter, setIssueFilter] = useState<'all' | 'tbd' | 'hallucination' | 'compliance' | 'vague'>('all');
+
+  // Current issue index for floating navigation
+  const [currentIssueIndex, setCurrentIssueIndex] = useState(0);
 
   // Collapsible sidebar state - allows users to hide/show sidebars for more editing space
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
@@ -260,6 +290,37 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
       }
     }
   }, []); // Run once on mount
+
+  // Load version history from backend on mount
+  useEffect(() => {
+    if (!documentId) return;
+
+    const loadVersionsFromBackend = async () => {
+      setIsLoadingVersions(true);
+      try {
+        const response = await versionApi.list(documentId);
+        if (response.versions.length > 0) {
+          // Convert backend versions to frontend format
+          const backendVersions = response.versions.map((v: DocumentVersion) => ({
+            id: v.id,
+            timestamp: v.created_at,
+            message: v.message || `Version ${v.version_number}`,
+            sections: v.sections_json ? JSON.parse(v.sections_json) : { [documentName]: v.content },
+            author: v.author || 'Unknown',
+          }));
+          // Merge with initial version, keeping backend versions first (they're sorted desc by version_number)
+          setVersionHistory(backendVersions.reverse());
+        }
+      } catch (error) {
+        console.error('Failed to load version history:', error);
+        // Keep the default initial version on error
+      } finally {
+        setIsLoadingVersions(false);
+      }
+    };
+
+    loadVersionsFromBackend();
+  }, [documentId, documentName]);
 
   const currentText = sections[activeSection] || "";
   // Local quality score (fast, client-side fallback)
@@ -378,12 +439,12 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
       if (hallucinationData.risk_level !== 'LOW' && hallucinationIssues.length > 0) {
         // Strip HTML and get plain text for pattern matching
         const plainText = currentText.replace(/<[^>]*>/g, '').toLowerCase();
-        
+
         hallucinationIssues.forEach((issue: string, index: number) => {
           // Try to find a vague pattern in the text to highlight
           const foundPattern = vaguePatterns.find(p => plainText.includes(p.toLowerCase()));
           const pattern = foundPattern || 'the'; // Fallback to common word if no vague pattern found
-          
+
           allIssues.push({
             id: `hallucination-warning-${index}`,
             kind: 'hallucination', // Orange styling for hallucination warnings
@@ -400,10 +461,119 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
         });
       }
     }
-    
+
+    // Add vague language issues from API if available
+    // These are non-specific terms that should be replaced with measurable language
+    if (apiQuality?.breakdown?.vague_language) {
+      const vagueData = apiQuality.breakdown.vague_language;
+
+      // Common vague words to detect in DoD documents
+      const vagueWords = [
+        'several', 'many', 'some', 'various', 'numerous', 'appropriate', 'adequate',
+        'may', 'might', 'could', 'possibly', 'generally', 'typically', 'usually',
+        'often', 'sometimes', 'reasonable', 'significant', 'substantial', 'considerable',
+        'as needed', 'as required', 'as appropriate', 'sufficient', 'properly'
+      ];
+
+      // Only process if vague language was detected (score < 100 or count > 0)
+      if (vagueData.count > 0 || vagueData.score < 100) {
+        // Strip HTML and get plain text for pattern matching
+        const plainText = currentText.replace(/<[^>]*>/g, '');
+        const plainTextLower = plainText.toLowerCase();
+
+        // Track which vague words were found to avoid duplicates
+        const foundVagueWords = new Set<string>();
+
+        // Scan for each vague word in the document
+        vagueWords.forEach((vagueWord) => {
+          // Case-insensitive search for the vague word
+          const regex = new RegExp(`\\b${vagueWord}\\b`, 'gi');
+          const matches = plainText.match(regex);
+
+          if (matches && matches.length > 0 && !foundVagueWords.has(vagueWord.toLowerCase())) {
+            foundVagueWords.add(vagueWord.toLowerCase());
+
+            // Find context around the first occurrence
+            const wordIndex = plainTextLower.indexOf(vagueWord.toLowerCase());
+            const contextStart = Math.max(0, wordIndex - 50);
+            const contextEnd = Math.min(plainText.length, wordIndex + vagueWord.length + 50);
+            const context = plainText.substring(contextStart, contextEnd);
+
+            // Create individual issue for each unique vague word found
+            allIssues.push({
+              id: `vague-${vagueWord.replace(/\s+/g, '-')}`,
+              kind: 'warning',
+              label: `Vague language: "${vagueWord}" - Consider using specific, measurable terms`,
+              pattern: vagueWord,
+              context: `...${context}...`,
+              fix: {
+                label: 'Make specific with AI',
+                requiresAI: true,
+                pattern: vagueWord,
+                occurrenceIndex: 0, // Target the first occurrence
+              },
+            });
+          }
+        });
+
+        // Also add issues from the API response if they contain actionable information
+        const vagueIssues: string[] = vagueData.issues || [];
+        vagueIssues.forEach((issue: string, index: number) => {
+          // Extract vague word from issue message if possible (e.g., "Contains 'several'")
+          const wordMatch = issue.match(/'([^']+)'/);
+          const extractedWord = wordMatch ? wordMatch[1].toLowerCase() : null;
+
+          // Only add if we haven't already added an issue for this word
+          if (extractedWord && !foundVagueWords.has(extractedWord)) {
+            foundVagueWords.add(extractedWord);
+
+            allIssues.push({
+              id: `vague-api-${index}`,
+              kind: 'warning',
+              label: issue,
+              pattern: extractedWord,
+              context: issue,
+              fix: {
+                label: 'Make specific with AI',
+                requiresAI: true,
+                pattern: extractedWord,
+                occurrenceIndex: 0,
+              },
+            });
+          }
+        });
+      }
+    }
+
     return allIssues;
-  }, [localIssues, apiQuality]);
-  
+  }, [localIssues, apiQuality, currentText]);
+
+  // Filter out dismissed issues
+  const visibleIssues = useMemo(() => {
+    return issues.filter(i => !dismissedIssueIds.has(i.id));
+  }, [issues, dismissedIssueIds]);
+
+  // Apply type filter to visible issues
+  const filteredIssues = useMemo(() => {
+    if (issueFilter === 'all') return visibleIssues;
+    if (issueFilter === 'tbd') {
+      return visibleIssues.filter(i => i.pattern?.toLowerCase().includes('tbd'));
+    }
+    if (issueFilter === 'vague') {
+      return visibleIssues.filter(i => i.id.startsWith('vague'));
+    }
+    return visibleIssues.filter(i => i.kind === issueFilter);
+  }, [visibleIssues, issueFilter]);
+
+  // Count issues by type for filter dropdown
+  const issueCountsByType = useMemo(() => ({
+    all: visibleIssues.length,
+    tbd: visibleIssues.filter(i => i.pattern?.toLowerCase().includes('tbd')).length,
+    hallucination: visibleIssues.filter(i => i.kind === 'hallucination').length,
+    compliance: visibleIssues.filter(i => i.kind === 'compliance').length,
+    vague: visibleIssues.filter(i => i.id.startsWith('vague')).length,
+  }), [visibleIssues]);
+
   // Detect fillable fields in current section (memoized for performance)
   // Updates when document content changes
   const fillableFields = useMemo(() => {
@@ -537,32 +707,110 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
     setDeleteConfirmDoc(null);
   };
 
-  const commitVersion = () => {
+  const commitVersion = async () => {
     const message = prompt("Version commit message:", "Manual edit");
     if (!message) return;
 
-    const newVersion = {
-      id: `v${versionHistory.length}`,
-      timestamp: new Date().toISOString(),
-      message,
-      sections: { ...sections },
-      author: "User",
-    };
-    setVersionHistory([...versionHistory, newVersion]);
+    // Combine all sections into content for backend
+    const content = Object.values(sections).join('\n\n');
+
+    // If we have a documentId, save to backend
+    if (documentId) {
+      setVersionSaveInProgress(true);
+      try {
+        const savedVersion = await versionApi.create(documentId, {
+          content,
+          sections,
+          message,
+          author: "User",
+        });
+
+        // Add the backend version to local state
+        const newVersion = {
+          id: savedVersion.id,
+          timestamp: savedVersion.created_at,
+          message: savedVersion.message || message,
+          sections: { ...sections },
+          author: savedVersion.author || "User",
+        };
+        setVersionHistory([...versionHistory, newVersion]);
+        toast.success('Version saved');
+      } catch (error) {
+        console.error('Failed to save version:', error);
+        toast.error('Failed to save version to server');
+        // Still save locally as fallback
+        const newVersion = {
+          id: `v${versionHistory.length}`,
+          timestamp: new Date().toISOString(),
+          message,
+          sections: { ...sections },
+          author: "User",
+        };
+        setVersionHistory([...versionHistory, newVersion]);
+      } finally {
+        setVersionSaveInProgress(false);
+      }
+    } else {
+      // No documentId - save locally only
+      const newVersion = {
+        id: `v${versionHistory.length}`,
+        timestamp: new Date().toISOString(),
+        message,
+        sections: { ...sections },
+        author: "User",
+      };
+      setVersionHistory([...versionHistory, newVersion]);
+    }
   };
 
-  const restoreVersion = (version: typeof versionHistory[0]) => {
-    if (confirm(`Restore version "${version.message}"? Current changes will be lost.`)) {
-      setSections({ ...version.sections });
-      setViewMode("edit");
-      setCompareVersion(null);
+  const restoreVersion = async (version: typeof versionHistory[0]) => {
+    if (!confirm(`Restore version "${version.message}"? This will create a new version with the restored content.`)) {
+      return;
     }
+
+    // Check if this is a backend version (UUID format) or local version (v0, v1, etc.)
+    const isBackendVersion = documentId && version.id && !version.id.startsWith('v');
+
+    if (isBackendVersion) {
+      // Use backend API to restore
+      setVersionSaveInProgress(true);
+      try {
+        const restored = await versionApi.restore(documentId, version.id);
+        // Update local sections with restored content
+        const restoredSections = restored.sections_json
+          ? JSON.parse(restored.sections_json)
+          : { [documentName]: restored.content };
+        setSections(restoredSections);
+
+        // Add the restored version to history
+        const newVersion = {
+          id: restored.id,
+          timestamp: restored.created_at,
+          message: restored.message || `Restored from version`,
+          sections: restoredSections,
+          author: restored.author || "User",
+        };
+        setVersionHistory([...versionHistory, newVersion]);
+        toast.success('Version restored');
+      } catch (error) {
+        console.error('Failed to restore version:', error);
+        toast.error('Failed to restore version');
+      } finally {
+        setVersionSaveInProgress(false);
+      }
+    } else {
+      // Local version - restore directly
+      setSections({ ...version.sections });
+    }
+
+    setViewMode("edit");
+    setCompareVersion(null);
   };
 
   const generateAutoImprove = () => {
     const improvements = {
       before: currentText,
-      after: autoImproveText(currentText, quality, issues),
+      after: autoImproveText(currentText, quality, filteredIssues),
       changes: [
         { type: "fix", text: "Replaced 'TBD' with concrete date", line: 2 },
         { type: "enhance", text: "Clarified evaluation factor references", line: 1 },
@@ -671,6 +919,44 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
     setSelectedIssue(null);
   }, [currentEditor]);
 
+  /**
+   * Dismiss an issue (mark as false positive for this session)
+   */
+  const handleDismissIssue = useCallback((issueId: string) => {
+    setDismissedIssueIds(prev => new Set([...prev, issueId]));
+    // Clear highlight if this was the selected issue
+    if (selectedIssue?.id === issueId) {
+      handleClearHighlights();
+    }
+  }, [selectedIssue, handleClearHighlights]);
+
+  /**
+   * Restore all dismissed issues
+   */
+  const handleRestoreDismissed = useCallback(() => {
+    setDismissedIssueIds(new Set());
+  }, []);
+
+  /**
+   * Navigate to previous issue
+   */
+  const handlePrevIssue = useCallback(() => {
+    if (filteredIssues.length === 0) return;
+    const newIndex = Math.max(0, currentIssueIndex - 1);
+    setCurrentIssueIndex(newIndex);
+    handleIssueClick(filteredIssues[newIndex]);
+  }, [currentIssueIndex, filteredIssues, handleIssueClick]);
+
+  /**
+   * Navigate to next issue
+   */
+  const handleNextIssue = useCallback(() => {
+    if (filteredIssues.length === 0) return;
+    const newIndex = Math.min(filteredIssues.length - 1, currentIssueIndex + 1);
+    setCurrentIssueIndex(newIndex);
+    handleIssueClick(filteredIssues[newIndex]);
+  }, [currentIssueIndex, filteredIssues, handleIssueClick]);
+
   // Click-away detection to clear highlights
   useEffect(() => {
     if (!selectedIssue) return;
@@ -684,7 +970,8 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
         target.closest('[data-issue-card]') ||
         target.closest('.issue-highlight') ||
         target.closest('[data-fix-button]') ||
-        target.closest('mark')  // TipTap's native highlight uses <mark> element
+        target.closest('mark') ||  // TipTap's native highlight uses <mark> element
+        target.closest('[data-inline-popover]')  // Inline issue popover
       ) {
         return;
       }
@@ -708,6 +995,77 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
     handleClearHighlights();
   }, [activeSection, handleClearHighlights]);
 
+  // Keyboard navigation for issues (Ctrl+[ for previous, Ctrl+] for next)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!issueFinderEnabled || filteredIssues.length === 0) return;
+
+      if (e.metaKey || e.ctrlKey) {
+        if (e.key === '[') {
+          e.preventDefault();
+          handlePrevIssue();
+        } else if (e.key === ']') {
+          e.preventDefault();
+          handleNextIssue();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [issueFinderEnabled, filteredIssues.length, handlePrevIssue, handleNextIssue]);
+
+  // Reset issue index when filtered issues change
+  useEffect(() => {
+    setCurrentIssueIndex(0);
+  }, [filteredIssues.length]);
+
+  // Click handler for highlighted text in editor - shows inline popover
+  // Detects clicks on .quality-issue spans or <mark> elements (TipTap highlight)
+  useEffect(() => {
+    const handleEditorClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+
+      // Check if clicked on a quality issue mark or highlight
+      const issueElement = target.closest('.quality-issue') || target.closest('mark');
+
+      if (issueElement) {
+        // Extract issue data from data attributes
+        const issueId = issueElement.getAttribute('data-issue-id');
+        const issueKind = issueElement.getAttribute('data-issue-kind');
+        const issueLabel = issueElement.getAttribute('data-issue-label') || issueElement.getAttribute('title');
+
+        // Find the full issue from our issues array, or create a minimal one from attributes
+        const matchedIssue = issues.find(i => i.id === issueId) || {
+          id: issueId || `inline-${Date.now()}`,
+          kind: (issueKind as InlinePopoverIssue['kind']) || 'warning',
+          label: issueLabel || 'Issue detected',
+          pattern: issueElement.textContent || '',
+        };
+
+        // Set the inline popover state with issue and click position
+        setInlinePopover({
+          issue: {
+            id: matchedIssue.id,
+            kind: matchedIssue.kind as InlinePopoverIssue['kind'],
+            label: matchedIssue.label,
+            pattern: matchedIssue.pattern,
+          },
+          position: { x: e.clientX, y: e.clientY },
+        });
+
+        e.stopPropagation(); // Prevent triggering click-away handlers
+      }
+    };
+
+    const editorElement = editorContainerRef.current?.querySelector('.ProseMirror');
+    editorElement?.addEventListener('click', handleEditorClick);
+
+    return () => {
+      editorElement?.removeEventListener('click', handleEditorClick);
+    };
+  }, [issues]);
+
   /**
    * Handle fixing all issues with AI sequentially
    * 
@@ -716,8 +1074,8 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
    * Each fix is applied before the next to ensure proper context.
    */
   const handleFixAllIssues = async () => {
-    // Get only issues that have AI fixes (requiresAI flag set)
-    const fixableIssues = issues.filter(i => i.fix?.requiresAI);
+    // Get only filtered issues that have AI fixes (requiresAI flag set)
+    const fixableIssues = filteredIssues.filter(i => i.fix?.requiresAI);
     
     if (fixableIssues.length === 0) return;
     
@@ -1015,11 +1373,11 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
           <TooltipProvider delayDuration={100}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={commitVersion}>
-                  <Save className="h-4 w-4" />
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={commitVersion} disabled={versionSaveInProgress}>
+                  {versionSaveInProgress ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Commit version</TooltipContent>
+              <TooltipContent side="bottom">{versionSaveInProgress ? 'Saving...' : 'Commit version'}</TooltipContent>
             </Tooltip>
           </TooltipProvider>
 
@@ -1219,9 +1577,11 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
                 sectionName={activeSection}
                 text={currentText}
                 onTextChange={handleTextChange}
-                issues={issues}
+                issues={issueFinderEnabled ? filteredIssues : []}
                 citations={citations}
                 onEditorReady={setCurrentEditor}
+                documentId={documentId}
+                agentMetadata={agentMetadata}
               />
             </div>
           )}
@@ -1242,6 +1602,8 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
                 setCompareVersion(v);
                 setViewMode("compare");
               }}
+              isLoading={isLoadingVersions}
+              isSaving={versionSaveInProgress}
             />
           )}
           {viewMode === "dependencies" && (
@@ -1640,22 +2002,126 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
               </CardContent>
             </Card>
 
-            {/* Enhanced Issues Card with Compact Cards */}
-            {issues.length > 0 && (
-              <Card className="border-red-100">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                      Issues
-                    </CardTitle>
-                    <Badge variant="destructive" className="text-xs px-2">
-                      {issues.length}
+            {/* Enhanced Issues Card with Toggle, Filter, and Grouped Issues */}
+            <Card className="border-red-100 overflow-hidden">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${issueFinderEnabled && filteredIssues.length > 0 ? 'bg-red-500 animate-pulse' : 'bg-slate-300'}`} />
+                    Issues
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    {/* Issue finder toggle */}
+                    <div className="flex items-center gap-1.5">
+                      <Label htmlFor="issue-finder" className="text-[10px] text-muted-foreground">
+                        {issueFinderEnabled ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                      </Label>
+                      <Switch
+                        id="issue-finder"
+                        checked={issueFinderEnabled}
+                        onCheckedChange={(checked) => {
+                          setIssueFinderEnabled(checked);
+                          if (!checked) {
+                            handleClearHighlights();
+                          }
+                        }}
+                        className="scale-75"
+                      />
+                    </div>
+                    <Badge variant={filteredIssues.length > 0 ? "destructive" : "secondary"} className="text-xs px-2">
+                      {filteredIssues.length}
                     </Badge>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {issues.map((issue, index) => {
+                </div>
+
+                {/* Filter and controls row */}
+                {issueFinderEnabled && visibleIssues.length > 0 && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <Select value={issueFilter} onValueChange={(v) => setIssueFilter(v as typeof issueFilter)}>
+                      <SelectTrigger className="h-7 text-[10px] flex-1">
+                        <Filter className="h-3 w-3 mr-1" />
+                        <SelectValue placeholder="Filter issues" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Issues ({issueCountsByType.all})</SelectItem>
+                        <SelectItem value="tbd">TBD Placeholders ({issueCountsByType.tbd})</SelectItem>
+                        <SelectItem value="hallucination">Hallucinations ({issueCountsByType.hallucination})</SelectItem>
+                        <SelectItem value="compliance">Compliance ({issueCountsByType.compliance})</SelectItem>
+                        <SelectItem value="vague">Vague Language ({issueCountsByType.vague})</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {dismissedIssueIds.size > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-[10px] px-2"
+                        onClick={handleRestoreDismissed}
+                      >
+                        +{dismissedIssueIds.size} hidden
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </CardHeader>
+
+              {issueFinderEnabled && (
+                <CardContent className="space-y-2 relative">
+                  {/* Sticky Action Bar */}
+                  {filteredIssues.filter(i => i.fix?.requiresAI).length > 1 && (
+                    <div className="sticky top-0 z-10 -mx-6 px-6 py-2 bg-white/95 backdrop-blur-sm border-b mb-2">
+                      <Button
+                        className="w-full gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg"
+                        size="sm"
+                        onClick={() => setShowBatchFixPreview(true)}
+                        disabled={isFixingAll}
+                      >
+                        {isFixingAll ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Fixing {fixProgress?.current || 1} of {fixProgress?.total}...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-4 w-4" />
+                            Fix All with AI ({filteredIssues.filter(i => i.fix?.requiresAI).length})
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Floating Navigation Bar */}
+                  {selectedIssue && filteredIssues.length > 1 && (
+                    <div className="sticky top-12 z-10 -mx-6 px-4 py-1.5 bg-slate-50/95 backdrop-blur-sm border-y flex items-center justify-between text-xs">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={handlePrevIssue}
+                        disabled={currentIssueIndex === 0}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <span className="text-muted-foreground">
+                        Issue {currentIssueIndex + 1} of {filteredIssues.length}
+                        <span className="hidden sm:inline ml-1 text-slate-400">
+                          (⌘[ / ⌘])
+                        </span>
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={handleNextIssue}
+                        disabled={currentIssueIndex === filteredIssues.length - 1}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Issue Cards */}
+                  {filteredIssues.map((issue, index) => {
                     const colors = getIssueColors(issue.kind);
                     const isSelected = selectedIssue?.id === issue.id;
 
@@ -1663,7 +2129,10 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
                       <div
                         key={issue.id}
                         data-issue-card
-                        onClick={() => handleIssueClick(issue)}
+                        onClick={() => {
+                          setCurrentIssueIndex(index);
+                          handleIssueClick(issue);
+                        }}
                         className={`group relative p-3 rounded-xl cursor-pointer transition-all
                           ${isSelected
                             ? `ring-2 ring-offset-2 shadow-lg ${colors.ring} ${colors.bgLight}`
@@ -1677,12 +2146,26 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
                           {index + 1}
                         </div>
 
-                        <div className="ml-4">
+                        {/* Dismiss button */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="absolute top-1 right-1 h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-200"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDismissIssue(issue.id);
+                          }}
+                          title="Dismiss this issue"
+                        >
+                          <X className="h-3 w-3 text-slate-400" />
+                        </Button>
+
+                        <div className="ml-4 pr-4">
                           <p className="text-xs text-slate-700 line-clamp-2 mb-2 leading-relaxed">
                             {issue.label}
                           </p>
 
-                          {/* Fix button with AI styling - all issues now have AI fixes */}
+                          {/* Fix button with AI styling */}
                           {issue.fix && (
                             <Button
                               size="sm"
@@ -1701,35 +2184,37 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
                       </div>
                     );
                   })}
-                  
-                  {/* Fix All button when multiple issues - triggers bulk AI fix */}
-                  {issues.filter(i => i.fix).length > 1 && (
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full text-xs mt-2 border-dashed border-purple-300 text-purple-600 hover:bg-purple-50 hover:border-purple-400 disabled:opacity-50"
-                      onClick={handleFixAllIssues}
-                      disabled={isFixingAll}
-                    >
-                      {isFixingAll ? (
-                        <>
-                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                          Fixing {fixProgress?.current || 1} of {fixProgress?.total || issues.filter(i => i.fix).length}...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="h-3 w-3 mr-1" />
-                          Fix All {issues.filter(i => i.fix).length} Issues
-                        </>
-                      )}
-                    </Button>
+
+                  {/* Empty filtered state */}
+                  {filteredIssues.length === 0 && visibleIssues.length > 0 && (
+                    <div className="text-center py-4 text-xs text-muted-foreground">
+                      No {issueFilter !== 'all' ? issueFilter : ''} issues found.
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="text-xs p-0 h-auto ml-1"
+                        onClick={() => setIssueFilter('all')}
+                      >
+                        Show all
+                      </Button>
+                    </div>
                   )}
                 </CardContent>
-              </Card>
-            )}
+              )}
 
-            {/* No issues state */}
-            {issues.length === 0 && (
+              {/* Issue finder disabled state */}
+              {!issueFinderEnabled && (
+                <CardContent>
+                  <div className="text-center py-4 text-xs text-muted-foreground">
+                    <EyeOff className="h-4 w-4 mx-auto mb-1 opacity-50" />
+                    Issue detection is paused
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+
+            {/* No issues state - only show when enabled and no issues */}
+            {issueFinderEnabled && visibleIssues.length === 0 && (
               <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100 text-center">
                 <div className="w-8 h-8 mx-auto mb-2 rounded-full bg-emerald-100 flex items-center justify-center">
                   <Check className="h-4 w-4 text-emerald-600" />
@@ -1891,7 +2376,7 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
             author: "User",
           };
           setVersionHistory([...versionHistory, newVersion]);
-          
+
           // Apply the fix
           handleTextChange(fixedText);
           setFixPreviewIssue(null);
@@ -1899,6 +2384,62 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
         issue={fixPreviewIssue}
         originalText={currentText}
         sectionName={activeSection}
+      />
+
+      {/* Inline Issue Popover - shows when clicking highlighted text in the editor */}
+      <IssueInlinePopover
+        isOpen={inlinePopover !== null}
+        onClose={() => setInlinePopover(null)}
+        issue={inlinePopover?.issue || null}
+        position={inlinePopover?.position || { x: 0, y: 0 }}
+        onFixWithAI={() => {
+          if (inlinePopover?.issue) {
+            // Find the full issue with fix details from the issues array
+            const fullIssue = issues.find(i => i.id === inlinePopover.issue.id);
+            if (fullIssue) {
+              setFixPreviewIssue(fullIssue as any);
+            } else {
+              // Create a minimal issue with AI fix for patterns not in the issues array
+              setFixPreviewIssue({
+                id: inlinePopover.issue.id,
+                kind: inlinePopover.issue.kind as 'error' | 'warning' | 'info' | 'compliance',
+                label: inlinePopover.issue.label,
+                pattern: inlinePopover.issue.pattern,
+                fix: {
+                  label: 'Fix with AI',
+                  requiresAI: true,
+                  pattern: inlinePopover.issue.pattern,
+                },
+              });
+            }
+            setInlinePopover(null);
+          }
+        }}
+        onDismiss={() => setInlinePopover(null)}
+      />
+
+      {/* Batch Fix Preview Modal - shows all fixable issues with preview before applying */}
+      <BatchFixPreviewModal
+        isOpen={showBatchFixPreview}
+        onClose={() => setShowBatchFixPreview(false)}
+        issues={filteredIssues.filter(i => i.fix?.requiresAI)}
+        documentText={currentText}
+        sectionName={activeSection}
+        onApplyFixes={(selectedIds, fixedText) => {
+          // Save current state to version history before applying fixes (enables undo)
+          const newVersion = {
+            id: `v${versionHistory.length}`,
+            timestamp: new Date().toISOString(),
+            message: `Before batch fix: ${selectedIds.length} issues`,
+            sections: { ...sections },
+            author: "User",
+          };
+          setVersionHistory([...versionHistory, newVersion]);
+
+          // Apply the fixes
+          handleTextChange(fixedText);
+          setShowBatchFixPreview(false);
+        }}
       />
 
       {/* DocuSign-style Field Navigator - guides users through fillable fields */}
@@ -1998,10 +2539,13 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
   );
 }
 
-function EditView({ sectionName, text, onTextChange, issues, citations, onEditorReady }: any) {
+function EditView({ sectionName, text, onTextChange, issues, citations, onEditorReady, documentId, agentMetadata }: any) {
   // Don't try to highlight specific text positions - TipTap will handle this
   // Just pass issue metadata for display purposes
   const qualityIssues: QualityIssue[] = [];
+
+  // Get agent info for this section (if available)
+  const sectionAgentInfo = agentMetadata?.[sectionName];
 
   return (
     // No overflow-hidden - allows sticky toolbar to work with parent scroll container
@@ -2027,10 +2571,10 @@ function EditView({ sectionName, text, onTextChange, issues, citations, onEditor
           </div>
         </div>
       </div>
-      
+
       {/* Editor Content - no ScrollArea, parent main element handles scroll for sticky toolbar */}
       <div className="flex-1 p-6">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-5xl mx-auto space-y-4">
           {/* Rich Text Editor - toolbar is sticky within parent scroll container */}
           <Card className="overflow-visible">
             <CardHeader className="pb-2">
@@ -2053,6 +2597,19 @@ function EditView({ sectionName, text, onTextChange, issues, citations, onEditor
               />
             </CardContent>
           </Card>
+
+          {/* Feedback Buttons - show only if this section was AI-generated */}
+          {documentId && sectionAgentInfo?.agent && (
+            <Card>
+              <CardContent className="py-3 px-4">
+                <FeedbackButtons
+                  documentId={documentId}
+                  sectionName={sectionName}
+                  agentName={sectionAgentInfo.agent}
+                />
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>
@@ -2216,46 +2773,65 @@ function CompareView({ sections, versionHistory, compareVersion, setCompareVersi
   );
 }
 
-function HistoryView({ versionHistory, onRestore, onCompare }: any) {
+function HistoryView({ versionHistory, onRestore, onCompare, isLoading, isSaving }: any) {
   return (
     <ScrollArea className="h-full">
       <div className="p-6 space-y-6">
-        <h2 className="text-3xl font-bold">Version History</h2>
-
-        <div className="space-y-3">
-          {versionHistory
-            .slice()
-            .reverse()
-            .map((version: any, idx: number) => (
-              <Card key={version.id} className="hover:shadow-md transition-shadow">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-base">{version.message}</CardTitle>
-                      <CardDescription className="mt-1">
-                        {new Date(version.timestamp).toLocaleString()} • by {version.author}
-                      </CardDescription>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => onCompare(version)}>
-                        Compare
-                      </Button>
-                      {idx > 0 && (
-                        <Button size="sm" onClick={() => onRestore(version)}>
-                          Restore
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-xs text-muted-foreground">
-                    {Object.keys(version.sections).length} sections • {Object.values(version.sections).reduce((sum: number, s: any) => sum + s.split(/\s+/).length, 0)} total words
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
+        <div className="flex items-center justify-between">
+          <h2 className="text-3xl font-bold">Version History</h2>
+          {(isLoading || isSaving) && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {isLoading ? 'Loading versions...' : 'Saving...'}
+            </div>
+          )}
         </div>
+
+        {isLoading && versionHistory.length === 0 ? (
+          <div className="flex items-center justify-center py-12 text-muted-foreground">
+            <Loader2 className="h-6 w-6 animate-spin mr-2" />
+            Loading version history...
+          </div>
+        ) : versionHistory.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            No versions yet. Click the save button to create a version snapshot.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {versionHistory
+              .slice()
+              .reverse()
+              .map((version: any, idx: number) => (
+                <Card key={version.id} className="hover:shadow-md transition-shadow">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-base">{version.message}</CardTitle>
+                        <CardDescription className="mt-1">
+                          {new Date(version.timestamp).toLocaleString()} • by {version.author}
+                        </CardDescription>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => onCompare(version)} disabled={isSaving}>
+                          Compare
+                        </Button>
+                        {idx > 0 && (
+                          <Button size="sm" onClick={() => onRestore(version)} disabled={isSaving}>
+                            Restore
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-xs text-muted-foreground">
+                      {Object.keys(version.sections).length} sections • {Object.values(version.sections).reduce((sum: number, s: any) => sum + s.split(/\s+/).length, 0)} total words
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+          </div>
+        )}
       </div>
     </ScrollArea>
   );

@@ -23,6 +23,7 @@ import {
   FileText,
   Layers,
   PenTool,
+  Sparkles,
 } from 'lucide-react';
 import {
   Select,
@@ -37,6 +38,7 @@ interface ValidationPanelProps {
   validationResult: ValidationResult | null;
   onApplyFix?: (issue: ValidationIssue) => void;
   onApplyAllFixes?: () => void;
+  onFixWithAI?: (issue: ValidationIssue) => void;
 }
 
 const SEVERITY_CONFIG = {
@@ -72,6 +74,7 @@ export function ValidationPanel({
   validationResult,
   onApplyFix,
   onApplyAllFixes,
+  onFixWithAI,
 }: ValidationPanelProps) {
   const [severityFilter, setSeverityFilter] = useState<ValidationSeverity | 'all'>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -243,6 +246,7 @@ export function ValidationPanel({
                     key={issue.id}
                     issue={issue}
                     onApplyFix={onApplyFix}
+                    onFixWithAI={onFixWithAI}
                   />
                 ))
               )}
@@ -257,9 +261,11 @@ export function ValidationPanel({
 function IssueCard({
   issue,
   onApplyFix,
+  onFixWithAI,
 }: {
   issue: ValidationIssue;
   onApplyFix?: (issue: ValidationIssue) => void;
+  onFixWithAI?: (issue: ValidationIssue) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -305,21 +311,38 @@ function IssueCard({
             </p>
           )}
 
-          {/* Auto-Fix Button */}
-          {issue.autoFix && onApplyFix && (
-            <Button
-              size="sm"
-              variant="outline"
-              className={`h-6 text-[10px] w-full gap-1 bg-${severityConfig.color}-100 hover:bg-${severityConfig.color}-200 border-${severityConfig.color}-300`}
-              onClick={(e) => {
-                e.stopPropagation();
-                onApplyFix(issue);
-              }}
-            >
-              <Wrench className="h-3 w-3" />
-              {issue.autoFix.label}
-            </Button>
-          )}
+          {/* Action Buttons */}
+          <div className="flex gap-1 mt-2">
+            {/* Auto-Fix Button (for static fixes) */}
+            {issue.autoFix && onApplyFix && (
+              <Button
+                size="sm"
+                variant="outline"
+                className={`h-6 text-[10px] flex-1 gap-1 bg-${severityConfig.color}-100 hover:bg-${severityConfig.color}-200 border-${severityConfig.color}-300`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onApplyFix(issue);
+                }}
+              >
+                <Wrench className="h-3 w-3" />
+                {issue.autoFix.label}
+              </Button>
+            )}
+            {/* AI Fix Button - always available for AI-powered contextual fixes */}
+            {onFixWithAI && (
+              <Button
+                size="sm"
+                className="h-6 text-[10px] gap-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onFixWithAI(issue);
+                }}
+              >
+                <Sparkles className="h-3 w-3" />
+                Fix with AI
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>

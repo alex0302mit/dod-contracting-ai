@@ -27,6 +27,7 @@ from backend.models.procurement import ProcurementProject, ProcurementPhase, Pro
 from backend.models.document import ProjectDocument, DocumentUpload, GenerationStatus
 from backend.models.notification import Notification
 from backend.models.audit import AuditLog
+from backend.models.agent_feedback import AgentFeedback
 from backend.services.websocket_manager import WebSocketManager
 from backend.services.rag_service import get_rag_service, initialize_rag_service
 from backend.services.generation_coordinator import get_generation_coordinator, GenerationTask
@@ -48,18 +49,50 @@ async def lifespan(app: FastAPI):
     """
     Lifespan context manager for startup/shutdown events.
     This is the modern replacement for @app.on_event("startup") and @app.on_event("shutdown").
-    
-    Startup: Initialize database and RAG service
-    Shutdown: Optional cleanup (currently just logs)
+
+    Startup: Initialize database, Redis cache, and RAG service
+    Shutdown: Close connections and cleanup
     """
     # === STARTUP ===
     print("🚀 Starting DoD Procurement API...")
-    
+
     # Initialize database
     print("📊 Initializing database...")
     init_db()
     print("✅ Database initialized successfully")
-    
+
+    # Initialize Redis cache service
+    print("🔴 Initializing Redis cache...")
+    cache_service = None
+    invalidation_service = None
+    try:
+        from backend.services.cache_service import initialize_cache_service
+        from backend.services.cache_invalidation import initialize_invalidation_service
+
+        cache_enabled = os.getenv("REDIS_CACHE_ENABLED", "true").lower() == "true"
+        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+
+        cache_service = initialize_cache_service(
+            redis_url=redis_url,
+            enabled=cache_enabled
+        )
+
+        invalidation_service = initialize_invalidation_service(
+            redis_url=redis_url,
+            enabled=cache_enabled,
+            start_listener=True
+        )
+
+        if cache_service.is_connected:
+            print("✅ Redis cache initialized successfully")
+        else:
+            print("⚠️  Redis cache not connected - caching disabled")
+
+    except ImportError:
+        print("⚠️  Redis packages not installed - caching disabled")
+    except Exception as e:
+        print(f"⚠️  Failed to initialize Redis cache: {e}")
+
     # Initialize RAG service
     print("🧠 Initializing RAG system...")
     try:
@@ -71,14 +104,22 @@ async def lifespan(app: FastAPI):
             print("⚠️  ANTHROPIC_API_KEY not set - RAG system will not be available")
     except Exception as e:
         print(f"⚠️  Failed to initialize RAG system: {e}")
-    
+
     print("🌐 API is ready at http://localhost:8000")
     print("📚 API docs available at http://localhost:8000/docs")
-    
+
     yield  # Application runs here
-    
+
     # === SHUTDOWN ===
     print("🛑 Shutting down DoD Procurement API...")
+
+    # Close Redis connections
+    if invalidation_service:
+        invalidation_service.close()
+    if cache_service:
+        cache_service.close()
+
+    print("✅ Shutdown complete")
 
 
 # Create FastAPI app with lifespan handler
@@ -421,6 +462,106 @@ def get_current_user_info(current_user: User = Depends(get_current_user)):
     return current_user.to_dict()
 
 
+# ============================================================================
+# User Personal Analytics - Stats for profile dropdown
+# ============================================================================
+
+# Time savings estimates per document type (hours saved by AI generation)
+# Conservative estimates based on typical manual drafting time
+DOCUMENT_TIME_SAVINGS = {
+    "acquisition plan": 4.0,
+    "igce": 2.5,
+    "pws": 3.0,
+    "sow": 3.0,
+    "performance work statement": 3.0,
+    "statement of work": 3.0,
+    "source selection plan": 2.0,
+    "market research report": 1.5,
+    "section l": 1.5,
+    "section m": 1.5,
+    "pre-solicitation notice": 1.0,
+    "solicitation": 2.0,
+    "evaluation scorecard": 1.5,
+    "award notification": 1.0,
+}
+DEFAULT_TIME_SAVINGS = 1.0  # Default for unrecognized document types
+
+
+def calculate_time_savings(document_name: str) -> float:
+    """
+    Calculate estimated hours saved for a document based on its type.
+    
+    Args:
+        document_name: Name of the document (e.g., "Acquisition Plan", "IGCE")
+        
+    Returns:
+        Estimated hours saved by AI generation
+    """
+    doc_lower = document_name.lower()
+    for doc_type, hours in DOCUMENT_TIME_SAVINGS.items():
+        if doc_type in doc_lower:
+            return hours
+    return DEFAULT_TIME_SAVINGS
+
+
+@app.get("/api/users/me/stats", tags=["Users"])
+def get_current_user_stats(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get personal analytics for the current user.
+    
+    Returns documents generated, estimated time saved, and projects contributed
+    for the current calendar month.
+    
+    Time savings are estimated based on typical manual drafting time for each
+    document type (e.g., Acquisition Plan ~4 hours, IGCE ~2.5 hours).
+    """
+    from sqlalchemy import or_, extract, func as sql_func
+    from backend.models.procurement import ProcurementProject
+    
+    # Get current month boundaries
+    now = datetime.utcnow()
+    month_start = datetime(now.year, now.month, 1)
+    
+    # Find projects where user is involved (created_by, CO, or PM)
+    user_projects = db.query(ProcurementProject.id).filter(
+        or_(
+            ProcurementProject.created_by == current_user.id,
+            ProcurementProject.contracting_officer_id == current_user.id,
+            ProcurementProject.program_manager_id == current_user.id
+        )
+    ).subquery()
+    
+    # Query documents generated this month for user's projects
+    generated_docs = db.query(ProjectDocument).filter(
+        ProjectDocument.project_id.in_(user_projects),
+        ProjectDocument.generation_status == GenerationStatus.GENERATED,
+        ProjectDocument.generated_at >= month_start
+    ).all()
+    
+    # Calculate stats
+    documents_generated = len(generated_docs)
+    
+    # Calculate total time savings based on document types
+    estimated_hours_saved = sum(
+        calculate_time_savings(doc.document_name) 
+        for doc in generated_docs
+    )
+    
+    # Count distinct projects with generated documents this month
+    project_ids = set(str(doc.project_id) for doc in generated_docs)
+    projects_contributed = len(project_ids)
+    
+    return {
+        "documents_generated": documents_generated,
+        "estimated_hours_saved": round(estimated_hours_saved, 1),
+        "projects_contributed": projects_contributed,
+        "period": "month"
+    }
+
+
 @app.get("/api/users", tags=["Users"])
 def get_users(
     role: str = None,
@@ -696,6 +837,228 @@ def admin_delete_user(
     return {"message": f"User {user.email} has been deactivated"}
 
 
+# ============================================================================
+# Admin Analytics Dashboard - Organization-wide metrics
+# ============================================================================
+
+@app.get("/api/admin/analytics", tags=["Admin"])
+def get_admin_analytics(
+    days: int = Query(30, ge=7, le=365, description="Number of days to analyze"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get organization-wide analytics for the admin dashboard.
+    
+    Returns summary stats, daily trends, documents by type, phase velocity,
+    and top contributors for the specified time period.
+    
+    Args:
+        days: Number of days to include (7-365, default 30)
+    
+    Returns comprehensive analytics data for charts and KPIs.
+    """
+    from sqlalchemy import func as sql_func, case
+    from collections import defaultdict
+    from backend.models.procurement import ProcurementProject, ProcurementPhase, PhaseName
+    
+    # Admin-only access
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    
+    # Calculate date range
+    end_date = datetime.utcnow()
+    start_date = end_date - timedelta(days=days)
+    
+    # -------------------------------------------------------------------------
+    # 1. Query all generated documents in the period
+    # -------------------------------------------------------------------------
+    all_docs = db.query(ProjectDocument).filter(
+        ProjectDocument.generation_status == GenerationStatus.GENERATED,
+        ProjectDocument.generated_at >= start_date,
+        ProjectDocument.generated_at <= end_date
+    ).all()
+    
+    # Query failed generations
+    failed_docs = db.query(ProjectDocument).filter(
+        ProjectDocument.generation_status == GenerationStatus.FAILED,
+        ProjectDocument.updated_at >= start_date,
+        ProjectDocument.updated_at <= end_date
+    ).count()
+    
+    # -------------------------------------------------------------------------
+    # 2. Calculate summary statistics
+    # -------------------------------------------------------------------------
+    total_generated = len(all_docs)
+    total_attempts = total_generated + failed_docs
+    success_rate = round((total_generated / total_attempts * 100), 1) if total_attempts > 0 else 100.0
+    
+    # Calculate total hours saved using existing function
+    total_hours_saved = sum(
+        calculate_time_savings(doc.document_name) 
+        for doc in all_docs
+    )
+    
+    # Count active projects (projects with generated docs in period)
+    active_project_ids = set(str(doc.project_id) for doc in all_docs)
+    projects_active = len(active_project_ids)
+    
+    # -------------------------------------------------------------------------
+    # 3. Phase velocity - average days per phase
+    # -------------------------------------------------------------------------
+    phases_with_duration = db.query(ProcurementPhase).filter(
+        ProcurementPhase.actual_duration_days.isnot(None),
+        ProcurementPhase.end_date >= start_date.date()
+    ).all()
+    
+    phase_stats = defaultdict(lambda: {"total_days": 0, "count": 0})
+    for phase in phases_with_duration:
+        phase_name = phase.phase_name.value
+        phase_stats[phase_name]["total_days"] += phase.actual_duration_days
+        phase_stats[phase_name]["count"] += 1
+    
+    phase_velocity = {}
+    total_phase_days = 0
+    total_phase_count = 0
+    for phase_name in ["pre_solicitation", "solicitation", "post_solicitation"]:
+        stats = phase_stats.get(phase_name, {"total_days": 0, "count": 0})
+        avg_days = round(stats["total_days"] / stats["count"], 1) if stats["count"] > 0 else 0
+        phase_velocity[phase_name] = {
+            "avg_days": avg_days,
+            "count": stats["count"]
+        }
+        total_phase_days += stats["total_days"]
+        total_phase_count += stats["count"]
+    
+    avg_phase_days = round(total_phase_days / total_phase_count, 1) if total_phase_count > 0 else 0
+    
+    # -------------------------------------------------------------------------
+    # 4. Documents by type - aggregate by document name
+    # -------------------------------------------------------------------------
+    doc_type_counts = defaultdict(lambda: {"count": 0, "hours_saved": 0})
+    for doc in all_docs:
+        # Normalize document type name
+        doc_type = doc.document_name
+        doc_type_counts[doc_type]["count"] += 1
+        doc_type_counts[doc_type]["hours_saved"] += calculate_time_savings(doc.document_name)
+    
+    documents_by_type = [
+        {
+            "type": doc_type,
+            "count": data["count"],
+            "hours_saved": round(data["hours_saved"], 1)
+        }
+        for doc_type, data in sorted(
+            doc_type_counts.items(), 
+            key=lambda x: x[1]["count"], 
+            reverse=True
+        )
+    ][:10]  # Top 10 document types
+    
+    # -------------------------------------------------------------------------
+    # 5. Daily trend - documents generated per day
+    # -------------------------------------------------------------------------
+    daily_counts = defaultdict(lambda: {"generated": 0, "hours_saved": 0})
+    for doc in all_docs:
+        if doc.generated_at:
+            day_key = doc.generated_at.strftime("%Y-%m-%d")
+            daily_counts[day_key]["generated"] += 1
+            daily_counts[day_key]["hours_saved"] += calculate_time_savings(doc.document_name)
+    
+    # Query failed docs by day
+    failed_by_day = db.query(
+        sql_func.date(ProjectDocument.updated_at).label("day"),
+        sql_func.count().label("count")
+    ).filter(
+        ProjectDocument.generation_status == GenerationStatus.FAILED,
+        ProjectDocument.updated_at >= start_date,
+        ProjectDocument.updated_at <= end_date
+    ).group_by(sql_func.date(ProjectDocument.updated_at)).all()
+    
+    failed_dict = {str(row.day): row.count for row in failed_by_day}
+    
+    # Build daily trend array for all days in range
+    daily_trend = []
+    current_day = start_date
+    while current_day <= end_date:
+        day_str = current_day.strftime("%Y-%m-%d")
+        daily_trend.append({
+            "date": day_str,
+            "generated": daily_counts[day_str]["generated"],
+            "failed": failed_dict.get(day_str, 0),
+            "hours_saved": round(daily_counts[day_str]["hours_saved"], 1)
+        })
+        current_day += timedelta(days=1)
+    
+    # -------------------------------------------------------------------------
+    # 6. Top contributors - users with most generated documents
+    # -------------------------------------------------------------------------
+    # Get projects and their owners
+    project_owners = {}
+    if active_project_ids:
+        projects = db.query(ProcurementProject).filter(
+            ProcurementProject.id.in_([p for p in active_project_ids])
+        ).all()
+        for proj in projects:
+            # Track contracting officer as primary contributor
+            project_owners[str(proj.id)] = {
+                "user_id": str(proj.contracting_officer_id),
+                "user": proj.contracting_officer
+            }
+    
+    # Aggregate by user
+    user_stats = defaultdict(lambda: {"documents": 0, "hours_saved": 0, "name": ""})
+    for doc in all_docs:
+        project_id = str(doc.project_id)
+        if project_id in project_owners:
+            owner = project_owners[project_id]
+            user_id = owner["user_id"]
+            user_stats[user_id]["documents"] += 1
+            user_stats[user_id]["hours_saved"] += calculate_time_savings(doc.document_name)
+            if owner["user"]:
+                user_stats[user_id]["name"] = owner["user"].name
+    
+    top_contributors = [
+        {
+            "user_id": user_id,
+            "name": data["name"],
+            "documents": data["documents"],
+            "hours_saved": round(data["hours_saved"], 1)
+        }
+        for user_id, data in sorted(
+            user_stats.items(),
+            key=lambda x: x[1]["documents"],
+            reverse=True
+        )
+    ][:10]  # Top 10 contributors
+    
+    # -------------------------------------------------------------------------
+    # Return comprehensive analytics response
+    # -------------------------------------------------------------------------
+    return {
+        "period": {
+            "start": start_date.strftime("%Y-%m-%d"),
+            "end": end_date.strftime("%Y-%m-%d"),
+            "days": days
+        },
+        "summary": {
+            "total_documents_generated": total_generated,
+            "success_rate": success_rate,
+            "failed_generations": failed_docs,
+            "total_hours_saved": round(total_hours_saved, 1),
+            "projects_active": projects_active,
+            "avg_phase_days": avg_phase_days
+        },
+        "documents_by_type": documents_by_type,
+        "daily_trend": daily_trend,
+        "phase_velocity": phase_velocity,
+        "top_contributors": top_contributors
+    }
+
+
 @app.get("/api/admin/audit-logs", tags=["Admin"])
 def get_audit_logs(
     action: str = None,
@@ -863,6 +1226,167 @@ def reset_database_for_testing(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to reset database: {str(e)}"
         )
+
+
+# ============================================================================
+# Agent Feedback Endpoints
+# ============================================================================
+
+class FeedbackRequest(BaseModel):
+    """Request model for submitting agent feedback"""
+    document_id: str
+    section_name: Optional[str] = None
+    agent_name: str
+    rating: str  # "positive" or "negative"
+    comment: Optional[str] = None
+
+
+@app.post("/api/feedback", tags=["Feedback"])
+def submit_feedback(
+    request: FeedbackRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Submit feedback (thumbs up/down) for AI-generated content"""
+    # Validate rating
+    if request.rating not in ["positive", "negative"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Rating must be 'positive' or 'negative'"
+        )
+
+    # Verify document exists
+    document = db.query(ProjectDocument).filter(ProjectDocument.id == request.document_id).first()
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found"
+        )
+
+    # Create feedback record
+    feedback = AgentFeedback(
+        document_id=request.document_id,
+        section_name=request.section_name,
+        agent_name=request.agent_name,
+        rating=request.rating,
+        comment=request.comment,
+        user_id=str(current_user.id),
+        project_id=document.project_id
+    )
+    db.add(feedback)
+    db.commit()
+    db.refresh(feedback)
+
+    return {"success": True, "feedback_id": feedback.id}
+
+
+@app.get("/api/documents/{document_id}/feedback", tags=["Feedback"])
+def get_document_feedback(
+    document_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all feedback for a specific document"""
+    # Verify document exists
+    document = db.query(ProjectDocument).filter(ProjectDocument.id == document_id).first()
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found"
+        )
+
+    feedback = db.query(AgentFeedback).filter(
+        AgentFeedback.document_id == document_id
+    ).order_by(AgentFeedback.created_at.desc()).all()
+
+    return {"feedback": [f.to_dict() for f in feedback]}
+
+
+@app.get("/api/admin/agent-performance", tags=["Admin"])
+def get_agent_performance(
+    days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get aggregated agent performance stats based on user feedback (Admin only)"""
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+
+    from sqlalchemy import func, case
+
+    cutoff = datetime.utcnow() - timedelta(days=days)
+
+    # Query feedback grouped by agent
+    results = db.query(
+        AgentFeedback.agent_name,
+        func.count(case((AgentFeedback.rating == "positive", 1))).label("positive"),
+        func.count(case((AgentFeedback.rating == "negative", 1))).label("negative"),
+        func.count(AgentFeedback.id).label("total")
+    ).filter(
+        AgentFeedback.created_at >= cutoff
+    ).group_by(AgentFeedback.agent_name).all()
+
+    agents = []
+    for r in results:
+        rating_pct = (r.positive / r.total * 100) if r.total > 0 else 0
+        agents.append({
+            "name": r.agent_name,
+            "positive_count": r.positive,
+            "negative_count": r.negative,
+            "total": r.total,
+            "rating_percentage": round(rating_pct, 1)
+        })
+
+    return {
+        "agents": sorted(agents, key=lambda x: x["total"], reverse=True),
+        "period_days": days,
+        "total_feedback": sum(a["total"] for a in agents)
+    }
+
+
+@app.get("/api/admin/agent-feedback/{agent_name}", tags=["Admin"])
+def get_agent_feedback_comments(
+    agent_name: str,
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get feedback comments for a specific agent (Admin only)"""
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+
+    from sqlalchemy import func
+
+    offset = (page - 1) * limit
+
+    # Get feedback with comments for this agent
+    feedback = db.query(AgentFeedback).filter(
+        AgentFeedback.agent_name == agent_name,
+        AgentFeedback.comment.isnot(None),
+        AgentFeedback.comment != ""
+    ).order_by(AgentFeedback.created_at.desc()).offset(offset).limit(limit).all()
+
+    # Get total count
+    total = db.query(func.count(AgentFeedback.id)).filter(
+        AgentFeedback.agent_name == agent_name,
+        AgentFeedback.comment.isnot(None),
+        AgentFeedback.comment != ""
+    ).scalar()
+
+    return {
+        "comments": [f.to_dict() for f in feedback],
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "pages": (total + limit - 1) // limit if total else 0
+    }
 
 
 # ============================================================================
@@ -1470,20 +1994,48 @@ async def generate_document_content(
     document.generation_task_id = task_id
     db.commit()
 
-    # Queue background task for single document generation
-    background_tasks.add_task(
-        run_single_doc_generation,
-        task_id,
-        document_id,
-        request.assumptions,
-        request.additional_context
-    )
-    
+    # Check if Celery is enabled
+    use_celery = os.getenv("USE_CELERY_TASKS", "true").lower() == "true"
+
+    if use_celery:
+        try:
+            from backend.celery_app import is_celery_enabled
+            from backend.tasks.generation_tasks import generate_single_document as celery_generate
+
+            if is_celery_enabled():
+                # Dispatch to Celery worker
+                celery_task = celery_generate.delay(
+                    task_id=task_id,
+                    document_id=document_id,
+                    project_id=str(document.project_id),
+                    assumptions=request.assumptions,
+                    additional_context=request.additional_context
+                )
+                # Store Celery task ID for status tracking
+                document_generation_tasks[task_id]["celery_task_id"] = celery_task.id
+                document_generation_tasks[task_id]["backend"] = "celery"
+            else:
+                use_celery = False
+        except ImportError:
+            use_celery = False
+
+    if not use_celery:
+        # Fallback to asyncio background task
+        document_generation_tasks[task_id]["backend"] = "asyncio"
+        background_tasks.add_task(
+            run_single_doc_generation,
+            task_id,
+            document_id,
+            request.assumptions,
+            request.additional_context
+        )
+
     return {
         "message": "Generation started",
         "task_id": task_id,
         "document_id": document_id,
-        "document_name": document.document_name
+        "document_name": document.document_name,
+        "backend": document_generation_tasks[task_id].get("backend", "asyncio")
     }
 
 
@@ -1528,13 +2080,79 @@ async def get_generation_task_status(
 ):
     """
     Get the status of a specific generation task.
-    
+
     Use this for polling during generation.
+    Supports both asyncio and Celery backends.
     """
     if task_id not in document_generation_tasks:
         raise HTTPException(status_code=404, detail="Task not found")
-    
-    return document_generation_tasks[task_id]
+
+    task_info = document_generation_tasks[task_id].copy()
+
+    # If using Celery, get live status from Celery
+    if task_info.get("backend") == "celery" and task_info.get("celery_task_id"):
+        try:
+            from celery.result import AsyncResult
+            from backend.celery_app import celery_app
+
+            celery_result = AsyncResult(task_info["celery_task_id"], app=celery_app)
+
+            # Update status from Celery
+            if celery_result.state == "PENDING":
+                task_info["status"] = "pending"
+            elif celery_result.state == "STARTED":
+                task_info["status"] = "in_progress"
+            elif celery_result.state == "PROGRESS":
+                task_info["status"] = "in_progress"
+                if celery_result.info:
+                    task_info["progress"] = celery_result.info.get("progress", 0)
+                    task_info["message"] = celery_result.info.get("message", "")
+            elif celery_result.state == "SUCCESS":
+                task_info["status"] = "completed"
+                task_info["progress"] = 100
+                task_info["result"] = celery_result.result
+            elif celery_result.state == "FAILURE":
+                task_info["status"] = "failed"
+                task_info["error"] = str(celery_result.result)
+
+            task_info["celery_state"] = celery_result.state
+
+        except ImportError:
+            pass
+        except Exception as e:
+            task_info["celery_error"] = str(e)
+
+    return task_info
+
+
+@app.get("/api/celery/health", tags=["System"])
+def get_celery_health(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get Celery worker health status.
+
+    Returns information about active workers and task counts.
+    """
+    try:
+        from backend.celery_app import check_celery_health
+
+        health = check_celery_health()
+        return {
+            "status": "success",
+            "celery": health
+        }
+
+    except ImportError:
+        return {
+            "status": "unavailable",
+            "message": "Celery not installed or configured"
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }
 
 
 @app.post("/api/documents/{document_id}/save-generated", tags=["Document Generation"])
@@ -1647,21 +2265,47 @@ async def generate_batch_documents(
         doc.generation_status = GenerationStatus.GENERATING
         doc.generation_task_id = batch_task_id
     db.commit()
-    
-    # Queue background task for batch generation
-    background_tasks.add_task(
-        run_batch_generation,
-        batch_task_id,
-        project_id,
-        request.document_ids,
-        request.assumptions
-    )
-    
+
+    # Check if Celery is enabled
+    use_celery = os.getenv("USE_CELERY_TASKS", "true").lower() == "true"
+
+    if use_celery:
+        try:
+            from backend.celery_app import is_celery_enabled
+            from backend.tasks.generation_tasks import generate_batch_documents as celery_batch_generate
+
+            if is_celery_enabled():
+                # Dispatch to Celery worker
+                celery_task = celery_batch_generate.delay(
+                    batch_task_id=batch_task_id,
+                    project_id=project_id,
+                    document_ids=request.document_ids,
+                    assumptions=request.assumptions
+                )
+                document_generation_tasks[batch_task_id]["celery_task_id"] = celery_task.id
+                document_generation_tasks[batch_task_id]["backend"] = "celery"
+            else:
+                use_celery = False
+        except ImportError:
+            use_celery = False
+
+    if not use_celery:
+        # Fallback to asyncio background task
+        document_generation_tasks[batch_task_id]["backend"] = "asyncio"
+        background_tasks.add_task(
+            run_batch_generation,
+            batch_task_id,
+            project_id,
+            request.document_ids,
+            request.assumptions
+        )
+
     return {
         "message": "Batch generation started",
         "task_id": batch_task_id,
         "document_count": len(documents),
-        "documents": [{"id": str(d.id), "name": d.document_name} for d in documents]
+        "documents": [{"id": str(d.id), "name": d.document_name} for d in documents],
+        "backend": document_generation_tasks[batch_task_id].get("backend", "asyncio")
     }
 
 
@@ -2975,8 +3619,10 @@ def request_phase_transition(
     if gatekeeper_id:
         from backend.models.notification import Notification
         import uuid as uuid_module
+        # Create notification with project_id - required by database NOT NULL constraint
         notification = Notification(
             user_id=uuid_module.UUID(gatekeeper_id),
+            project_id=phase.project_id,  # Required: database has NOT NULL constraint
             notification_type="phase_transition_request",
             title="Phase Transition Request",
             message=f"A phase transition request has been submitted for your approval",
@@ -3090,8 +3736,10 @@ def approve_phase_transition(
     
     # Create notification for the requester
     from backend.models.notification import Notification
+    # FIX: Added project_id parameter - required by database NOT NULL constraint
     notification = Notification(
         user_id=transition.requested_by,
+        project_id=transition.project_id,  # FIX: Pass project_id to notification column
         notification_type="phase_transition_approved",
         title="Phase Transition Approved",
         message=f"Your phase transition request has been approved",
@@ -3201,8 +3849,10 @@ def reject_phase_transition(
     
     # Create notification for the requester
     from backend.models.notification import Notification
+    # FIX: Added project_id parameter - required by database NOT NULL constraint
     notification = Notification(
         user_id=transition.requested_by,
+        project_id=transition.project_id,  # FIX: Pass project_id to notification column
         notification_type="phase_transition_rejected",
         title="Phase Transition Rejected",
         message=f"Your phase transition request has been rejected",
@@ -3574,6 +4224,109 @@ def get_rag_stats(
         )
 
 
+@app.get("/api/cache/stats", tags=["Cache"])
+def get_cache_stats(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get statistics about the Redis cache system.
+
+    Returns information about cache connection status, memory usage,
+    and cached key counts by namespace.
+
+    Requires authentication.
+    """
+    try:
+        from backend.services.cache_service import get_cache_service
+
+        cache = get_cache_service()
+        stats = cache.get_stats()
+
+        return {
+            "status": "success",
+            "cache": stats
+        }
+
+    except ImportError:
+        return {
+            "status": "unavailable",
+            "message": "Redis cache service not installed"
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error getting cache stats: {str(e)}"
+        )
+
+
+@app.delete("/api/cache/clear", tags=["Cache"])
+def clear_cache(
+    namespace: Optional[str] = Query(None, description="Specific namespace to clear (e.g., 'rag_search', 'analytics'). Clears all if not specified."),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Clear Redis cache.
+
+    Can clear specific namespaces or all cached data.
+    Requires admin role.
+    """
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admins can clear the cache"
+        )
+
+    try:
+        from backend.services.cache_service import get_cache_service, CacheNamespace
+
+        cache = get_cache_service()
+        if not cache.is_connected:
+            return {"status": "unavailable", "message": "Cache not connected"}
+
+        deleted = 0
+        if namespace:
+            # Map namespace names to prefixes
+            namespace_map = {
+                "rag_search": CacheNamespace.RAG_SEARCH,
+                "rag_embeddings": CacheNamespace.RAG_EMBEDDINGS,
+                "rag_docs": CacheNamespace.RAG_DOCS_LIST,
+                "analytics_admin": CacheNamespace.ANALYTICS_ADMIN,
+                "analytics_user": CacheNamespace.ANALYTICS_USER,
+                "generation": CacheNamespace.GENERATION_HASH,
+            }
+
+            prefix = namespace_map.get(namespace.lower())
+            if prefix:
+                deleted = cache.delete_pattern(f"{prefix}:*")
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Unknown namespace: {namespace}. Valid options: {list(namespace_map.keys())}"
+                )
+        else:
+            # Clear all namespaces
+            deleted += cache.delete_pattern("dod:cache:*")
+
+        return {
+            "status": "success",
+            "deleted_keys": deleted,
+            "namespace": namespace or "all"
+        }
+
+    except HTTPException:
+        raise
+    except ImportError:
+        return {
+            "status": "unavailable",
+            "message": "Redis cache service not installed"
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error clearing cache: {str(e)}"
+        )
+
+
 @app.post("/api/rag/search", tags=["RAG"])
 def search_rag_documents(
     query: str = Query(..., description="Search query"),
@@ -3676,6 +4429,193 @@ async def convert_document_to_html(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error converting document: {str(e)}"
         )
+
+
+# ============================================================================
+# DOCUMENT VERSION HISTORY ENDPOINTS
+# ============================================================================
+
+class CreateVersionRequest(BaseModel):
+    """Request model for creating a document version snapshot"""
+    content: str
+    sections: Optional[Dict[str, str]] = None
+    message: Optional[str] = None
+    author: Optional[str] = None
+
+
+@app.post("/api/documents/{document_id}/versions", tags=["Versions"])
+def create_document_version(
+    document_id: str,
+    request: CreateVersionRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Create a new version snapshot for a document.
+
+    This endpoint saves the current state of document content as a version,
+    enabling version history and rollback capabilities.
+    """
+    import json
+    from sqlalchemy import func
+    from backend.models.document_version import DocumentContentVersion
+
+    # Verify document exists
+    document = db.query(ProjectDocument).filter(ProjectDocument.id == document_id).first()
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    # Get next version number
+    latest = db.query(DocumentContentVersion).filter(
+        DocumentContentVersion.project_document_id == document_id
+    ).order_by(DocumentContentVersion.version_number.desc()).first()
+
+    next_version = (latest.version_number + 1) if latest else 1
+
+    # Mark all previous versions as not current
+    db.query(DocumentContentVersion).filter(
+        DocumentContentVersion.project_document_id == document_id
+    ).update({"is_current": False})
+
+    # Calculate word count (strip HTML tags for accurate count)
+    content_for_count = re.sub(r'<[^>]+>', ' ', request.content)
+    word_count = len(content_for_count.split())
+
+    # Create new version
+    version = DocumentContentVersion(
+        project_document_id=document_id,
+        version_number=next_version,
+        is_current=True,
+        content=request.content,
+        sections_json=json.dumps(request.sections) if request.sections else None,
+        message=request.message or f"Version {next_version}",
+        author=request.author or current_user.name,
+        created_by=current_user.id,
+        word_count=word_count,
+    )
+    db.add(version)
+    db.commit()
+    db.refresh(version)
+
+    return version.to_dict()
+
+
+@app.get("/api/documents/{document_id}/versions", tags=["Versions"])
+def get_document_versions(
+    document_id: str,
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get version history for a document.
+
+    Returns a paginated list of all versions sorted by version number (newest first).
+    """
+    from sqlalchemy import func
+    from backend.models.document_version import DocumentContentVersion
+
+    document = db.query(ProjectDocument).filter(ProjectDocument.id == document_id).first()
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    versions = db.query(DocumentContentVersion).filter(
+        DocumentContentVersion.project_document_id == document_id
+    ).order_by(DocumentContentVersion.version_number.desc()).offset(offset).limit(limit).all()
+
+    total = db.query(func.count(DocumentContentVersion.id)).filter(
+        DocumentContentVersion.project_document_id == document_id
+    ).scalar()
+
+    return {
+        "versions": [v.to_dict() for v in versions],
+        "total": total,
+        "limit": limit,
+        "offset": offset
+    }
+
+
+@app.get("/api/documents/{document_id}/versions/{version_id}", tags=["Versions"])
+def get_document_version(
+    document_id: str,
+    version_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get a specific version's content"""
+    from backend.models.document_version import DocumentContentVersion
+
+    version = db.query(DocumentContentVersion).filter(
+        DocumentContentVersion.id == version_id,
+        DocumentContentVersion.project_document_id == document_id
+    ).first()
+
+    if not version:
+        raise HTTPException(status_code=404, detail="Version not found")
+
+    return version.to_dict()
+
+
+@app.post("/api/documents/{document_id}/versions/{version_id}/restore", tags=["Versions"])
+def restore_document_version(
+    document_id: str,
+    version_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Restore document to a previous version.
+
+    This creates a new version with the content from the specified version,
+    preserving the complete version history. The document's generated_content
+    is also updated to match the restored version.
+    """
+    from backend.models.document_version import DocumentContentVersion
+
+    version = db.query(DocumentContentVersion).filter(
+        DocumentContentVersion.id == version_id,
+        DocumentContentVersion.project_document_id == document_id
+    ).first()
+
+    if not version:
+        raise HTTPException(status_code=404, detail="Version not found")
+
+    # Get next version number
+    latest = db.query(DocumentContentVersion).filter(
+        DocumentContentVersion.project_document_id == document_id
+    ).order_by(DocumentContentVersion.version_number.desc()).first()
+
+    next_version = latest.version_number + 1
+
+    # Mark all as not current
+    db.query(DocumentContentVersion).filter(
+        DocumentContentVersion.project_document_id == document_id
+    ).update({"is_current": False})
+
+    # Create restored version
+    restored = DocumentContentVersion(
+        project_document_id=document_id,
+        version_number=next_version,
+        is_current=True,
+        content=version.content,
+        sections_json=version.sections_json,
+        message=f"Restored from version {version.version_number}",
+        author=current_user.name,
+        created_by=current_user.id,
+        word_count=version.word_count,
+    )
+    db.add(restored)
+
+    # Update main document content
+    document = db.query(ProjectDocument).filter(ProjectDocument.id == document_id).first()
+    if document:
+        document.generated_content = version.content
+
+    db.commit()
+    db.refresh(restored)
+
+    return restored.to_dict()
 
 
 @app.post("/api/extract-assumptions", tags=["RAG"])
@@ -5821,8 +6761,59 @@ RULES:
 
 REWRITTEN TEXT WITH CITATION:"""
 
+        elif action == "fix_vague_language":
+            # AI-powered fix for vague language - replaces vague terms with specific, measurable language
+            # Used when document contains non-specific terms like "several", "many", "appropriate", etc.
+
+            vague_term = selected_text  # The vague term to be replaced
+
+            # Build prompt for vague language fix - focuses on making language specific and measurable
+            user_prompt = f"""You are a DoD acquisition document editor. A vague or non-specific term needs to be replaced with precise, measurable language.
+
+VAGUE TERM TO REPLACE: "{vague_term}"
+
+SECTION: {section if section else "Unknown section"}
+
+SURROUNDING CONTEXT:
+{context if context else "No additional context provided"}
+
+The term above was flagged as vague because it lacks specificity. DoD procurement documents require precise, measurable language.
+
+YOUR TASK:
+Replace the vague term with specific, measurable language that:
+1. Provides concrete numbers, dates, or specific terms
+2. Maintains the same meaning and intent of the original
+3. Uses professional DoD procurement language
+4. Fits naturally in the surrounding context
+
+REPLACEMENT GUIDELINES:
+- "several" → Use specific number (e.g., "three (3)", "four to six (4-6)")
+- "many" → Use specific range (e.g., "ten (10) or more")
+- "some" → Use specific quantity (e.g., "a minimum of two (2)")
+- "various" → List specific items (e.g., "Types A, B, and C")
+- "numerous" → Use specific count (e.g., "at least five (5)")
+- "appropriate" → Specify the criteria (e.g., "as defined in Section X")
+- "adequate" → Define the standard (e.g., "meeting the requirements of...")
+- "may" → Replace with "shall" or specific conditions
+- "might" → Replace with definitive requirement or remove
+- "could" → Replace with "shall" or specific capability
+- "possibly" → Replace with definitive statement
+- "as needed" → Specify timing (e.g., "within 24 hours of request")
+- "as required" → Reference specific requirement (e.g., "per Section C.3.2")
+- "as appropriate" → Define the criteria
+- "sufficient" → Specify the quantity or standard
+- "properly" → Reference the applicable standard
+
+IMPORTANT:
+- Return ONLY the replacement phrase
+- Do NOT include quotation marks around the replacement
+- Do NOT include explanations
+- Keep the replacement concise but specific
+
+REPLACEMENT:"""
+
         else:
-            available = config.get_available_actions() + ["web_search", "fix_issue", "fix_hallucination", "fix_compliance"]
+            available = config.get_available_actions() + ["web_search", "fix_issue", "fix_hallucination", "fix_compliance", "fix_vague_language"]
             raise HTTPException(status_code=400, detail=f"Invalid action: {action}. Valid actions: {', '.join(available)}")
 
         # Call Claude for assistance (model and settings from config)

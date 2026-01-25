@@ -27,6 +27,7 @@ import { LoginPage } from "./LoginPage";
 import { AppShell } from "./layout/AppShell";
 import { AdminUserManagement } from "./admin/AdminUserManagement";
 import { AdminAuditLogs } from "./admin/AdminAuditLogs";
+import { AdminAnalytics } from "./admin/AdminAnalytics";
 
 // Import all screens
 import {
@@ -269,6 +270,9 @@ function MainApp() {
       
       case 'SETTINGS':
         return <AdminUserManagement />;
+
+      case 'ADMIN_ANALYTICS':
+        return <AdminAnalytics />;
 
       case 'ADMIN_AUDIT_LOGS':
         return <AdminAuditLogs />;
