@@ -1,0 +1,47 @@
+# ============================================================================
+# Dockerfile.backend — FastAPI backend for DoD Procurement AI
+# Build context: repo root (required for backend symlink resolution)
+# ============================================================================
+
+# ---------------------------------------------------------------------------
+# Stage 1: Install Python dependencies (cached unless requirements.txt changes)
+# ---------------------------------------------------------------------------
+FROM python:3.11-slim AS deps
+
+WORKDIR /app
+
+# System dependencies required by faiss-cpu, pdfkit, and other native modules
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    wkhtmltopdf \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install CPU-only PyTorch first to avoid pulling the 2 GB CUDA variant
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
+COPY apps/api/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# ---------------------------------------------------------------------------
+# Stage 2: Copy application code (fast rebuild on code-only changes)
+# ---------------------------------------------------------------------------
+FROM deps AS runtime
+
+WORKDIR /app
+
+# Copy the full repo so the `backend` symlink resolves correctly.
+# Docker COPY follows symlinks, so backend/ becomes a real directory inside
+# the image even though it's a symlink on the host.
+COPY apps/api/ /app/backend/
+COPY apps/api/ /app/apps/api/
+
+# Ensure Python can resolve `from backend.xxx import yyy`
+ENV PYTHONPATH=/app
+
+# Railway injects $PORT at runtime
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${PORT:-8000}/health')" || exit 1
+
+CMD uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000} --log-level info

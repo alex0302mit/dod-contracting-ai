@@ -7226,7 +7226,7 @@ def root():
 
 if __name__ == "__main__":
     HOST = os.getenv("API_HOST", "0.0.0.0")
-    PORT = int(os.getenv("API_PORT", 8000))
+    PORT = int(os.getenv("PORT", os.getenv("API_PORT", 8000)))
     # Disable reload by default due to venv watching issues on macOS
     # Set API_RELOAD=true to enable (but may cause constant reloads)
     RELOAD = os.getenv("API_RELOAD", "false").lower() == "true"

@@ -1,0 +1,28 @@
+# Version control
+.git
+.gitignore
+
+# Dependencies (rebuilt inside Docker)
+node_modules
+venv
+.venv
+__pycache__
+
+# Environment & secrets
+.env
+.env.*
+*.db
+
+# Generated data & output
+data/
+output/
+
+# Documentation & tooling
+docs/
+tools/
+.cursor/
+.claude/
+
+# OS files
+.DS_Store
+Thumbs.db
