@@ -31,14 +31,14 @@ FROM nginx:alpine AS runtime
 # Copy the built assets
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Copy nginx config template
-COPY nginx.conf /etc/nginx/templates/default.conf.template
+# Copy nginx config as a template (NOT into /etc/nginx/templates/ to avoid
+# the built-in envsubst scripts which can conflict with nginx variables).
+COPY nginx.conf /etc/nginx/nginx-template.conf
 
-# nginx docker image uses envsubst on files in /etc/nginx/templates/
-# and outputs to /etc/nginx/conf.d/ — $PORT is substituted automatically.
+# Remove the default server config
+RUN rm -f /etc/nginx/conf.d/default.conf
+
 ENV PORT=8080
 
-EXPOSE 8080
-
-# nginx image entrypoint already handles envsubst + nginx start
-CMD ["nginx", "-g", "daemon off;"]
+# Substitute only $PORT at startup, then launch nginx
+CMD sh -c "envsubst '\$PORT' < /etc/nginx/nginx-template.conf > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
