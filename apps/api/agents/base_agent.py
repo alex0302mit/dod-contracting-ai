@@ -133,13 +133,17 @@ class BaseAgent:
     
     def _clean_markdown_lists(self, content: str) -> str:
         """
-        Remove blank lines between list items and empty list items.
+        Remove empty list items and collapse blank lines between list items.
         
-        LLMs sometimes generate markdown with:
-        1. Blank lines between list items (causes extra spacing)
-        2. Empty bullet points (just "- " or "* " with no content)
+        LLMs (especially Claude) frequently generate markdown with:
+        1. Empty bullet points ("- " or "* " with no content after the marker)
+        2. Blank lines between consecutive list items (renders as separate lists)
+        3. Bullets with only whitespace after the marker ("- \t\n")
         
-        This method cleans up both issues for bullet and numbered lists.
+        These cause empty bullet dots to appear in the rendered document.
+        
+        Strategy: Remove empty items FIRST (multiple passes to catch consecutive
+        empties), then collapse blank lines between remaining items.
         
         Args:
             content: Markdown content from LLM
@@ -147,21 +151,40 @@ class BaseAgent:
         Returns:
             Cleaned markdown with proper list formatting
         """
-        # Remove blank lines between bullet list items (- or *)
-        # Pattern: matches a bullet item followed by 1+ blank lines before another bullet
-        content = re.sub(r'(\n[-*]\s+[^\n]+)\n\n+(?=[-*]\s)', r'\1\n', content)
-        
-        # Remove blank lines between numbered list items (1. 2. 3. etc.)
-        # Pattern: matches a numbered item followed by 1+ blank lines before another number
-        content = re.sub(r'(\n\d+\.\s+[^\n]+)\n\n+(?=\d+\.\s)', r'\1\n', content)
-        
-        # Remove empty bullet items (- or * followed by only whitespace then newline)
-        # This catches "- \n" or "-\n" patterns that render as empty bullets
-        content = re.sub(r'\n[-*]\s*\n', '\n', content)
-        
-        # Remove empty numbered items (1. 2. etc. followed by only whitespace then newline)
-        content = re.sub(r'\n\d+\.\s*\n', '\n', content)
-        
+        # ── Pass 1: Remove empty bullet items (- or * with no text content) ──
+        # Uses re.MULTILINE so ^ matches the start of every line, catching
+        # empty bullets at the start of content, middle, or end.
+        # Runs 3 passes to handle consecutive empty bullets (each pass may
+        # reveal new empty lines that look like bullets).
+        for _ in range(3):
+            # Lines that are ONLY a bullet marker (- or *) with optional whitespace
+            content = re.sub(r'^\s*[-*]\s*$', '', content, flags=re.MULTILINE)
+            # Lines that are ONLY a numbered marker (1. 2. etc.) with optional whitespace
+            content = re.sub(r'^\s*\d+\.\s*$', '', content, flags=re.MULTILINE)
+
+        # ── Pass 2: Collapse blank lines between bullet list items ──
+        # After removing empty bullets, there may be leftover blank lines
+        # between real list items. Collapse those to single newlines.
+        # Uses re.MULTILINE so ^ works per-line.
+        content = re.sub(
+            r'(^[ \t]*[-*]\s+[^\n]+)\n\n+([ \t]*[-*]\s)',
+            r'\1\n\2',
+            content,
+            flags=re.MULTILINE
+        )
+
+        # ── Pass 3: Collapse blank lines between numbered list items ──
+        content = re.sub(
+            r'(^[ \t]*\d+\.\s+[^\n]+)\n\n+([ \t]*\d+\.\s)',
+            r'\1\n\2',
+            content,
+            flags=re.MULTILINE
+        )
+
+        # ── Pass 4: Clean up multiple consecutive blank lines left behind ──
+        # Reducing 3+ blank lines to 2 (standard markdown paragraph break)
+        content = re.sub(r'\n{3,}', '\n\n', content)
+
         return content
     
     def add_to_memory(self, key: str, value: any) -> None:

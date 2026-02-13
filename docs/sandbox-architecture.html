@@ -1,0 +1,1648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DoD Contracting AI - Beta Sandbox Architecture (Railway)</title>
+    <style>
+        :root {
+            /* ACES Brand Colors */
+            --navy: #1C3F6E;
+            --navy-dark: #152f52;
+            --navy-light: #2a5a9e;
+            --slate: #435165;
+            --slate-light: #5a6b82;
+
+            /* Light Theme */
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+
+            /* Status Colors */
+            --success: #10b981;
+            --success-bg: #d1fae5;
+            --warning: #f59e0b;
+            --warning-bg: #fef3c7;
+            --danger: #ef4444;
+            --danger-bg: #fee2e2;
+            --info: #3b82f6;
+            --info-bg: #dbeafe;
+
+            /* Connector Colors */
+            --conn-https: #10b981;
+            --conn-ws: #8b5cf6;
+            --conn-db: #f59e0b;
+            --conn-redis: #ef4444;
+            --conn-api: #3b82f6;
+            --conn-celery: #ec4899;
+            --conn-railway: #6366f1;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+
+            --success-bg: #064e3b;
+            --warning-bg: #78350f;
+            --danger-bg: #7f1d1d;
+            --info-bg: #1e3a5f;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* ── Header ── */
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--navy);
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px var(--shadow-color);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #60a5fa, #818cf8);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+
+        .logo-text h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .logo-text span {
+            font-size: 0.75rem;
+            opacity: 0.8;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .theme-toggle {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.25);
+            color: white;
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: background 0.2s;
+        }
+
+        .theme-toggle:hover {
+            background: rgba(255,255,255,0.25);
+        }
+
+        /* ── Navigation ── */
+        .nav-bar {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0.5rem 2rem;
+            position: sticky;
+            top: 60px;
+            z-index: 99;
+        }
+
+        .nav-bar-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            gap: 0.25rem;
+            overflow-x: auto;
+        }
+
+        .nav-link {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        /* ── Main ── */
+        .main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* ── Section ── */
+        .section {
+            margin-bottom: 3rem;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid var(--navy);
+        }
+
+        .section-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: var(--navy);
+            color: white;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .section-header h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .section-desc {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+        }
+
+        /* ── Section 1: Current vs Target ── */
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 80px 1fr;
+            gap: 0;
+            align-items: stretch;
+        }
+
+        .compare-panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px var(--shadow-color);
+        }
+
+        .compare-panel.current {
+            border-top: 3px solid var(--warning);
+        }
+
+        .compare-panel.target {
+            border-top: 3px solid var(--success);
+        }
+
+        .compare-arrow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: var(--navy);
+            font-weight: 700;
+        }
+
+        .panel-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .panel-title .badge {
+            font-size: 0.7rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 20px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .badge-warning {
+            background: var(--warning-bg);
+            color: var(--warning);
+        }
+
+        .badge-success {
+            background: var(--success-bg);
+            color: var(--success);
+        }
+
+        .badge-railway {
+            background: #eef2ff;
+            color: #4338ca;
+        }
+
+        [data-theme="dark"] .badge-railway {
+            background: #312e81;
+            color: #a5b4fc;
+        }
+
+        .stack-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.6rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .stack-item:last-child {
+            border-bottom: none;
+        }
+
+        .stack-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+            color: white;
+            font-weight: 700;
+        }
+
+        .stack-label {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .stack-detail {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* ── Section 2: Infrastructure Diagram ── */
+        .infra-diagram {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 1px 3px var(--shadow-color);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .diagram-layer {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+            position: relative;
+        }
+
+        .diagram-connector {
+            text-align: center;
+            padding: 0.4rem 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.1rem;
+        }
+
+        .connector-line {
+            width: 3px;
+            height: 24px;
+            border-radius: 2px;
+        }
+
+        .connector-label {
+            font-size: 0.65rem;
+            font-weight: 600;
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+
+        .diagram-box {
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.8rem 1.2rem;
+            text-align: center;
+            min-width: 140px;
+            position: relative;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+
+        .diagram-box:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px var(--shadow-color);
+        }
+
+        .diagram-box.primary {
+            border-color: var(--navy);
+            background: var(--navy);
+            color: white;
+        }
+
+        .diagram-box.railway-edge {
+            border-color: var(--conn-railway);
+            background: linear-gradient(135deg, #4338ca, #6366f1);
+            color: white;
+        }
+
+        .diagram-box.frontend {
+            border-color: var(--info);
+            background: linear-gradient(135deg, #1e40af, #2563eb);
+            color: white;
+        }
+
+        .diagram-box.backend {
+            border-color: var(--navy);
+            background: linear-gradient(135deg, var(--navy-dark), var(--navy));
+            color: white;
+        }
+
+        .diagram-box.worker {
+            border-color: var(--conn-celery);
+            background: linear-gradient(135deg, #831843, #be185d);
+            color: white;
+        }
+
+        .diagram-box.database {
+            border-color: var(--conn-db);
+            background: linear-gradient(135deg, #92400e, #b45309);
+            color: white;
+        }
+
+        .diagram-box.cache {
+            border-color: var(--conn-redis);
+            background: linear-gradient(135deg, #991b1b, #dc2626);
+            color: white;
+        }
+
+        .diagram-box.vector {
+            border-color: #7c3aed;
+            background: linear-gradient(135deg, #5b21b6, #7c3aed);
+            color: white;
+        }
+
+        .diagram-box.external {
+            border-color: var(--slate);
+            background: var(--slate);
+            color: white;
+            border-style: dashed;
+        }
+
+        .diagram-box.railway-platform {
+            border-color: var(--conn-railway);
+            border-style: dashed;
+            border-width: 2px;
+            background: transparent;
+            color: var(--text-primary);
+            min-width: 100%;
+            padding: 1.5rem;
+        }
+
+        .box-name {
+            font-weight: 700;
+            font-size: 0.85rem;
+            margin-bottom: 0.15rem;
+        }
+
+        .box-detail {
+            font-size: 0.7rem;
+            opacity: 0.85;
+        }
+
+        .box-port {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 0.6rem;
+            font-weight: 700;
+            padding: 0.1rem 0.35rem;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+
+        .box-badge {
+            position: absolute;
+            top: -8px;
+            left: -8px;
+            font-size: 0.55rem;
+            font-weight: 700;
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .box-badge.managed {
+            background: #eef2ff;
+            color: #4338ca;
+            border: 1px solid #c7d2fe;
+        }
+
+        [data-theme="dark"] .box-badge.managed {
+            background: #312e81;
+            color: #a5b4fc;
+            border-color: #4338ca;
+        }
+
+        .diagram-split {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            justify-items: center;
+        }
+
+        .diagram-split-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1.5rem;
+            justify-items: center;
+        }
+
+        /* Railway platform boundary */
+        .railway-boundary {
+            border: 2px dashed var(--conn-railway);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin: 0.5rem 0;
+            position: relative;
+        }
+
+        .railway-boundary-label {
+            position: absolute;
+            top: -12px;
+            left: 20px;
+            background: var(--bg-secondary);
+            color: var(--conn-railway);
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 0.1rem 0.6rem;
+            border-radius: 4px;
+            letter-spacing: 0.03em;
+        }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .legend-line {
+            width: 20px;
+            height: 3px;
+            border-radius: 2px;
+        }
+
+        .legend-line.dashed {
+            background: none !important;
+            border-top: 3px dashed;
+        }
+
+        /* ── Section 3: Service Cards ── */
+        .service-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .service-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px var(--shadow-color);
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+
+        .service-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px var(--shadow-color);
+        }
+
+        .card-header {
+            padding: 1rem 1.25rem;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .card-header.frontend-h { background: linear-gradient(135deg, #1e40af, #2563eb); }
+        .card-header.backend-h { background: linear-gradient(135deg, var(--navy-dark), var(--navy)); }
+        .card-header.worker-h { background: linear-gradient(135deg, #831843, #be185d); }
+        .card-header.db-h { background: linear-gradient(135deg, #92400e, #b45309); }
+        .card-header.cache-h { background: linear-gradient(135deg, #991b1b, #dc2626); }
+
+        .card-icon {
+            width: 36px;
+            height: 36px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .card-title {
+            font-weight: 700;
+            font-size: 1rem;
+        }
+
+        .card-subtitle {
+            font-size: 0.75rem;
+            opacity: 0.85;
+        }
+
+        .card-managed-tag {
+            margin-left: auto;
+            font-size: 0.65rem;
+            background: rgba(255,255,255,0.2);
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .card-body {
+            padding: 1rem 1.25rem;
+        }
+
+        .card-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            padding: 0.4rem 0;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.82rem;
+        }
+
+        .card-row:last-child {
+            border-bottom: none;
+        }
+
+        .card-key {
+            font-weight: 600;
+            color: var(--text-secondary);
+            min-width: 80px;
+            flex-shrink: 0;
+        }
+
+        .card-value {
+            color: var(--text-primary);
+            word-break: break-word;
+        }
+
+        .card-value code {
+            background: var(--bg-tertiary);
+            padding: 0.1rem 0.35rem;
+            border-radius: 4px;
+            font-size: 0.78rem;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+        }
+
+        /* ── Section 4: Checklist ── */
+        .checklist-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .checklist-group-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+
+        .checklist-group-header.critical {
+            background: var(--danger-bg);
+            color: var(--danger);
+        }
+
+        .checklist-group-header.high {
+            background: var(--warning-bg);
+            color: var(--warning);
+        }
+
+        .checklist-group-header.medium {
+            background: var(--info-bg);
+            color: var(--info);
+        }
+
+        .checklist-group-header.polish {
+            background: var(--bg-tertiary);
+            color: var(--text-muted);
+        }
+
+        .priority-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .priority-dot.critical { background: var(--danger); }
+        .priority-dot.high { background: var(--warning); }
+        .priority-dot.medium { background: var(--info); }
+        .priority-dot.polish { background: var(--text-muted); }
+
+        .checklist-items {
+            padding-left: 0.5rem;
+        }
+
+        .checklist-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.65rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            transition: background 0.15s;
+            cursor: pointer;
+        }
+
+        .checklist-item:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .checklist-item input[type="checkbox"] {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-color);
+            border-radius: 5px;
+            cursor: pointer;
+            flex-shrink: 0;
+            margin-top: 1px;
+            position: relative;
+            transition: all 0.15s;
+        }
+
+        .checklist-item input[type="checkbox"]:checked {
+            background: var(--navy);
+            border-color: var(--navy);
+        }
+
+        .checklist-item input[type="checkbox"]:checked::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 5px;
+            width: 5px;
+            height: 9px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+
+        .checklist-item input[type="checkbox"]:checked ~ .check-text {
+            text-decoration: line-through;
+            color: var(--text-muted);
+        }
+
+        .check-text {
+            font-size: 0.9rem;
+            transition: all 0.15s;
+        }
+
+        .check-text strong {
+            font-weight: 600;
+        }
+
+        .check-detail {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-top: 0.15rem;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            .comparison-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            .compare-arrow {
+                transform: rotate(90deg);
+                padding: 0.5rem 0;
+            }
+            .diagram-split, .diagram-split-3 {
+                grid-template-columns: 1fr;
+            }
+            .service-grid {
+                grid-template-columns: 1fr;
+            }
+            .main {
+                padding: 1rem;
+            }
+        }
+
+        /* ── Print ── */
+        @media print {
+            .header, .nav-bar, .theme-toggle {
+                position: static;
+            }
+            .theme-toggle {
+                display: none;
+            }
+            body {
+                background: white;
+                color: black;
+            }
+            .section {
+                page-break-inside: avoid;
+            }
+            .diagram-box:hover, .service-card:hover {
+                transform: none;
+                box-shadow: none;
+            }
+        }
+
+        /* ── Counter badge ── */
+        .count-badge {
+            font-size: 0.7rem;
+            background: rgba(255,255,255,0.25);
+            padding: 0.1rem 0.45rem;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        /* ── Volume tag ── */
+        .volume-tag {
+            display: inline-block;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.72rem;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo-section">
+                <div class="logo-icon">AI</div>
+                <div class="logo-text">
+                    <h1>Beta Sandbox Architecture</h1>
+                    <span>DoD Contracting AI &mdash; Railway Cloud Deployment</span>
+                </div>
+            </div>
+            <div class="header-controls">
+                <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">Dark Mode</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav-bar">
+        <div class="nav-bar-inner">
+            <a href="#current-vs-target" class="nav-link">Current vs Target</a>
+            <a href="#infrastructure" class="nav-link">Infrastructure Diagram</a>
+            <a href="#railway-services" class="nav-link">Railway Services</a>
+            <a href="#checklist" class="nav-link">Action Checklist</a>
+        </div>
+    </nav>
+
+    <main class="main">
+
+        <!-- ============================================ -->
+        <!-- Section 1: Current vs Target                 -->
+        <!-- ============================================ -->
+        <section class="section" id="current-vs-target">
+            <div class="section-header">
+                <span class="section-number">1</span>
+                <h2>Current vs Target Architecture</h2>
+            </div>
+            <p class="section-desc">Side-by-side comparison of the local development setup and the Railway-hosted cloud sandbox for beta testers.</p>
+
+            <div class="comparison-grid">
+                <!-- Current -->
+                <div class="compare-panel current">
+                    <div class="panel-title">
+                        Current &mdash; Local Dev
+                        <span class="badge badge-warning">DEV ONLY</span>
+                    </div>
+                    <div class="stack-item">
+                        <div class="stack-icon" style="background:#2563eb;">DB</div>
+                        <div>
+                            <div class="stack-label">SQLite</div>
+                            <div class="stack-detail">File-based, single-writer, no concurrency</div>
+                        </div>
+                    </div>
+                    <div class="stack-item">
+                        <div class="stack-icon" style="background:var(--navy);">Py</div>
+                        <div>
+                            <div class="stack-label">uvicorn --reload</div>
+                            <div class="stack-detail">Hot-reload dev server on :8000</div>
+                        </div>
+                    </div>
+                    <div class="stack-item">
+                        <div class="stack-icon" style="background:#7c3aed;">Vt</div>
+                        <div>
+                            <div class="stack-label">Vite dev server</div>
+                            <div class="stack-detail">HMR on :5173, no static build</div>
+                        </div>
+                    </div>
+                    <div class="stack-item">
+                        <div class="stack-icon" style="background:var(--slate);">FS</div>
+                        <div>
+                            <div class="stack-label">FAISS on disk</div>
+                            <div class="stack-detail">Vector index in local ./data directory</div>
+                        </div>
+                    </div>
+                    <div class="stack-item">
+                        <div class="stack-icon" style="background:#ef4444;">!</div>
+                        <div>
+                            <div class="stack-label">No task queue</div>
+                            <div class="stack-detail">Blocking in-process generation</div>
+                        </div>
+                    </div>
+                    <div class="stack-item">
+                        <div class="stack-icon" style="background:#f59e0b;">K</div>
+                        <div>
+                            <div class="stack-label">.env secrets</div>
+                            <div class="stack-detail">Plain-text API keys, no rotation</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Arrow -->
+                <div class="compare-arrow">&rarr;</div>
+
+                <!-- Target -->
+                <div class="compare-panel target">
+                    <div class="panel-title">
+                        Target &mdash; Railway Cloud
+                        <span class="badge badge-railway">RAILWAY</span>
+                    </div>
+                    <div class="stack-item">
+                        <div class="stack-icon" style="background:#b45309;">PG</div>
+                        <div>
+                            <div class="stack-label">Railway PostgreSQL Plugin</div>
+                            <div class="stack-detail">Managed instance, auto-provisioned, persistent, point-in-time backups</div>
+                        </div>
+                    </div>
+                    <div class="stack-item">
+                        <div class="stack-icon" style="background:var(--navy);">Py</div>
+                        <div>
+                            <div class="stack-label">Uvicorn (Railway Service)</div>
+                            <div class="stack-detail">Auto-built via Nixpacks or Dockerfile, Railway assigns port via $PORT</div>
+                        </div>
+                    </div>
+                    <div class="stack-item">
+                        <div class="stack-icon" style="background:#6366f1;">Rw</div>
+                        <div>
+                            <div class="stack-label">Railway Edge Proxy</div>
+                            <div class="stack-detail">Auto TLS, *.up.railway.app domain, custom domain support</div>
+                        </div>
+                    </div>
+                    <div class="stack-item">
+                        <div class="stack-icon" style="background:#7c3aed;">FA</div>
+                        <div>
+                            <div class="stack-label">FAISS on Railway Volume</div>
+                            <div class="stack-detail">Persistent volume mount at /app/data, shared across deploys</div>
+                        </div>
+                    </div>
+                    <div class="stack-item">
+                        <div class="stack-icon" style="background:#dc2626;">Rd</div>
+                        <div>
+                            <div class="stack-label">Railway Redis Plugin</div>
+                            <div class="stack-detail">Managed Redis for Celery broker + cache, internal networking</div>
+                        </div>
+                    </div>
+                    <div class="stack-item">
+                        <div class="stack-icon" style="background:#10b981;">Ev</div>
+                        <div>
+                            <div class="stack-label">Railway Variables</div>
+                            <div class="stack-detail">Encrypted env vars, shared across services, auto-injected at runtime</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================ -->
+        <!-- Section 2: Infrastructure Diagram            -->
+        <!-- ============================================ -->
+        <section class="section" id="infrastructure">
+            <div class="section-header">
+                <span class="section-number">2</span>
+                <h2>Railway Infrastructure Diagram</h2>
+            </div>
+            <p class="section-desc">Service topology on Railway showing all services, managed plugins, private networking, and external API connections.</p>
+
+            <div class="infra-diagram">
+                <!-- Layer 0: Users -->
+                <div class="diagram-layer">
+                    <div class="diagram-box primary" style="min-width:220px;">
+                        <div class="box-name">Beta Testers</div>
+                        <div class="box-detail">Browser (Chrome, Firefox, Safari)</div>
+                    </div>
+                </div>
+
+                <!-- Connector: HTTPS -->
+                <div class="diagram-connector">
+                    <div class="connector-line" style="background:var(--conn-https);"></div>
+                    <span class="connector-label" style="background:#d1fae5; color:#065f46;">HTTPS (auto TLS)</span>
+                    <div class="connector-line" style="background:var(--conn-https);"></div>
+                </div>
+
+                <!-- Layer 1: Railway Edge -->
+                <div class="diagram-layer">
+                    <div class="diagram-box railway-edge" style="min-width:260px;">
+                        <div class="box-name">Railway Edge Proxy</div>
+                        <div class="box-detail">*.up.railway.app or custom domain &mdash; auto TLS, HTTP/2</div>
+                    </div>
+                </div>
+
+                <!-- Connector: routes to services -->
+                <div class="diagram-connector">
+                    <div style="display:flex; justify-content:center; align-items:center; gap:0; padding:0.5rem 0;">
+                        <div style="display:flex; flex-direction:column; align-items:center; width:50%;">
+                            <div class="connector-line" style="background:var(--conn-https);"></div>
+                            <span class="connector-label" style="background:#d1fae5; color:#065f46;">app.domain.com</span>
+                            <div class="connector-line" style="background:var(--conn-https);"></div>
+                        </div>
+                        <div style="display:flex; flex-direction:column; align-items:center; width:50%;">
+                            <div class="connector-line" style="background:var(--conn-api);"></div>
+                            <span class="connector-label" style="background:#dbeafe; color:#1e40af;">api.domain.com</span>
+                            <div class="connector-line" style="background:var(--conn-api);"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Railway Project Boundary -->
+                <div class="railway-boundary">
+                    <div class="railway-boundary-label">Railway Project &mdash; Private Network</div>
+
+                    <!-- Layer 2: Frontend + Backend -->
+                    <div class="diagram-layer" style="margin-top:0.5rem;">
+                        <div class="diagram-split" style="width:100%;">
+                            <div class="diagram-box frontend">
+                                <div class="box-port">$PORT</div>
+                                <div class="box-name">Frontend Service</div>
+                                <div class="box-detail">Nixpacks &rarr; serve built React app</div>
+                            </div>
+                            <div class="diagram-box backend">
+                                <div class="box-port">$PORT</div>
+                                <div class="box-name">Backend Service</div>
+                                <div class="box-detail">Dockerfile &rarr; FastAPI + Uvicorn</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Connectors from backend to downstream -->
+                    <div class="diagram-connector">
+                        <div style="display:flex; justify-content:center; align-items:center; gap:0; padding:0.5rem 0;">
+                            <div style="display:flex; flex-direction:column; align-items:center; width:25%;">
+                                <div class="connector-line" style="background:var(--conn-db);"></div>
+                                <span class="connector-label" style="background:#fef3c7; color:#92400e;">$DATABASE_URL</span>
+                                <div class="connector-line" style="background:var(--conn-db);"></div>
+                            </div>
+                            <div style="display:flex; flex-direction:column; align-items:center; width:25%;">
+                                <div class="connector-line" style="background:var(--conn-redis);"></div>
+                                <span class="connector-label" style="background:#fee2e2; color:#991b1b;">$REDIS_URL</span>
+                                <div class="connector-line" style="background:var(--conn-redis);"></div>
+                            </div>
+                            <div style="display:flex; flex-direction:column; align-items:center; width:25%;">
+                                <div class="connector-line" style="background:var(--conn-celery);"></div>
+                                <span class="connector-label" style="background:#fce7f3; color:#9d174d;">Private Net</span>
+                                <div class="connector-line" style="background:var(--conn-celery);"></div>
+                            </div>
+                            <div style="display:flex; flex-direction:column; align-items:center; width:25%;">
+                                <div class="connector-line" style="background:var(--conn-ws);"></div>
+                                <span class="connector-label" style="background:#ede9fe; color:#5b21b6;">Volume Mount</span>
+                                <div class="connector-line" style="background:var(--conn-ws);"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Layer 3: Data stores + Workers -->
+                    <div class="diagram-layer">
+                        <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:1rem; width:100%; justify-items:center;">
+                            <div class="diagram-box database">
+                                <div class="box-badge managed">Plugin</div>
+                                <div class="box-name">PostgreSQL</div>
+                                <div class="box-detail">Railway-managed</div>
+                            </div>
+                            <div class="diagram-box cache">
+                                <div class="box-badge managed">Plugin</div>
+                                <div class="box-name">Redis</div>
+                                <div class="box-detail">Railway-managed</div>
+                            </div>
+                            <div class="diagram-box worker">
+                                <div class="box-name">Worker Service</div>
+                                <div class="box-detail">Celery consumer</div>
+                            </div>
+                            <div class="diagram-box vector">
+                                <div class="box-name">FAISS Index</div>
+                                <div class="box-detail">Railway Volume</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- External APIs -->
+                <div style="border-top: 2px dashed var(--border-color); margin-top:1.5rem; padding-top:1rem;">
+                    <div style="text-align:center; font-size:0.75rem; color:var(--text-muted); margin-bottom:0.75rem; text-transform:uppercase; letter-spacing:0.05em; font-weight:600;">External Services (outbound from backend + worker)</div>
+                    <div class="diagram-layer">
+                        <div class="diagram-box external">
+                            <div class="box-name">Anthropic Claude API</div>
+                            <div class="box-detail">claude-sonnet-4-20250514</div>
+                        </div>
+                        <div class="diagram-box external">
+                            <div class="box-name">Tavily Search API</div>
+                            <div class="box-detail">Market research data</div>
+                        </div>
+                        <div class="diagram-box external">
+                            <div class="box-name">GitHub</div>
+                            <div class="box-detail">Auto-deploy on push</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Legend -->
+                <div class="legend">
+                    <div class="legend-item"><div class="legend-line" style="background:var(--conn-https);"></div> HTTPS (public)</div>
+                    <div class="legend-item"><div class="legend-line" style="background:var(--conn-api);"></div> HTTP / WebSocket</div>
+                    <div class="legend-item"><div class="legend-line" style="background:var(--conn-db);"></div> PostgreSQL</div>
+                    <div class="legend-item"><div class="legend-line" style="background:var(--conn-redis);"></div> Redis</div>
+                    <div class="legend-item"><div class="legend-line" style="background:var(--conn-celery);"></div> Celery (private network)</div>
+                    <div class="legend-item"><div class="legend-line" style="background:var(--conn-ws);"></div> Volume / Embeddings</div>
+                    <div class="legend-item"><div class="legend-line dashed" style="border-color:var(--conn-railway);"></div> Railway project boundary</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================ -->
+        <!-- Section 3: Railway Services Map              -->
+        <!-- ============================================ -->
+        <section class="section" id="railway-services">
+            <div class="section-header">
+                <span class="section-number">3</span>
+                <h2>Railway Services Map</h2>
+            </div>
+            <p class="section-desc">Each service in the Railway project with its build strategy, environment variables, networking, and configuration.</p>
+
+            <div class="service-grid">
+                <!-- Frontend -->
+                <div class="service-card">
+                    <div class="card-header frontend-h">
+                        <div class="card-icon">Re</div>
+                        <div>
+                            <div class="card-title">frontend</div>
+                            <div class="card-subtitle">Static React application</div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="card-row">
+                            <span class="card-key">Build</span>
+                            <span class="card-value">Nixpacks (auto-detected Node.js) or <code>Dockerfile</code></span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-key">Root</span>
+                            <span class="card-value"><code>apps/web</code></span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-key">Build Cmd</span>
+                            <span class="card-value"><code>npm run build</code></span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-key">Start Cmd</span>
+                            <span class="card-value"><code>npx serve dist -s -l $PORT</code></span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-key">Domain</span>
+                            <span class="card-value">Public &mdash; <code>app.yourdomain.com</code></span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-key">Env Vars</span>
+                            <span class="card-value"><code>VITE_API_URL</code> (points to backend public URL)</span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-key">Role</span>
+                            <span class="card-value">Serves production React build, API calls routed to backend service via <code>VITE_API_URL</code></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Backend -->
+                <div class="service-card">
+                    <div class="card-header backend-h">
+                        <div class="card-icon">Py</div>
+                        <div>
+                            <div class="card-title">backend</div>
+                            <div class="card-subtitle">FastAPI application server</div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="card-row">
+                            <span class="card-key">Build</span>
+                            <span class="card-value"><code>Dockerfile</code> (Python 3.9-slim)</span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-key">Root</span>
+                            <span class="card-value"><code>apps/api</code></span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-key">Start Cmd</span>
+                            <span class="card-value"><code>uvicorn main:app --host 0.0.0.0 --port $PORT</code></span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-key">Domain</span>
+                            <span class="card-value">Public &mdash; <code>api.yourdomain.com</code></span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-key">Env Vars</span>
+                            <span class="card-value">
+                                <code>DATABASE_URL</code> (from Postgres plugin),
+                                <code>REDIS_URL</code> (from Redis plugin),
+                                <code>ANTHROPIC_API_KEY</code>,
+                                <code>JWT_SECRET</code>,
+                                <code>TAVILY_API_KEY</code>,
+                                <code>ALLOWED_ORIGINS</code>
+                            </span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-key">Volume</span>
+                            <span class="card-value"><span class="volume-tag">/app/data</span> &mdash; FAISS index persistence</span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-key">Networking</span>
+                            <span class="card-value">Public (HTTPS) + Private (internal <code>backend.railway.internal</code>)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Celery Worker -->
+                <div class="service-card">
+                    <div class="card-header worker-h">
+                        <div class="card-icon">Cq</div>
+                        <div>
+                            <div class="card-title">worker</div>
+                            <div class="card-subtitle">Celery background processor</div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="card-row">
+                            <span class="card-key">Build</span>
+                            <span class="card-value">Same <code>Dockerfile</code> as backend</span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-key">Root</span>
+                            <span class="card-value"><code>apps/api</code></span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-key">Start Cmd</span>
+                            <span class="card-value"><code>celery -A tasks worker --pool=solo --concurrency=1</code></span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-key">Domain</span>
+                            <span class="card-value">None &mdash; private only</span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-key">Env Vars</span>
+                            <span class="card-value">
+                                <code>REDIS_URL</code>, <code>DATABASE_URL</code>,
+                                <code>ANTHROPIC_API_KEY</code>, <code>TAVILY_API_KEY</code>
+                            </span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-key">Volume</span>
+                            <span class="card-value"><span class="volume-tag">/app/data</span> &mdash; shared FAISS index</span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-key">Networking</span>
+                            <span class="card-value">Private only &mdash; <code>worker.railway.internal</code></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PostgreSQL -->
+                <div class="service-card">
+                    <div class="card-header db-h">
+                        <div class="card-icon">PG</div>
+                        <div>
+                            <div class="card-title">PostgreSQL</div>
+                            <div class="card-subtitle">Railway managed plugin</div>
+                        </div>
+                        <span class="card-managed-tag">Managed</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="card-row">
+                            <span class="card-key">Provisioned</span>
+                            <span class="card-value">One-click plugin from Railway dashboard</span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-key">Version</span>
+                            <span class="card-value">PostgreSQL 15 (Railway default)</span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-key">Connection</span>
+                            <span class="card-value"><code>$DATABASE_URL</code> auto-injected into linked services</span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-key">Storage</span>
+                            <span class="card-value">Persistent, managed backups</span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-key">Networking</span>
+                            <span class="card-value">Private &mdash; accessible only within Railway project</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Redis -->
+                <div class="service-card">
+                    <div class="card-header cache-h">
+                        <div class="card-icon">Rd</div>
+                        <div>
+                            <div class="card-title">Redis</div>
+                            <div class="card-subtitle">Railway managed plugin</div>
+                        </div>
+                        <span class="card-managed-tag">Managed</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="card-row">
+                            <span class="card-key">Provisioned</span>
+                            <span class="card-value">One-click plugin from Railway dashboard</span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-key">Version</span>
+                            <span class="card-value">Redis 7</span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-key">Connection</span>
+                            <span class="card-value"><code>$REDIS_URL</code> auto-injected into linked services</span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-key">Networking</span>
+                            <span class="card-value">Private &mdash; accessible only within Railway project</span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-key">Role</span>
+                            <span class="card-value">Celery broker, session cache, WebSocket pub/sub</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================ -->
+        <!-- Section 4: Action Checklist                  -->
+        <!-- ============================================ -->
+        <section class="section" id="checklist">
+            <div class="section-header">
+                <span class="section-number">4</span>
+                <h2>Prioritized Action Checklist</h2>
+            </div>
+            <p class="section-desc">Interactive checklist grouped by priority. Click items to track progress toward Railway sandbox readiness.</p>
+
+            <!-- Critical -->
+            <div class="checklist-group">
+                <div class="checklist-group-header critical">
+                    <div class="priority-dot critical"></div>
+                    Critical &mdash; Must Have Before Beta
+                    <span class="count-badge">7 items</span>
+                </div>
+                <div class="checklist-items">
+                    <label class="checklist-item">
+                        <input type="checkbox">
+                        <span class="check-text">
+                            <strong>Create Railway project and provision plugins</strong>
+                            <div class="check-detail">Create a new Railway project. Add PostgreSQL and Redis plugins from the dashboard. Note the auto-generated $DATABASE_URL and $REDIS_URL variables.</div>
+                        </span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox">
+                        <span class="check-text">
+                            <strong>Create backend Dockerfile</strong>
+                            <div class="check-detail">Python 3.9-slim base, pip install requirements.txt, uvicorn entrypoint with $PORT. Multi-stage build to minimize image size. Place in apps/api/Dockerfile.</div>
+                        </span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox">
+                        <span class="check-text">
+                            <strong>Configure Railway environment variables</strong>
+                            <div class="check-detail">Set ANTHROPIC_API_KEY, JWT_SECRET, TAVILY_API_KEY, and ALLOWED_ORIGINS in Railway dashboard. Use shared variables for keys needed by multiple services. Never reuse dev keys.</div>
+                        </span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox">
+                        <span class="check-text">
+                            <strong>Switch DATABASE_URL to PostgreSQL</strong>
+                            <div class="check-detail">Update SQLAlchemy connection string to use $DATABASE_URL from Railway Postgres plugin. Run Alembic migrations. Test all queries against PostgreSQL.</div>
+                        </span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox">
+                        <span class="check-text">
+                            <strong>Add LLM usage rate limits</strong>
+                            <div class="check-detail">Per-user daily token cap to prevent runaway API costs. Track usage in Redis, enforce in middleware.</div>
+                        </span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox">
+                        <span class="check-text">
+                            <strong>Bind backend to $PORT</strong>
+                            <div class="check-detail">Railway injects $PORT at runtime. Update start command to: uvicorn main:app --host 0.0.0.0 --port $PORT. Hardcoded port 8000 will not work.</div>
+                        </span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox">
+                        <span class="check-text">
+                            <strong>Configure CORS for Railway domains</strong>
+                            <div class="check-detail">Set ALLOWED_ORIGINS to include your Railway frontend URL (*.up.railway.app and custom domain). Backend and frontend are on separate domains.</div>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- High -->
+            <div class="checklist-group">
+                <div class="checklist-group-header high">
+                    <div class="priority-dot high"></div>
+                    High &mdash; Required for Safe Beta
+                    <span class="count-badge">7 items</span>
+                </div>
+                <div class="checklist-items">
+                    <label class="checklist-item">
+                        <input type="checkbox">
+                        <span class="check-text">
+                            <strong>Lock down registration</strong>
+                            <div class="check-detail">Invite-only registration or approved email domain whitelist. Disable open /api/auth/register for the beta.</div>
+                        </span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox">
+                        <span class="check-text">
+                            <strong>Production frontend build + deploy</strong>
+                            <div class="check-detail">Configure Railway service for apps/web with npm run build. Use npx serve or a static file server to serve dist/ on $PORT.</div>
+                        </span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox">
+                        <span class="check-text">
+                            <strong>Set up Celery worker service</strong>
+                            <div class="check-detail">Add a second Railway service from the same repo using apps/api root. Override start command to celery. Link $REDIS_URL and $DATABASE_URL.</div>
+                        </span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox">
+                        <span class="check-text">
+                            <strong>Attach Railway Volume for FAISS</strong>
+                            <div class="check-detail">Create a Railway volume and mount at /app/data on backend + worker services. FAISS index persists across deploys and restarts.</div>
+                        </span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox">
+                        <span class="check-text">
+                            <strong>Custom domain + DNS setup</strong>
+                            <div class="check-detail">Add custom domains for frontend (app.yourdomain.com) and backend (api.yourdomain.com). Configure CNAME records. Railway auto-provisions TLS.</div>
+                        </span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox">
+                        <span class="check-text">
+                            <strong>Connect GitHub repo for auto-deploy</strong>
+                            <div class="check-detail">Link Railway project to GitHub repo. Configure branch triggers (e.g., deploy on push to main). Each service watches its own root directory.</div>
+                        </span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox">
+                        <span class="check-text">
+                            <strong>Celery task integration</strong>
+                            <div class="check-detail">Move document generation to Celery tasks. Update generation_coordinator to dispatch async. Wire $REDIS_URL as broker.</div>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Medium -->
+            <div class="checklist-group">
+                <div class="checklist-group-header medium">
+                    <div class="priority-dot medium"></div>
+                    Medium &mdash; Improves Reliability
+                    <span class="count-badge">7 items</span>
+                </div>
+                <div class="checklist-items">
+                    <label class="checklist-item">
+                        <input type="checkbox">
+                        <span class="check-text">
+                            <strong>Health check endpoint</strong>
+                            <div class="check-detail">GET /api/health returning DB, Redis, and FAISS status. Railway uses this for zero-downtime deploys and restart decisions.</div>
+                        </span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox">
+                        <span class="check-text">
+                            <strong>Create railway.toml config</strong>
+                            <div class="check-detail">Define build and deploy settings: healthcheck path, restart policy, region. One per service root or at project root with [services].</div>
+                        </span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox">
+                        <span class="check-text">
+                            <strong>LLM retry logic with backoff</strong>
+                            <div class="check-detail">Exponential backoff on Anthropic API 429/500 errors. Circuit breaker after N consecutive failures.</div>
+                        </span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox">
+                        <span class="check-text">
+                            <strong>Seed demo data on first deploy</strong>
+                            <div class="check-detail">Pre-populated sample project with documents so testers see value immediately. Run seed script as part of deploy or as a one-off Railway command.</div>
+                        </span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox">
+                        <span class="check-text">
+                            <strong>Structured logging (JSON)</strong>
+                            <div class="check-detail">JSON logging format with request IDs. Railway aggregates logs from all services in one dashboard. Replace print() with proper logger.</div>
+                        </span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox">
+                        <span class="check-text">
+                            <strong>Set Railway resource limits</strong>
+                            <div class="check-detail">Configure memory and CPU limits per service to control costs. Backend: 1GB RAM, Worker: 1GB RAM, Frontend: 512MB RAM. Monitor via Railway metrics.</div>
+                        </span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox">
+                        <span class="check-text">
+                            <strong>Sandbox data isolation</strong>
+                            <div class="check-detail">Use Railway environments (staging vs production). Separate Postgres instance per environment. No cross-environment data access.</div>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Polish -->
+            <div class="checklist-group">
+                <div class="checklist-group-header polish">
+                    <div class="priority-dot polish"></div>
+                    Polish &mdash; Nice to Have
+                    <span class="count-badge">6 items</span>
+                </div>
+                <div class="checklist-items">
+                    <label class="checklist-item">
+                        <input type="checkbox">
+                        <span class="check-text">
+                            <strong>HttpOnly JWT cookies</strong>
+                            <div class="check-detail">Move JWT from localStorage to HttpOnly cookies. Add CSRF protection. Ensure SameSite=None for cross-domain backend.</div>
+                        </span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox">
+                        <span class="check-text">
+                            <strong>Terms of Service gate</strong>
+                            <div class="check-detail">Require beta ToS acceptance before first login. Store acceptance timestamp in DB.</div>
+                        </span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox">
+                        <span class="check-text">
+                            <strong>Usage telemetry dashboard</strong>
+                            <div class="check-detail">Track feature usage, error rates, generation success/fail. Combine with Railway's built-in metrics for infra visibility.</div>
+                        </span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox">
+                        <span class="check-text">
+                            <strong>Feedback collection widget</strong>
+                            <div class="check-detail">In-app feedback button for beta testers. Store feedback in DB for review.</div>
+                        </span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox">
+                        <span class="check-text">
+                            <strong>Railway spend alerts</strong>
+                            <div class="check-detail">Set up usage alerts in Railway dashboard to get notified before hitting billing limits. Set a monthly spend cap.</div>
+                        </span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox">
+                        <span class="check-text">
+                            <strong>PR preview environments</strong>
+                            <div class="check-detail">Enable Railway PR deploys so each pull request gets its own temporary environment with separate DB for testing before merge.</div>
+                        </span>
+                    </label>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            const btn = document.getElementById('themeBtn');
+            if (html.getAttribute('data-theme') === 'dark') {
+                html.removeAttribute('data-theme');
+                btn.textContent = 'Dark Mode';
+            } else {
+                html.setAttribute('data-theme', 'dark');
+                btn.textContent = 'Light Mode';
+            }
+        }
+
+        // Persist checkbox state per session
+        document.querySelectorAll('.checklist-item input[type="checkbox"]').forEach((cb, i) => {
+            const key = 'sandbox-check-' + i;
+            cb.checked = sessionStorage.getItem(key) === 'true';
+            cb.addEventListener('change', () => {
+                sessionStorage.setItem(key, cb.checked);
+            });
+        });
+
+        // Smooth scroll for nav links
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', e => {
+                e.preventDefault();
+                const target = document.querySelector(link.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
