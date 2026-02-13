@@ -20,6 +20,8 @@ import { createContext, useContext, useState, useCallback, ReactNode } from 'rea
 interface PendingEditorContent {
   content: string;        // The markdown/HTML content to load
   documentName: string;   // Name of the document (used as section title)
+  documentId?: string;    // Optional database ID for reasoning/lineage tracking
+  projectId?: string;     // Optional project ID -- when present, EditorScreen loads ALL generated docs for the project
 }
 
 // Context type definition
@@ -27,11 +29,12 @@ interface EditorNavigationContextType {
   // Pending content to be loaded when navigating to editor
   pendingEditorContent: PendingEditorContent | null;
   // Function to navigate to editor with specific content
-  navigateToEditor: (content: string, documentName: string) => void;
+  // projectId (4th arg) triggers project-aware mode: editor loads all generated docs as sections
+  navigateToEditor: (content: string, documentName: string, documentId?: string, projectId?: string) => void;
   // Clear pending content after it has been loaded
   clearPendingContent: () => void;
   // Callback setter for the actual navigation (set by AIContractingUI)
-  setNavigationCallback: (callback: (content: string, documentName: string) => void) => void;
+  setNavigationCallback: (callback: (content: string, documentName: string, documentId?: string, projectId?: string) => void) => void;
 }
 
 // Create the context with undefined default
@@ -50,17 +53,18 @@ export function EditorNavigationProvider({ children }: { children: ReactNode }) 
   
   // Navigation callback - set by AIContractingUI to handle actual navigation
   const [navigationCallback, setNavigationCallbackState] = useState<
-    ((content: string, documentName: string) => void) | null
+    ((content: string, documentName: string, documentId?: string, projectId?: string) => void) | null
   >(null);
 
   // Navigate to editor with content
-  const navigateToEditor = useCallback((content: string, documentName: string) => {
-    // Store the pending content
-    setPendingEditorContent({ content, documentName });
-    
+  // When projectId is provided, EditorScreen will fetch ALL generated docs for that project
+  const navigateToEditor = useCallback((content: string, documentName: string, documentId?: string, projectId?: string) => {
+    // Store the pending content (including projectId for project-aware mode)
+    setPendingEditorContent({ content, documentName, documentId, projectId });
+
     // If a navigation callback is registered, call it
     if (navigationCallback) {
-      navigationCallback(content, documentName);
+      navigationCallback(content, documentName, documentId, projectId);
     }
   }, [navigationCallback]);
 
@@ -70,7 +74,7 @@ export function EditorNavigationProvider({ children }: { children: ReactNode }) 
   }, []);
 
   // Setter for the navigation callback (used by AIContractingUI)
-  const setNavigationCallback = useCallback((callback: (content: string, documentName: string) => void) => {
+  const setNavigationCallback = useCallback((callback: (content: string, documentName: string, documentId?: string, projectId?: string) => void) => {
     setNavigationCallbackState(() => callback);
   }, []);
 
@@ -97,9 +101,9 @@ export function EditorNavigationProvider({ children }: { children: ReactNode }) 
  * Example usage:
  * ```tsx
  * const { navigateToEditor } = useEditorNavigation();
- * 
- * // Navigate to editor with content
- * navigateToEditor(documentContent, "Market Research Report");
+ *
+ * // Navigate to editor with content, documentId, and projectId for project-aware mode
+ * navigateToEditor(documentContent, "Market Research Report", document.id, document.project_id);
  * ```
  */
 export function useEditorNavigation() {

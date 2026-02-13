@@ -5,10 +5,14 @@ Provides common functionality like LLM interaction, memory, and logging
 Phase 4: Enhanced with collaboration methods for cross-referencing
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, TYPE_CHECKING
 import anthropic
 from datetime import datetime
 import re  # Used for markdown cleanup in _clean_markdown_lists()
+
+# Type checking import for ReasoningTracker (avoids circular imports)
+if TYPE_CHECKING:
+    from backend.services.reasoning_tracker import ReasoningTracker
 
 
 class BaseAgent:
@@ -82,36 +86,47 @@ class BaseAgent:
         self,
         prompt: str,
         max_tokens: int = 4000,
-        system_prompt: Optional[str] = None
+        system_prompt: Optional[str] = None,
+        tracker: Optional['ReasoningTracker'] = None
     ) -> str:
         """
-        Call Claude LLM
-        
+        Call Claude LLM with optional reasoning tracking.
+
         Args:
             prompt: User prompt
             max_tokens: Maximum tokens in response
             system_prompt: Optional system prompt
-            
+            tracker: Optional ReasoningTracker for Chain-of-Thought capture.
+                     If not provided, will use self._current_tracker if available.
+
         Returns:
             LLM response text
         """
         messages = [{"role": "user", "content": prompt}]
-        
+
         kwargs = {
             "model": self.model,
             "max_tokens": max_tokens,
             "temperature": self.temperature,
             "messages": messages
         }
-        
+
         if system_prompt:
             kwargs["system"] = system_prompt
-        
+
         try:
             response = self.client.messages.create(**kwargs)
+
+            # Use explicit tracker or fall back to instance tracker if available
+            # This allows agents to set self._current_tracker in execute() and
+            # automatically track all LLM calls without modifying each call site
+            effective_tracker = tracker or getattr(self, '_current_tracker', None)
+            if effective_tracker:
+                effective_tracker.record_llm_call(response, prompt=prompt)
+
             # Clean up markdown list formatting to prevent empty bullets
             return self._clean_markdown_lists(response.content[0].text)
-        
+
         except Exception as e:
             self.log(f"LLM call failed: {e}", "ERROR")
             raise
@@ -215,6 +230,29 @@ class BaseAgent:
             Result dictionary
         """
         raise NotImplementedError("Subclasses must implement execute()")
+
+    # ============================================================
+    # Reasoning Tracker Helper Methods
+    # ============================================================
+
+    def get_tracker_from_task(self, task: Dict) -> Optional['ReasoningTracker']:
+        """
+        Extract reasoning tracker from task dict if present.
+        
+        The generation coordinator passes the tracker via the task dict
+        so agents can record actual token usage from LLM calls.
+        
+        Usage in agent execute() methods:
+            tracker = self.get_tracker_from_task(task)
+            response = self.call_llm(prompt, tracker=tracker)
+        
+        Args:
+            task: Task dictionary that may contain 'reasoning_tracker'
+            
+        Returns:
+            ReasoningTracker instance if present, None otherwise
+        """
+        return task.get('reasoning_tracker') if task else None
 
     # ============================================================
     # Phase 4: Collaboration Methods

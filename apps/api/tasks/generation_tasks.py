@@ -24,13 +24,48 @@ def run_async(coro):
 
     Celery tasks are synchronous, but our generation code is async.
     This creates a new event loop to run the coroutine.
+
+    Handles cases where:
+    - An event loop already exists (from nested async calls)
+    - The loop needs clean shutdown to avoid resource leaks
     """
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
     try:
-        return loop.run_until_complete(coro)
-    finally:
-        loop.close()
+        # Check if there's already a running loop
+        try:
+            existing_loop = asyncio.get_running_loop()
+            # If we're already in an async context, we can't create a new loop
+            # This shouldn't happen in Celery, but handle it gracefully
+            if existing_loop.is_running():
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(asyncio.run, coro)
+                    return future.result(timeout=600)  # 10 minute timeout
+        except RuntimeError:
+            # No running loop - this is the expected case in Celery
+            pass
+
+        # Create a new event loop
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            return loop.run_until_complete(coro)
+        finally:
+            # Clean shutdown: cancel any pending tasks
+            try:
+                pending = asyncio.all_tasks(loop)
+                for task in pending:
+                    task.cancel()
+                if pending:
+                    loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+            except Exception:
+                pass
+            loop.close()
+
+    except Exception as e:
+        print(f"⚠️  run_async error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
 
 
 @celery_app.task(
@@ -76,14 +111,11 @@ def generate_single_document(
     db = SessionLocal()
 
     try:
-        # Send started notification
-        self.send_started(
-            project_id=project_id,
-            document_type="document",
-            document_id=document_id
-        )
-
-        # Load document
+        # Set the custom task ID from API to match frontend expectations
+        # This ensures WebSocket messages use the same task ID the frontend is polling
+        self.set_custom_task_id(task_id)
+        
+        # Load document first to check for staleness
         document = db.query(ProjectDocument).filter(
             ProjectDocument.id == document_id
         ).first()
@@ -91,6 +123,36 @@ def generate_single_document(
         if not document:
             self.send_error(project_id, "Document not found", document_id)
             return {"success": False, "error": "Document not found"}
+        
+        # CHECK FOR STALE TASK: If document has a different generation_task_id,
+        # it means a newer generation was requested and this task is stale.
+        # Skip processing to avoid confusion with the frontend.
+        # Task ID formats: "doc_{document_id}_{YYYYMMDD}_{HHMMSS}" or "gen_{document_id}_{YYYYMMDD}_{HHMMSS}"
+        if document.generation_task_id:
+            try:
+                # Extract timestamp from both task IDs (last two parts: date and time)
+                doc_task_timestamp = document.generation_task_id.split("_")[-2] + document.generation_task_id.split("_")[-1]
+                our_task_timestamp = task_id.split("_")[-2] + task_id.split("_")[-1]
+                
+                if doc_task_timestamp > our_task_timestamp:
+                    # A newer task exists - abort this stale task silently
+                    print(f"⚠️  Skipping stale Celery task {task_id} - newer task {document.generation_task_id} exists")
+                    return {
+                        "success": False,
+                        "document_id": document_id,
+                        "error": "Stale task - newer generation in progress",
+                        "skipped": True
+                    }
+            except (IndexError, ValueError):
+                # If timestamp parsing fails, continue with the task
+                pass
+        
+        # Send started notification
+        self.send_started(
+            project_id=project_id,
+            document_type="document",
+            document_id=document_id
+        )
 
         # Update progress
         self.update_progress(
@@ -110,6 +172,7 @@ def generate_single_document(
             )
 
         # Generate content
+        # Pass task_id as external_task_id to ensure consistent tracking
         generator = get_document_generator()
         success, content_or_error, metadata = run_async(
             generator.generate_document(
@@ -117,7 +180,8 @@ def generate_single_document(
                 document=document,
                 assumptions=assumptions,
                 additional_context=additional_context,
-                progress_callback=progress_callback
+                progress_callback=progress_callback,
+                external_task_id=task_id
             )
         )
 
@@ -249,6 +313,9 @@ def generate_batch_documents(
     failed_docs = []
 
     try:
+        # Set the custom task ID from API to match frontend expectations
+        self.set_custom_task_id(batch_task_id)
+        
         # Load documents
         documents = db.query(ProjectDocument).filter(
             ProjectDocument.id.in_(document_ids),
@@ -304,12 +371,15 @@ def generate_batch_documents(
                     )
 
                 # Generate document
+                # Create a per-document task ID for batch generation
+                doc_task_id = f"{batch_task_id}_{str(document.id)[:8]}"
                 success, content_or_error, metadata = run_async(
                     generator.generate_document(
                         db=db,
                         document=document,
                         assumptions=assumptions,
-                        progress_callback=doc_progress_callback
+                        progress_callback=doc_progress_callback,
+                        external_task_id=doc_task_id
                     )
                 )
 

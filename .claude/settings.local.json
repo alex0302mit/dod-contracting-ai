@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(sudo npm i -g @anthropic-ai/claude-code)"
+      "Bash(sudo npm i -g @anthropic-ai/claude-code)",
+      "Bash(ls:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

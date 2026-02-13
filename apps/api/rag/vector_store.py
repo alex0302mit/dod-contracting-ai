@@ -161,11 +161,37 @@ class VectorStore:
 
         # Compute embeddings for uncached texts
         if texts_to_compute:
-            computed = self.embedding_model.encode(
-                texts_to_compute,
-                convert_to_numpy=True,
-                show_progress_bar=False
-            ).tolist()
+            try:
+                # Use timeout to prevent indefinite blocking in worker processes
+                import signal
+                import platform
+
+                def timeout_handler(signum, frame):
+                    raise TimeoutError("Embedding generation timed out")
+
+                # Set timeout only on Unix systems (macOS, Linux)
+                use_timeout = platform.system() != 'Windows'
+                if use_timeout:
+                    old_handler = signal.signal(signal.SIGALRM, timeout_handler)
+                    signal.alarm(60)  # 60 second timeout
+
+                try:
+                    computed = self.embedding_model.encode(
+                        texts_to_compute,
+                        convert_to_numpy=True,
+                        show_progress_bar=False
+                    ).tolist()
+                finally:
+                    if use_timeout:
+                        signal.alarm(0)  # Cancel the alarm
+                        signal.signal(signal.SIGALRM, old_handler)
+
+            except TimeoutError:
+                print("⚠️  Embedding generation timed out, returning empty embeddings")
+                computed = [[0.0] * self.embedding_dimension for _ in texts_to_compute]
+            except Exception as e:
+                print(f"⚠️  Embedding generation error: {e}")
+                computed = [[0.0] * self.embedding_dimension for _ in texts_to_compute]
 
             # Store computed embeddings in result
             for idx, embedding in zip(indices_to_compute, computed):

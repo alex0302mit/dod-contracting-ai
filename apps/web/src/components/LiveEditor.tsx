@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 // Icons - Loader2 added for bulk fix loading spinner, ChevronDown for collapsible panels
 // AlertTriangle for hallucination, MessageSquare for vague language, RefreshCw for loading
 // ChevronLeft/ChevronRight for collapsible sidebars (used for both expand and collapse)
-import { ArrowLeft, Save, Sparkles, FileText, Clock, GitCompare, GitBranch, Tag, ShieldCheck, FormInput, MessageCircle, Layers, Loader2, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, AlertTriangle, RefreshCw, Download, X, Filter, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Save, Sparkles, FileText, Clock, GitCompare, GitBranch, Tag, ShieldCheck, FormInput, MessageCircle, Layers, Loader2, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, AlertTriangle, RefreshCw, Download, X, Filter, Eye, EyeOff, Brain } from "lucide-react";
 // API services for AI-powered features
 import { copilotApi, qualityApi, exportApi, versionApi, QualityAnalysisResponse, DocumentVersion } from "@/services/api";
 import { ComplianceGateDialog } from "@/components/ComplianceGateDialog";
@@ -54,6 +54,10 @@ import { CommentThread, Comment } from '@/lib/commentTypes';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 // DocumentLineagePanel for showing source documents that influenced AI generation
 import { DocumentLineagePanel } from "@/components/documents/DocumentLineagePanel";
+// ReasoningPanel for Chain-of-Thought display
+import { ReasoningPanel } from "./editor/ReasoningPanel";
+// Auth context for checking admin role
+import { useAuth } from "@/contexts/AuthContext";
 // File import components for drag-and-drop document import
 import { FileDropZone } from "./editor/FileDropZone";
 import { ImportOptionsDialog } from "./editor/ImportOptionsDialog";
@@ -119,17 +123,29 @@ interface LiveEditorProps {
   collaborationMetadata?: CollaborationMetadata | null;
   // Precomputed quality scores from document generation (for instant display)
   initialQualityScores?: Record<string, QualityAnalysisResponse>;
-  // Optional document ID for showing source lineage panel
+  // Optional document ID for showing source lineage panel (single-document mode)
   documentId?: string;
   // Optional document name for display purposes
   documentName?: string;
+  // Project-aware mode: maps section name -> database document ID
+  // When provided, the editor resolves the active documentId from this map
+  // based on the currently selected section, enabling per-document lineage/reasoning/versions
+  documentIdMap?: Record<string, string>;
   onExport: () => void;
   onBack: () => void;
 }
 
-export function LiveEditor({ lockedAssumptions, sections, setSections, citations, agentMetadata, collaborationMetadata, initialQualityScores, documentId, documentName, onExport, onBack }: LiveEditorProps) {
+export function LiveEditor({ lockedAssumptions, sections, setSections, citations, agentMetadata, collaborationMetadata, initialQualityScores, documentId, documentName, documentIdMap, onExport, onBack }: LiveEditorProps) {
+  // Auth context for checking admin role (used for Chain-of-Thought debug panel)
+  const { user: authUser } = useAuth();
+  const isAdmin = authUser?.role === 'admin';
+
   const sectionNames = Object.keys(sections);
   const [activeSection, setActiveSection] = useState(sectionNames[0]);
+
+  // Derive the active document ID from the map (project-aware mode) or fall back to the single documentId prop.
+  // This updates whenever the user switches sections, enabling per-document lineage/reasoning/quality/versions.
+  const activeDocId = documentIdMap?.[activeSection] ?? documentId;
   const [viewMode, setViewMode] = useState<"edit" | "compare" | "history" | "dependencies">("edit");
   const [showCitationPreview, setShowCitationPreview] = useState<number | null>(null);
   const [versionHistory, setVersionHistory] = useState([
@@ -148,8 +164,8 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
   const [proposedChanges, setProposedChanges] = useState<any>(null);
   const [showAutoImprove, setShowAutoImprove] = useState(false);
   const [currentEditor, setCurrentEditor] = useState<Editor | null>(null);
-  // Sidebar tab state - includes "sources" for document lineage when documentId is available
-  const [sidebarTab, setSidebarTab] = useState<"context" | "tags" | "validation" | "fields" | "comments" | "sources">("context");
+  // Sidebar tab state - includes "sources" for document lineage and "reasoning" for Chain-of-Thought display
+  const [sidebarTab, setSidebarTab] = useState<"context" | "tags" | "comments" | "sources" | "reasoning">("context");
   // Quality score details panel expansion state
   const [showQualityDetails, setShowQualityDetails] = useState(false);
   // API-powered quality analysis state - cached per section for consistent scores across UI
@@ -291,21 +307,22 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
     }
   }, []); // Run once on mount
 
-  // Load version history from backend on mount
+  // Load version history from backend when active document changes
+  // Uses activeDocId so versions update when switching between project sections
   useEffect(() => {
-    if (!documentId) return;
+    if (!activeDocId) return;
 
     const loadVersionsFromBackend = async () => {
       setIsLoadingVersions(true);
       try {
-        const response = await versionApi.list(documentId);
+        const response = await versionApi.list(activeDocId);
         if (response.versions.length > 0) {
           // Convert backend versions to frontend format
           const backendVersions = response.versions.map((v: DocumentVersion) => ({
             id: v.id,
             timestamp: v.created_at,
             message: v.message || `Version ${v.version_number}`,
-            sections: v.sections_json ? JSON.parse(v.sections_json) : { [documentName]: v.content },
+            sections: v.sections_json ? JSON.parse(v.sections_json) : { [activeSection]: v.content },
             author: v.author || 'Unknown',
           }));
           // Merge with initial version, keeping backend versions first (they're sorted desc by version_number)
@@ -320,7 +337,7 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
     };
 
     loadVersionsFromBackend();
-  }, [documentId, documentName]);
+  }, [activeDocId, activeSection]);
 
   const currentText = sections[activeSection] || "";
   // Local quality score (fast, client-side fallback)
@@ -714,11 +731,11 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
     // Combine all sections into content for backend
     const content = Object.values(sections).join('\n\n');
 
-    // If we have a documentId, save to backend
-    if (documentId) {
+    // If we have an active document ID, save to backend
+    if (activeDocId) {
       setVersionSaveInProgress(true);
       try {
-        const savedVersion = await versionApi.create(documentId, {
+        const savedVersion = await versionApi.create(activeDocId, {
           content,
           sections,
           message,
@@ -751,7 +768,7 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
         setVersionSaveInProgress(false);
       }
     } else {
-      // No documentId - save locally only
+      // No active document ID - save locally only
       const newVersion = {
         id: `v${versionHistory.length}`,
         timestamp: new Date().toISOString(),
@@ -769,13 +786,13 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
     }
 
     // Check if this is a backend version (UUID format) or local version (v0, v1, etc.)
-    const isBackendVersion = documentId && version.id && !version.id.startsWith('v');
+    const isBackendVersion = activeDocId && version.id && !version.id.startsWith('v');
 
     if (isBackendVersion) {
       // Use backend API to restore
       setVersionSaveInProgress(true);
       try {
-        const restored = await versionApi.restore(documentId, version.id);
+        const restored = await versionApi.restore(activeDocId, version.id);
         // Update local sections with restored content
         const restoredSections = restored.sections_json
           ? JSON.parse(restored.sections_json)
@@ -1580,7 +1597,7 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
                 issues={issueFinderEnabled ? filteredIssues : []}
                 citations={citations}
                 onEditorReady={setCurrentEditor}
-                documentId={documentId}
+                documentId={activeDocId}
                 agentMetadata={agentMetadata}
               />
             </div>
@@ -1638,9 +1655,9 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
                   </TooltipProvider>
                   <span className="text-xs text-muted-foreground">Quality & Context</span>
                 </div>
-                <Tabs value={sidebarTab} onValueChange={(v) => setSidebarTab(v as "context" | "tags" | "validation" | "fields" | "comments" | "sources")} className="w-full">
-                  {/* Show 6 columns if documentId is available for lineage, otherwise 5 */}
-                  <TabsList className={`grid w-full ${documentId ? 'grid-cols-6' : 'grid-cols-5'}`}>
+                <Tabs value={sidebarTab} onValueChange={(v) => setSidebarTab(v as "context" | "tags" | "comments" | "sources" | "reasoning")} className="w-full">
+                  {/* Show 5 columns if activeDocId is available for lineage + reasoning, otherwise 3 */}
+                  <TabsList className={`grid w-full ${activeDocId ? 'grid-cols-5' : 'grid-cols-3'}`}>
                     <TabsTrigger value="context" className="gap-1 text-[10px] px-1">
                       <FileText className="h-3 w-3" />
                       Info
@@ -1649,23 +1666,22 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
                       <Tag className="h-3 w-3" />
                       Tags
                     </TabsTrigger>
-                    <TabsTrigger value="validation" className="gap-1 text-[10px] px-1">
-                      <ShieldCheck className="h-3 w-3" />
-                      Valid
-                    </TabsTrigger>
-                    <TabsTrigger value="fields" className="gap-1 text-[10px] px-1">
-                      <FormInput className="h-3 w-3" />
-                      Fields
-                    </TabsTrigger>
                     <TabsTrigger value="comments" className="gap-1 text-[10px] px-1">
                       <MessageCircle className="h-3 w-3" />
                       Notes
                     </TabsTrigger>
                     {/* Sources tab - shows document lineage for explainability */}
-                    {documentId && (
+                    {activeDocId && (
                       <TabsTrigger value="sources" className="gap-1 text-[10px] px-1">
                         <GitBranch className="h-3 w-3" />
                         Src
+                      </TabsTrigger>
+                    )}
+                    {/* AI tab - Chain-of-Thought reasoning display */}
+                    {activeDocId && (
+                      <TabsTrigger value="reasoning" className="gap-1 text-[10px] px-1">
+                        <Brain className="h-3 w-3" />
+                        AI
                       </TabsTrigger>
                     )}
                   </TabsList>
@@ -1677,7 +1693,7 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
             <>
             {/* Enhanced Quality Score Card - Shows API data (5 categories) or local fallback (4 categories) */}
             <Card className="overflow-hidden">
-              <CardHeader className="pb-2 bg-gradient-to-r from-slate-50 to-slate-100/50">
+              <CardHeader className={`pb-2 bg-gradient-to-r ${apiQuality ? 'from-slate-50 to-slate-100/50' : 'from-slate-100 to-slate-200/50'}`}>
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-sm flex items-center gap-2">
@@ -1708,38 +1724,62 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
                           Analyzing...
                         </span>
                       ) : (
-                        'Document health'
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-slate-100 text-slate-500 border border-slate-200">
+                          Not analyzed
+                        </span>
                       )}
                     </CardDescription>
                     {/* Re-analyze button - only enabled when section has been edited (stale) */}
                     {/* User must click this after finishing edits to get updated quality score */}
                     <Button
-                      variant="outline"
+                      variant={!apiQuality && !isLoadingQuality ? "default" : "outline"}
                       size="sm"
                       onClick={handleReanalyzeQuality}
-                      disabled={isLoadingQuality || !staleSections.has(activeSection)}
+                      disabled={isLoadingQuality || (apiQuality !== null && !staleSections.has(activeSection))}
                       className="mt-2 h-7 text-xs"
                     >
-                      <RefreshCw className={`h-3 w-3 mr-1.5 ${isLoadingQuality ? 'animate-spin' : ''}`} />
-                      {isLoadingQuality ? 'Analyzing...' : 'Re-analyze'}
+                      {isLoadingQuality ? (
+                        <>
+                          <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
+                          Analyzing...
+                        </>
+                      ) : !apiQuality ? (
+                        <>
+                          <ShieldCheck className="h-3 w-3 mr-1.5" />
+                          Analyze Quality
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-3 w-3 mr-1.5" />
+                          Re-analyze
+                        </>
+                      )}
                     </Button>
                   </div>
-                  {/* Circular overall score indicator - uses API score if available */}
+                  {/* Circular overall score indicator */}
                   <div className="relative w-14 h-14">
                     <svg className="w-14 h-14 -rotate-90">
                       <circle cx="28" cy="28" r="24" stroke="#e5e7eb" strokeWidth="4" fill="none" />
-                      <circle 
-                        cx="28" cy="28" r="24" 
-                        stroke={(apiQuality?.score ?? quality.total) >= 80 ? '#22c55e' : (apiQuality?.score ?? quality.total) >= 60 ? '#eab308' : '#ef4444'}
-                        strokeWidth="4" 
-                        fill="none"
-                        strokeDasharray={`${((apiQuality?.score ?? quality.total) / 100) * 151} 151`}
-                        strokeLinecap="round"
-                        className="transition-all duration-700"
-                      />
+                      {apiQuality && !isLoadingQuality && (
+                        <circle
+                          cx="28" cy="28" r="24"
+                          stroke={apiQuality.score >= 80 ? '#22c55e' : apiQuality.score >= 60 ? '#eab308' : '#ef4444'}
+                          strokeWidth="4"
+                          fill="none"
+                          strokeDasharray={`${(apiQuality.score / 100) * 151} 151`}
+                          strokeLinecap="round"
+                          className="transition-all duration-700"
+                        />
+                      )}
                     </svg>
                     <span className="absolute inset-0 flex items-center justify-center text-sm font-bold">
-                      {Math.round(apiQuality?.score ?? quality.total)}
+                      {isLoadingQuality ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      ) : apiQuality ? (
+                        Math.round(apiQuality.score)
+                      ) : (
+                        <span className="text-muted-foreground">&mdash;</span>
+                      )}
                     </span>
                   </div>
                 </div>
@@ -1905,98 +1945,78 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
                   </>
                 ) : (
                   <>
-                    {/* Fallback: Local quality score (4 categories) */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="p-2 rounded-lg bg-blue-50/80 border border-blue-100">
-                        <div className="text-[10px] text-blue-600 font-medium">Readability</div>
-                        <div className="text-lg font-bold text-blue-700">{quality.breakdown.readability}</div>
-                        <div className="mt-1 h-1 bg-blue-200 rounded-full overflow-hidden">
-                          <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${quality.breakdown.readability}%` }} />
-                        </div>
-                      </div>
-                      <div className="p-2 rounded-lg bg-purple-50/80 border border-purple-100">
-                        <div className="text-[10px] text-purple-600 font-medium">Citations</div>
-                        <div className="text-lg font-bold text-purple-700">{quality.breakdown.citations}</div>
-                        <div className="mt-1 h-1 bg-purple-200 rounded-full overflow-hidden">
-                          <div className="h-full bg-purple-500 rounded-full transition-all" style={{ width: `${quality.breakdown.citations}%` }} />
-                        </div>
-                      </div>
-                      <div className="p-2 rounded-lg bg-amber-50/80 border border-amber-100">
-                        <div className="text-[10px] text-amber-600 font-medium">Compliance</div>
-                        <div className="text-lg font-bold text-amber-700">{quality.breakdown.compliance}</div>
-                        <div className="mt-1 h-1 bg-amber-200 rounded-full overflow-hidden">
-                          <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: `${quality.breakdown.compliance}%` }} />
-                        </div>
-                      </div>
-                      <div className="p-2 rounded-lg bg-emerald-50/80 border border-emerald-100">
-                        <div className="text-[10px] text-emerald-600 font-medium">Length</div>
-                        <div className="text-lg font-bold text-emerald-700">{quality.breakdown.length}</div>
-                        <div className="mt-1 h-1 bg-emerald-200 rounded-full overflow-hidden">
-                          <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${quality.breakdown.length}%` }} />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Loading indicator or error */}
-                    {isLoadingQuality && (
-                      <div className="mt-3 text-center text-[10px] text-muted-foreground">
-                        <RefreshCw className="h-3 w-3 animate-spin inline mr-1" />
+                    {/* Unanalyzed placeholder state */}
+                    {isLoadingQuality ? (
+                      <div className="py-4 text-center text-[10px] text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin inline mr-1.5" />
                         Running AI quality analysis...
                       </div>
-                    )}
-                    {qualityError && (
-                      <div className="mt-3 text-center text-[10px] text-red-500">
-                        AI analysis unavailable
-                      </div>
-                    )}
+                    ) : (
+                      <>
+                        <p className="text-[11px] text-muted-foreground text-center mb-3">
+                          Click &ldquo;Analyze Quality&rdquo; to run AI-powered quality analysis
+                        </p>
 
-                    {/* Expandable Local Quality Details Panel */}
-                    <Collapsible open={showQualityDetails} onOpenChange={setShowQualityDetails} className="mt-3">
-                      <CollapsibleTrigger className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-slate-700 transition-colors w-full justify-center py-1">
-                        <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${showQualityDetails ? 'rotate-180' : ''}`} />
-                        <span>How is this calculated?</span>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="mt-2">
-                        <div className="bg-slate-50 rounded-lg p-3 space-y-3 text-xs">
-                          <div>
-                            <div className="font-medium text-slate-700 mb-1">Local Score Formula (Fallback)</div>
-                            <div className="font-mono text-[10px] text-slate-600 bg-white px-2 py-1 rounded border">
-                              {quality.breakdown.readability}×0.30 + {quality.breakdown.citations}×0.20 + {quality.breakdown.compliance}×0.30 + {quality.breakdown.length}×0.20 = <span className="font-bold">{Math.round(quality.total)}</span>
+                        {/* Grayed-out placeholder tiles matching AI categories */}
+                        <div className="space-y-2 opacity-50">
+                          {/* Hallucination placeholder - full width */}
+                          <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5">
+                                <AlertTriangle className="h-3 w-3 text-slate-400" />
+                                <div className="text-[10px] font-medium text-slate-400">Hallucination</div>
+                              </div>
+                              <div className="text-sm font-bold text-slate-400">&mdash;</div>
+                            </div>
+                            <div className="mt-1.5 h-1 bg-slate-200 rounded-full" />
+                          </div>
+
+                          {/* Vague Language + Citations placeholder */}
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
+                              <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium">
+                                <MessageCircle className="h-3 w-3" />
+                                Vague Lang.
+                              </div>
+                              <div className="text-lg font-bold text-slate-400">&mdash;</div>
+                              <div className="mt-1 h-1 bg-slate-200 rounded-full" />
+                            </div>
+                            <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
+                              <div className="text-[10px] text-slate-400 font-medium">Citations</div>
+                              <div className="text-lg font-bold text-slate-400">&mdash;</div>
+                              <div className="mt-1 h-1 bg-slate-200 rounded-full" />
                             </div>
                           </div>
-                          <div className="space-y-2">
-                            <div className="flex items-start gap-2">
-                              <div className="w-2 h-2 rounded-full bg-blue-500 mt-1 flex-shrink-0" />
-                              <div>
-                                <span className="font-medium text-blue-700">Readability (30%)</span>
-                                <p className="text-[10px] text-muted-foreground">Based on average sentence length.</p>
+
+                          {/* Compliance + Completeness placeholder */}
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
+                              <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium">
+                                <ShieldCheck className="h-3 w-3" />
+                                Compliance
                               </div>
+                              <div className="text-lg font-bold text-slate-400">&mdash;</div>
+                              <div className="mt-1 h-1 bg-slate-200 rounded-full" />
                             </div>
-                            <div className="flex items-start gap-2">
-                              <div className="w-2 h-2 rounded-full bg-purple-500 mt-1 flex-shrink-0" />
-                              <div>
-                                <span className="font-medium text-purple-700">Citations (20%)</span>
-                                <p className="text-[10px] text-muted-foreground">Measures [#] citation density.</p>
+                            <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
+                              <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium">
+                                <Check className="h-3 w-3" />
+                                Completeness
                               </div>
-                            </div>
-                            <div className="flex items-start gap-2">
-                              <div className="w-2 h-2 rounded-full bg-amber-500 mt-1 flex-shrink-0" />
-                              <div>
-                                <span className="font-medium text-amber-700">Compliance (30%)</span>
-                                <p className="text-[10px] text-muted-foreground">Checks for FAR/DFARS refs and TBD placeholders.</p>
-                              </div>
-                            </div>
-                            <div className="flex items-start gap-2">
-                              <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1 flex-shrink-0" />
-                              <div>
-                                <span className="font-medium text-emerald-700">Length (20%)</span>
-                                <p className="text-[10px] text-muted-foreground">Word count thresholds.</p>
-                              </div>
+                              <div className="text-lg font-bold text-slate-400">&mdash;</div>
+                              <div className="mt-1 h-1 bg-slate-200 rounded-full" />
                             </div>
                           </div>
                         </div>
-                      </CollapsibleContent>
-                    </Collapsible>
+                      </>
+                    )}
+
+                    {/* Error display */}
+                    {qualityError && (
+                      <div className="mt-3 text-center text-[10px] text-red-500">
+                        {qualityError}
+                      </div>
+                    )}
                   </>
                 )}
               </CardContent>
@@ -2264,21 +2284,6 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
               />
             )}
 
-            {sidebarTab === "validation" && (
-              <ValidationPanel
-                validationResult={validationResult}
-                onApplyFix={handleApplyFix}
-                onApplyAllFixes={handleApplyAllFixes}
-              />
-            )}
-
-            {sidebarTab === "fields" && (
-              <GuidedFormPanel
-                templates={availableTemplates}
-                onInsertField={handleInsertSmartField}
-              />
-            )}
-
             {sidebarTab === "comments" && (
               <AnnotationPanel
                 editor={currentEditor}
@@ -2291,11 +2296,20 @@ export function LiveEditor({ lockedAssumptions, sections, setSections, citations
               />
             )}
             {/* Sources Tab - Document Lineage Panel showing source documents */}
-            {sidebarTab === "sources" && documentId && (
+            {/* Uses activeDocId so lineage updates when switching sections in project-aware mode */}
+            {sidebarTab === "sources" && activeDocId && (
               <DocumentLineagePanel
-                documentId={documentId}
-                documentName={documentName}
+                documentId={activeDocId}
+                documentName={activeSection}
                 compact={true}
+              />
+            )}
+            {/* Reasoning Tab - Chain-of-Thought AI reasoning display */}
+            {/* Uses activeDocId so reasoning updates when switching sections in project-aware mode */}
+            {sidebarTab === "reasoning" && activeDocId && (
+              <ReasoningPanel
+                documentId={activeDocId}
+                isAdmin={isAdmin}
               />
             )}
               </ScrollArea>
@@ -2551,7 +2565,7 @@ function EditView({ sectionName, text, onTextChange, issues, citations, onEditor
     // No overflow-hidden - allows sticky toolbar to work with parent scroll container
     <div className="h-full flex flex-col">
       {/* Section Header - title and stats */}
-      <div className="sticky top-0 z-10 bg-white border-b px-6 py-4 shadow-sm">
+      <div className="bg-white border-b px-6 py-4 shadow-sm">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
             {sectionName}

@@ -292,7 +292,8 @@ export function DocumentDetailDialog({
                 onGenerated={(content, openInEditor) => {
                   if (openInEditor && content) {
                     // Navigate to the Live Editor with the generated content
-                    navigateToEditor(content, document.document_name);
+                    // Pass document.id for reasoning/lineage + project_id for project-aware mode
+                    navigateToEditor(content, document.document_name, document.id, document.project_id);
                     // Close the dialog
                     onOpenChange(false);
                   }

@@ -2376,13 +2376,15 @@ async def run_single_doc_generation(
             document_generation_tasks[task_id]["message"] = task.message
         
         # Generate content
+        # Pass task_id as external_task_id to ensure consistent tracking
         generator = get_document_generator()
         success, content_or_error, metadata = await generator.generate_document(
             db=db,
             document=document,
             assumptions=assumptions,
             additional_context=additional_context,
-            progress_callback=progress_callback
+            progress_callback=progress_callback,
+            external_task_id=task_id
         )
         
         if success:
@@ -3148,6 +3150,139 @@ def delete_document_upload(
     db.commit()
 
     return {"message": "Upload deleted successfully"}
+
+
+@app.post("/api/documents/{document_id}/clear-generation", tags=["Documents"])
+def clear_document_generation(
+    document_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Clear AI-generated content, resetting the document back to pending state.
+    
+    This preserves the checklist entry (document_name, phase, category, etc.)
+    but removes all generated content and associated artifacts (versions, lineage,
+    reasoning records, and feedback). The document remains in the Document Checklist
+    and can be regenerated at any time.
+    
+    Use this instead of DELETE when you want to discard generated content
+    without removing the document from the project checklist.
+    """
+    # Import models that are used locally in this endpoint
+    from backend.models.document import DocumentStatus
+    from backend.models.document_version import DocumentContentVersion
+    from backend.models.lineage import DocumentLineage
+    # GenerationReasoning stores chain-of-thought data for AI generation events
+    from backend.models.reasoning import GenerationReasoning
+
+    document = db.query(ProjectDocument).filter(ProjectDocument.id == document_id).first()
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    # Permission check - same roles as delete
+    if current_user.role not in [UserRole.CONTRACTING_OFFICER, UserRole.PROGRAM_MANAGER, UserRole.ADMIN]:
+        raise HTTPException(
+            status_code=403,
+            detail="Only contracting officers, program managers, and admins can clear generation"
+        )
+
+    # Cannot clear while generation is actively running
+    if document.generation_status == GenerationStatus.GENERATING:
+        raise HTTPException(status_code=409, detail="Cannot clear while generation is in progress")
+
+    doc_name = document.document_name
+    project_id = str(document.project_id)
+
+    # Delete associated generation artifacts for a clean slate
+    # 1. Version history snapshots
+    db.query(DocumentContentVersion).filter(
+        DocumentContentVersion.project_document_id == document_id
+    ).delete(synchronize_session="fetch")
+    # 2. Lineage records (which source docs influenced this generation)
+    db.query(DocumentLineage).filter(
+        DocumentLineage.derived_document_id == document_id
+    ).delete(synchronize_session="fetch")
+    # 3. Chain-of-thought reasoning records
+    db.query(GenerationReasoning).filter(
+        GenerationReasoning.document_id == document_id
+    ).delete(synchronize_session="fetch")
+    # 4. Agent feedback entries tied to this document
+    db.query(AgentFeedback).filter(
+        AgentFeedback.document_id == document_id
+    ).delete(synchronize_session="fetch")
+
+    # Reset all generation-related fields back to initial state
+    document.generated_content = None
+    document.generation_status = GenerationStatus.NOT_GENERATED
+    document.generated_at = None
+    document.generation_task_id = None
+    document.ai_quality_score = None
+    document.status = DocumentStatus.PENDING
+
+    # Audit trail for compliance
+    log_audit_event(
+        db=db, user_id=str(current_user.id), action="generation_cleared",
+        entity_type="document", entity_id=document_id,
+        changes={"document_name": doc_name, "action": "cleared_generation"},
+        project_id=project_id
+    )
+
+    db.commit()
+
+    return {
+        "message": f"Generation cleared for '{doc_name}'. Document reset to pending.",
+        "document_id": document_id,
+        "document_name": doc_name
+    }
+
+
+@app.delete("/api/documents/{document_id}", tags=["Documents"])
+def delete_document(
+    document_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete a document and all associated data (hard delete).
+    
+    This permanently removes the ProjectDocument row from the database.
+    Only allowed for user-added custom documents (is_required == False).
+    Template-based required documents cannot be hard-deleted; use the
+    POST /api/documents/{id}/clear-generation endpoint instead to reset
+    them back to pending state.
+    """
+    document = db.query(ProjectDocument).filter(ProjectDocument.id == document_id).first()
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    if current_user.role not in [UserRole.CONTRACTING_OFFICER, UserRole.PROGRAM_MANAGER, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Only contracting officers, program managers, and admins can delete documents")
+
+    # Guard: required/template-based documents cannot be hard-deleted.
+    # Use "Clear Generation" (POST /clear-generation) to reset them instead.
+    if document.is_required:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete a required document. Use 'Clear Generation' to reset it instead."
+        )
+
+    if document.generation_status == GenerationStatus.GENERATING:
+        raise HTTPException(status_code=409, detail="Cannot delete a document while generation is in progress")
+
+    doc_name = document.document_name
+    project_id = str(document.project_id)
+
+    log_audit_event(
+        db=db, user_id=str(current_user.id), action="document_deleted",
+        entity_type="document", entity_id=document_id,
+        changes={"document_name": doc_name}, project_id=project_id
+    )
+
+    db.delete(document)
+    db.commit()
+
+    return {"message": f"Document '{doc_name}' deleted successfully"}
 
 
 @app.get("/api/projects/{project_id}/steps", tags=["Steps"])
@@ -6968,6 +7103,101 @@ async def analyze_quality(
         print(f"Error in quality analysis: {str(e)}")
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Quality analysis failed: {str(e)}")
+
+
+# ============================================================================
+# CHAIN-OF-THOUGHT / REASONING ENDPOINTS
+# ============================================================================
+
+@app.get("/api/documents/{document_id}/reasoning", tags=["Reasoning"])
+async def get_document_reasoning(
+    document_id: str,
+    include_debug: bool = Query(False, description="Include raw prompt/response (admin only)"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get AI reasoning metadata for a document's generation.
+
+    Returns the Chain-of-Thought data captured during AI document generation,
+    including:
+    - Token usage and cost
+    - RAG chunks used as sources
+    - Step-by-step reasoning timeline with durations
+    - Confidence score
+
+    Admin users can request include_debug=true to see full prompts/responses.
+    """
+    from backend.models.reasoning import GenerationReasoning
+    from backend.models.document import ProjectDocument
+
+    # Check document exists
+    document = db.query(ProjectDocument).filter(
+        ProjectDocument.id == document_id
+    ).first()
+
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found"
+        )
+
+    # Get latest reasoning record for this document
+    reasoning = db.query(GenerationReasoning).filter(
+        GenerationReasoning.document_id == document_id
+    ).order_by(GenerationReasoning.created_at.desc()).first()
+
+    if not reasoning:
+        return {
+            "message": "No reasoning data available",
+            "document_id": document_id,
+            "document_name": document.document_name
+        }
+
+    # Only admins can see debug data (full prompts/responses)
+    show_debug = include_debug and current_user.role == UserRole.ADMIN
+
+    return reasoning.to_dict(include_debug=show_debug)
+
+
+@app.get("/api/documents/{document_id}/reasoning/history", tags=["Reasoning"])
+async def get_reasoning_history(
+    document_id: str,
+    limit: int = Query(10, ge=1, le=50, description="Maximum records to return"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get reasoning history for all generations of a document.
+
+    Returns a list of reasoning records ordered by creation date (newest first),
+    useful for comparing token usage across regeneration attempts.
+    """
+    from backend.models.reasoning import GenerationReasoning
+    from backend.models.document import ProjectDocument
+
+    # Verify document exists
+    document = db.query(ProjectDocument).filter(
+        ProjectDocument.id == document_id
+    ).first()
+
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found"
+        )
+
+    # Get reasoning history
+    records = db.query(GenerationReasoning).filter(
+        GenerationReasoning.document_id == document_id
+    ).order_by(GenerationReasoning.created_at.desc()).limit(limit).all()
+
+    return {
+        "document_id": document_id,
+        "document_name": document.document_name,
+        "total": len(records),
+        "records": [r.to_dict(include_debug=False) for r in records]
+    }
 
 
 # ============================================================================

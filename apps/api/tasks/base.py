@@ -40,6 +40,31 @@ class ProgressTask(Task):
         super().__init__()
         self._cache_service = None
         self._project_id = None
+        # Custom task ID from API (used for WebSocket messages to match frontend)
+        # If not set, falls back to Celery's internal request.id
+        self._custom_task_id = None
+    
+    def set_custom_task_id(self, task_id: str) -> None:
+        """
+        Set a custom task ID to use in WebSocket notifications.
+        
+        This allows matching the task ID expected by the frontend
+        (from the API response) rather than Celery's internal UUID.
+        
+        Args:
+            task_id: Custom task ID from the API endpoint
+        """
+        self._custom_task_id = task_id
+    
+    @property
+    def effective_task_id(self) -> str:
+        """
+        Get the effective task ID for WebSocket messages.
+        
+        Returns the custom task ID if set, otherwise falls back
+        to Celery's request.id.
+        """
+        return self._custom_task_id or self.request.id
 
     @property
     def cache_service(self):
@@ -73,11 +98,12 @@ class ProgressTask(Task):
             self._project_id = project_id
 
         # Build state meta
+        # Use effective_task_id to match frontend's expected task ID
         meta = {
             "progress": progress,
             "message": message,
             "updated_at": datetime.utcnow().isoformat(),
-            "task_id": self.request.id,
+            "task_id": self.effective_task_id,
         }
 
         if extra_data:
@@ -109,8 +135,9 @@ class ProgressTask(Task):
         """
         self._project_id = project_id
 
+        # Use effective_task_id to match frontend's expected task ID
         data = {
-            "task_id": self.request.id,
+            "task_id": self.effective_task_id,
             "document_type": document_type,
             "document_id": document_id,
             "timestamp": datetime.utcnow().isoformat(),
@@ -138,8 +165,9 @@ class ProgressTask(Task):
             document_id: Optional document ID
             document_url: Optional URL to generated document
         """
+        # Use effective_task_id to match frontend's expected task ID
         data = {
-            "task_id": self.request.id,
+            "task_id": self.effective_task_id,
             "document_type": document_type,
             "document_id": document_id,
             "document_url": document_url,
@@ -166,8 +194,9 @@ class ProgressTask(Task):
             error_message: Error message
             document_id: Optional document ID
         """
+        # Use effective_task_id to match frontend's expected task ID
         data = {
-            "task_id": self.request.id,
+            "task_id": self.effective_task_id,
             "error": error_message,
             "document_id": document_id,
             "timestamp": datetime.utcnow().isoformat(),

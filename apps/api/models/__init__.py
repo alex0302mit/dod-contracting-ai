@@ -25,6 +25,8 @@ from backend.models.lineage import (
     InfluenceType,
     DocumentSource
 )
+# Generation reasoning for Chain-of-Thought display
+from backend.models.reasoning import GenerationReasoning
 
 __all__ = [
     "User",
@@ -44,5 +46,7 @@ __all__ = [
     "DocumentLineage",
     "KnowledgeDocument",
     "InfluenceType",
-    "DocumentSource"
+    "DocumentSource",
+    # Reasoning model for Chain-of-Thought
+    "GenerationReasoning"
 ]

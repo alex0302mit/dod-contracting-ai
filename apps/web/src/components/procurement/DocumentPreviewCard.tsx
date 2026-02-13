@@ -9,10 +9,12 @@
  * - Quality score as a circular progress indicator with color coding
  * - Generation timestamp (relative time: "2 hours ago")
  * - Quick action buttons: Open in Editor, Download, Re-generate
+ * - "Clear Generation" action: resets required docs back to pending (keeps checklist slot)
+ * - "Delete Document" action: hard-deletes custom (non-required) documents only
  * 
  * Dependencies:
  * - Uses EditorNavigationContext for "Open in Editor" functionality
- * - Uses documentGenerationApi for re-generation
+ * - Uses documentGenerationApi for re-generation, clear, and delete
  * - Uses date-fns for relative time formatting
  */
 
@@ -25,6 +27,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -48,6 +51,9 @@ import {
   MoreVertical,
   CheckCircle2,
   Loader2,
+  Trash2,
+  // Undo2 icon for "Clear Generation" action (reset to pending)
+  Undo2,
 } from 'lucide-react';
 import { ProjectDocument } from '@/hooks/useProjectDocuments';
 import { useEditorNavigation } from '@/contexts/EditorNavigationContext';
@@ -70,6 +76,11 @@ export function DocumentPreviewCard({
   const { navigateToEditor } = useEditorNavigation();
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  // "Clear Generation" state - resets doc to pending without removing from checklist
+  const [isClearing, setIsClearing] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   // Get quality score color based on score value
   const getQualityColor = (score: number | null | undefined) => {
@@ -110,9 +121,10 @@ export function DocumentPreviewCard({
   };
 
   // Handle opening document in editor
+  // Passes document.project_id to enable project-aware mode (all generated docs loaded as sections)
   const handleOpenInEditor = () => {
     if (document.generated_content) {
-      navigateToEditor(document.generated_content, document.document_name);
+      navigateToEditor(document.generated_content, document.document_name, document.id, document.project_id);
       toast.success(`Opened "${document.document_name}" in editor`);
     } else {
       toast.error('No generated content available');
@@ -160,6 +172,37 @@ export function DocumentPreviewCard({
     } catch (error: any) {
       toast.error(`Failed to regenerate: ${error.message}`);
       setIsRegenerating(false);
+    }
+  };
+
+  // Handle deleting document (hard delete - only for non-required custom docs)
+  const handleDelete = async () => {
+    setShowDeleteConfirm(false);
+    setIsDeleting(true);
+    try {
+      await documentGenerationApi.deleteDocument(document.id);
+      toast.success(`Deleted "${document.document_name}"`);
+      onUpdate();
+    } catch (error: any) {
+      toast.error(`Failed to delete: ${error.message}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Handle clearing generation - resets document to pending, keeps checklist slot
+  // This is the primary removal action for required/template-based documents
+  const handleClearGeneration = async () => {
+    setShowClearConfirm(false);
+    setIsClearing(true);
+    try {
+      await documentGenerationApi.clearGeneration(document.id);
+      toast.success(`Cleared generation for "${document.document_name}". Document reset to pending.`);
+      onUpdate();
+    } catch (error: any) {
+      toast.error(`Failed to clear generation: ${error.message}`);
+    } finally {
+      setIsClearing(false);
     }
   };
 
@@ -265,23 +308,48 @@ export function DocumentPreviewCard({
                 <Download className="h-4 w-4 mr-2" />
                 Download Markdown
               </DropdownMenuItem>
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={() => setShowRegenerateConfirm(true)}
                 disabled={isRegenerating}
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Re-generate
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {/* "Clear Generation" - resets to pending, keeps checklist slot.
+                  Always available (primary removal action for required docs). */}
+              <DropdownMenuItem
+                onClick={() => setShowClearConfirm(true)}
+                disabled={isClearing || isDeleting || isRegenerating || document.generation_status === 'generating'}
+                className="text-amber-600 focus:text-amber-600 focus:bg-amber-50"
+              >
+                <Undo2 className="h-4 w-4 mr-2" />
+                Clear Generation
+              </DropdownMenuItem>
+              {/* "Delete Document" - hard delete, only for non-required custom docs.
+                  Required/template docs are protected from accidental removal. */}
+              {!document.is_required && (
+                <DropdownMenuItem
+                  onClick={() => setShowDeleteConfirm(true)}
+                  disabled={isDeleting || isRegenerating || document.generation_status === 'generating'}
+                  className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Document
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </CardFooter>
 
-        {/* Generating overlay */}
-        {(isRegenerating || document.generation_status === 'generating') && (
+        {/* Generating / Deleting / Clearing overlay */}
+        {(isRegenerating || isDeleting || isClearing || document.generation_status === 'generating') && (
           <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-20">
             <div className="text-center">
               <Loader2 className="h-8 w-8 animate-spin text-purple-600 mx-auto mb-2" />
-              <span className="text-sm font-medium text-slate-700">Regenerating...</span>
+              <span className="text-sm font-medium text-slate-700">
+                {isClearing ? 'Clearing...' : isDeleting ? 'Deleting...' : 'Regenerating...'}
+              </span>
             </div>
           </div>
         )}
@@ -302,6 +370,48 @@ export function DocumentPreviewCard({
             <AlertDialogAction onClick={handleRegenerate} className="bg-purple-600 hover:bg-purple-700">
               <RefreshCw className="h-4 w-4 mr-2" />
               Regenerate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Clear Generation confirmation dialog */}
+      <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear Generated Content?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the generated content for &quot;{document.document_name}&quot; and reset it
+              back to pending. The document will stay in your Document Checklist and can be
+              regenerated at any time. All version history, lineage, and feedback will also be cleared.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleClearGeneration} className="bg-amber-600 hover:bg-amber-700">
+              <Undo2 className="h-4 w-4 mr-2" />
+              Clear Generation
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Document confirmation dialog (only reachable for non-required docs) */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Document?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove &quot;{document.document_name}&quot; from both the AI Documents
+              gallery and the Document Checklist, including all generated content, versions,
+              lineage history, and feedback. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

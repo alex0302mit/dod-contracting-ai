@@ -167,20 +167,45 @@ echo ""
 if [ "$REDIS_AVAILABLE" = "true" ]; then
     echo -e "${YELLOW}[7/7] Starting Celery worker...${NC}"
 
+    # Detect OS for Celery pool configuration
+    # macOS requires solo pool because PyTorch/SentenceTransformer are not fork-safe
+    # Linux can use prefork pool for better performance with multiple workers
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        CELERY_POOL="solo"
+        echo -e "${YELLOW}   Detected macOS - using solo pool (fork-safe for PyTorch)${NC}"
+    else
+        CELERY_POOL="prefork"
+        CELERY_WORKERS=4
+        echo -e "${GREEN}   Detected Linux - using prefork pool with ${CELERY_WORKERS} workers${NC}"
+    fi
+
     # Start Celery worker in background with output logging
-    celery -A backend.celery_app worker \
-        --loglevel=info \
-        --concurrency=2 \
-        --queues=dod.generation.high,dod.generation.batch,dod.quality,celery \
-        --hostname=worker@%h \
-        > celery_worker.log 2>&1 &
+    # Pool configuration differs between macOS (solo) and Linux (prefork)
+    if [ "$CELERY_POOL" = "solo" ]; then
+        # Solo pool: single worker, no concurrency flag (processes tasks sequentially)
+        celery -A backend.celery_app worker \
+            --loglevel=info \
+            --pool=solo \
+            --queues=dod.generation.high,dod.generation.batch,dod.quality,celery \
+            --hostname=worker@%h \
+            > celery_worker.log 2>&1 &
+    else
+        # Prefork pool: multiple workers for parallel task processing
+        celery -A backend.celery_app worker \
+            --loglevel=info \
+            --pool=prefork \
+            --concurrency=$CELERY_WORKERS \
+            --queues=dod.generation.high,dod.generation.batch,dod.quality,celery \
+            --hostname=worker@%h \
+            > celery_worker.log 2>&1 &
+    fi
 
     CELERY_PID=$!
 
     # Wait a moment and check if worker started
     sleep 2
     if kill -0 "$CELERY_PID" 2>/dev/null; then
-        echo -e "${GREEN}✓ Celery worker started (PID: $CELERY_PID)${NC}"
+        echo -e "${GREEN}✓ Celery worker started (PID: $CELERY_PID, pool: $CELERY_POOL)${NC}"
         echo "   Logs: tail -f celery_worker.log"
     else
         echo -e "${YELLOW}⚠  Celery worker failed to start (check celery_worker.log)${NC}"

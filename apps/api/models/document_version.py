@@ -3,7 +3,7 @@ Document version history model for tracking content snapshots
 """
 from sqlalchemy import Column, String, DateTime, Integer, ForeignKey, Boolean, Text
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
 import uuid
 
@@ -38,7 +38,11 @@ class DocumentContentVersion(Base):
     word_count = Column(Integer, nullable=True)
 
     # Relationships
-    document = relationship("ProjectDocument", backref="content_versions")
+    document = relationship(
+        "ProjectDocument",
+        backref=backref("content_versions", passive_deletes=True),
+        passive_deletes=True
+    )
 
     def to_dict(self):
         return {

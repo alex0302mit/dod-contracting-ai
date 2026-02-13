@@ -78,11 +78,15 @@ class SSDDGeneratorAgent(BaseAgent):
                 - evaluation_results: Dict with offeror evaluation data
                 - recommended_awardee: Winner name
                 - config: Optional configuration
+                - reasoning_tracker: Optional ReasoningTracker for token tracking
 
         Returns:
             Dictionary with SSDD content and metadata
         """
         self.log("Starting SSDD generation")
+        
+        # Extract reasoning tracker for token usage tracking
+        self._current_tracker = self.get_tracker_from_task(task)
 
         solicitation_info = task.get('solicitation_info', {})
         evaluation_results = task.get('evaluation_results', {})

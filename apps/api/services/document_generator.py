@@ -196,7 +196,8 @@ class DocumentGenerator:
         assumptions: List[Dict[str, str]],
         additional_context: Optional[str] = None,
         progress_callback: Optional[callable] = None,
-        force_regenerate: bool = False
+        force_regenerate: bool = False,
+        external_task_id: Optional[str] = None
     ) -> Tuple[bool, str, Optional[Dict]]:
         """
         Generate AI content for a single document.
@@ -277,17 +278,22 @@ class DocumentGenerator:
                 })
             
             # Create generation task with unique ID
-            task_id = f"doc_{document.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            # Use external_task_id if provided (e.g., from Celery task or API endpoint)
+            # This ensures consistent task ID tracking across the system
+            task_id = external_task_id or f"doc_{document.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
             task = GenerationTask(
                 task_id=task_id,
                 document_names=[document.document_name],
                 assumptions=generation_assumptions,
-                linked_assumptions={document.document_name: [a.get("id", "") for a in generation_assumptions]}
+                linked_assumptions={document.document_name: [a.get("id", "") for a in generation_assumptions]},
+                document_ids={document.document_name: str(document.id)}
             )
 
             # Update document status to show generation in progress
+            # Only update task_id if we don't have an external one (to avoid overwriting)
             document.generation_status = GenerationStatus.GENERATING
-            document.generation_task_id = task_id
+            if not external_task_id:
+                document.generation_task_id = task_id
             db.commit()
             
             # Run generation via the coordinator (handles agent routing and AI calls)

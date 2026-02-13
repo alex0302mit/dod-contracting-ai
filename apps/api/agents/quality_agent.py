@@ -75,6 +75,7 @@ class QualityAgent(BaseAgent):
                 - project_info: Original project information
                 - research_findings: Research findings used
                 - evaluation_type: Type of evaluation (section/full/quick)
+                - reasoning_tracker: Optional ReasoningTracker for token tracking
 
         Returns:
             Dictionary with:
@@ -85,6 +86,10 @@ class QualityAgent(BaseAgent):
                 - compliance_check: Compliance assessment
                 - detailed_checks: Individual check results including DoD citations
         """
+        # Extract reasoning tracker from task for token usage tracking
+        # Store as instance variable so helper methods can access it
+        self._current_tracker = self.get_tracker_from_task(task)
+        
         content = task.get('content', '')
         section_name = task.get('section_name', 'Unknown')
         project_info = task.get('project_info', {})
@@ -313,7 +318,7 @@ ONLY flag as potential hallucinations:
 Return a brief assessment (2-3 sentences): LOW (standard procurement language), MEDIUM (some unverified claims), or HIGH (likely fabricated content)."""
 
             try:
-                response = self.call_llm(prompt, max_tokens=300)
+                response = self.call_llm(prompt, max_tokens=300, tracker=self._current_tracker)
                 assessment = response.strip()
                 chunk_assessments.append({
                     'chunk_num': i,
@@ -572,8 +577,8 @@ Provide:
 - Brief assessment (2-3 sentences)
 - Specific concerns if any"""
 
-        # FIXED: Use call_llm instead of generate
-        response = self.call_llm(prompt, max_tokens=500)
+        # Pass tracker for token usage tracking
+        response = self.call_llm(prompt, max_tokens=500, tracker=self._current_tracker)
         assessment = response.strip()
         
         # Determine compliance level

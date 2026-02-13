@@ -158,8 +158,9 @@ function MainApp() {
     closeRail();
   }, [currentRoute, closeRail]);
 
-  // Handle navigation to editor from legacy components
-  const handleNavigateToEditor = useCallback((content: string, documentName: string) => {
+  // Handle navigation to editor from procurement components
+  // When projectId is provided, EditorScreen will fetch all generated docs for the project
+  const handleNavigateToEditor = useCallback((content: string, documentName: string, documentId?: string, projectId?: string) => {
     const htmlContent = convertMarkdownToHtml(content);
     setEditorContent({ [documentName]: htmlContent });
     navigate('EDITOR');

@@ -197,6 +197,7 @@ class MarketResearchReportGeneratorAgent(BaseAgent):
                 - project_info: Program details (name, budget, users, etc.)
                 - requirements_content: Program requirements (KPPs, CDDs, etc.)
                 - config: Optional configuration
+                - reasoning_tracker: Optional ReasoningTracker for token tracking
 
         Returns:
             Dictionary with:
@@ -205,6 +206,10 @@ class MarketResearchReportGeneratorAgent(BaseAgent):
                 - references: Source documents used
         """
         self.log("Starting Market Research Report generation")
+        
+        # Extract reasoning tracker from task for token usage tracking
+        # Store as instance variable so helper methods can access it
+        self._current_tracker = self.get_tracker_from_task(task)
 
         project_info = task.get('project_info', {})
         requirements_content = task.get('requirements_content', '')
@@ -662,7 +667,8 @@ MANDATORY - Include as Section 8 with this structure:
 
 <output_length>2500-3500 words with citations for EVERY factual claim</output_length>"""
 
-        response = self.call_llm(prompt, max_tokens=8000)
+        # Pass tracker to capture actual token usage from API response
+        response = self.call_llm(prompt, max_tokens=8000, tracker=self._current_tracker)
 
         # Add metadata footer
         web_search_note = ""

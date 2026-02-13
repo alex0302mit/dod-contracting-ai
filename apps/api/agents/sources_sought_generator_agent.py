@@ -81,11 +81,15 @@ class SourcesSoughtGeneratorAgent(BaseAgent):
                 - project_info: Program details
                 - requirements_content: PWS/SOO/SOW content (optional)
                 - config: Optional configuration
+                - reasoning_tracker: Optional ReasoningTracker for token tracking
         
         Returns:
             Dictionary with Sources Sought content and metadata
         """
         self.log("Starting Sources Sought generation")
+        
+        # Extract reasoning tracker for token usage tracking
+        self._current_tracker = self.get_tracker_from_task(task)
 
         project_info = task.get('project_info', {})
         requirements_content = task.get('requirements_content', '')

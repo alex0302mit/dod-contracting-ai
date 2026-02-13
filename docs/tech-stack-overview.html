@@ -1,0 +1,2354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DoD Contracting AI - Tech Stack & Production Readiness</title>
+    <style>
+        :root {
+            /* ACES Brand Colors */
+            --navy: #1C3F6E;
+            --navy-dark: #152f52;
+            --navy-light: #2a5a9e;
+            --slate: #435165;
+            --slate-light: #5a6b82;
+
+            /* Light Theme */
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+
+            /* Status Colors */
+            --success: #10b981;
+            --success-bg: #d1fae5;
+            --warning: #f59e0b;
+            --warning-bg: #fef3c7;
+            --danger: #ef4444;
+            --danger-bg: #fee2e2;
+            --info: #3b82f6;
+            --info-bg: #dbeafe;
+
+            /* Method Colors */
+            --get: #10b981;
+            --post: #3b82f6;
+            --put: #f59e0b;
+            --delete: #ef4444;
+            --ws: #8b5cf6;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+
+            --success-bg: #064e3b;
+            --warning-bg: #78350f;
+            --danger-bg: #7f1d1d;
+            --info-bg: #1e3a5f;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Header */
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--navy);
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px var(--shadow-color);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo-placeholder {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--navy-light), var(--slate));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .title-group h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .title-group p {
+            font-size: 0.875rem;
+            opacity: 0.9;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-box input {
+            padding: 0.5rem 1rem 0.5rem 2.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            width: 250px;
+            font-size: 0.875rem;
+        }
+
+        .search-box input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.4);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .search-box svg {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            opacity: 0.6;
+        }
+
+        .theme-toggle {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 0.5rem;
+            cursor: pointer;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .theme-toggle:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .theme-toggle svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Navigation */
+        .nav-bar {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0.75rem 2rem;
+            overflow-x: auto;
+        }
+
+        .nav-links {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            gap: 0.5rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            display: block;
+            padding: 0.5rem 1rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .nav-links a:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .nav-links a.active {
+            background: var(--navy);
+            color: white;
+        }
+
+        /* Main Content */
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Section Styles */
+        .section {
+            margin-bottom: 2rem;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            box-shadow: 0 1px 3px var(--shadow-color);
+        }
+
+        .section.hidden {
+            display: none;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem 1.5rem;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+        }
+
+        .section-header:hover {
+            background: var(--border-color);
+        }
+
+        .section-header h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .section-header h2 .icon {
+            width: 24px;
+            height: 24px;
+            color: var(--navy);
+        }
+
+        [data-theme="dark"] .section-header h2 .icon {
+            color: var(--navy-light);
+        }
+
+        .collapse-icon {
+            width: 20px;
+            height: 20px;
+            transition: transform 0.3s;
+            color: var(--text-muted);
+        }
+
+        .section.collapsed .collapse-icon {
+            transform: rotate(-90deg);
+        }
+
+        .section-content {
+            padding: 1.5rem;
+            display: block;
+        }
+
+        .section.collapsed .section-content {
+            display: none;
+        }
+
+        /* Architecture Diagram */
+        .architecture-diagram {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            padding: 1rem;
+        }
+
+        .arch-layer {
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 2px solid var(--border-color);
+            position: relative;
+        }
+
+        .arch-layer.frontend { border-color: #3b82f6; }
+        .arch-layer.api { border-color: #10b981; }
+        .arch-layer.backend { border-color: #f59e0b; }
+        .arch-layer.data { border-color: #8b5cf6; }
+        .arch-layer.external { border-color: #ef4444; }
+
+        .arch-layer h3 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .arch-layer.frontend h3 { color: #3b82f6; }
+        .arch-layer.api h3 { color: #10b981; }
+        .arch-layer.backend h3 { color: #f59e0b; }
+        .arch-layer.data h3 { color: #8b5cf6; }
+        .arch-layer.external h3 { color: #ef4444; }
+
+        .arch-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            background: var(--bg-secondary);
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .arch-item .version {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-left: auto;
+        }
+
+        /* Tech Cards */
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+
+        .tech-card {
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .tech-card h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--navy);
+        }
+
+        [data-theme="dark"] .tech-card h4 {
+            color: var(--navy-light);
+        }
+
+        .tech-card ul {
+            list-style: none;
+            font-size: 0.875rem;
+        }
+
+        .tech-card li {
+            padding: 0.375rem 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tech-card li:last-child {
+            border-bottom: none;
+        }
+
+        .tech-card .version-badge {
+            font-size: 0.75rem;
+            padding: 0.125rem 0.5rem;
+            background: var(--info-bg);
+            color: var(--info);
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .tech-card .version-badge.planned {
+            background: var(--warning-bg);
+            color: var(--warning);
+        }
+
+        .tech-card .version-badge.optional {
+            background: var(--bg-tertiary);
+            color: var(--text-muted);
+        }
+
+        .arch-item .planned-badge {
+            font-size: 0.65rem;
+            padding: 0.125rem 0.375rem;
+            background: var(--warning-bg);
+            color: var(--warning);
+            border-radius: 3px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .arch-item .optional-badge {
+            font-size: 0.65rem;
+            padding: 0.125rem 0.375rem;
+            background: rgba(139, 92, 246, 0.15);
+            color: #8b5cf6;
+            border-radius: 3px;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-weight: 500;
+        }
+
+        /* API Table */
+        .api-table-container {
+            overflow-x: auto;
+        }
+
+        .api-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        .api-table th {
+            text-align: left;
+            padding: 0.75rem 1rem;
+            background: var(--bg-tertiary);
+            font-weight: 600;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .api-table td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: top;
+        }
+
+        .api-table tr:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .method-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .method-badge.get { background: rgba(16, 185, 129, 0.15); color: var(--get); }
+        .method-badge.post { background: rgba(59, 130, 246, 0.15); color: var(--post); }
+        .method-badge.put { background: rgba(245, 158, 11, 0.15); color: var(--put); }
+        .method-badge.delete { background: rgba(239, 68, 68, 0.15); color: var(--delete); }
+        .method-badge.ws { background: rgba(139, 92, 246, 0.15); color: var(--ws); }
+
+        .endpoint-path {
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 0.8rem;
+            color: var(--text-primary);
+        }
+
+        .category-badge {
+            display: inline-block;
+            padding: 0.125rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+        }
+
+        /* Agent Cards */
+        .agent-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        .agent-category {
+            margin-bottom: 1.5rem;
+        }
+
+        .agent-category h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--navy);
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--navy);
+        }
+
+        [data-theme="dark"] .agent-category h3 {
+            color: var(--navy-light);
+            border-color: var(--navy-light);
+        }
+
+        .agent-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .agent-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            padding: 0.375rem 0.75rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.8rem;
+            color: var(--text-primary);
+        }
+
+        .agent-chip .dot {
+            width: 6px;
+            height: 6px;
+            background: var(--success);
+            border-radius: 50%;
+        }
+
+        /* Checklist */
+        .checklist-section {
+            margin-bottom: 2rem;
+        }
+
+        .checklist-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .checklist-header h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .priority-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .priority-badge.p0 { background: var(--danger-bg); color: var(--danger); }
+        .priority-badge.p1 { background: var(--warning-bg); color: var(--warning); }
+        .priority-badge.p2 { background: var(--info-bg); color: var(--info); }
+        .priority-badge.p3 { background: var(--bg-tertiary); color: var(--text-muted); }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+        }
+
+        .progress-bar .fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--success), #34d399);
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+
+        .progress-text {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-align: right;
+        }
+
+        .checklist-items {
+            list-style: none;
+        }
+
+        .checklist-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+            transition: background 0.2s;
+        }
+
+        .checklist-item:hover {
+            background: var(--border-color);
+        }
+
+        .checklist-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-top: 2px;
+            cursor: pointer;
+            accent-color: var(--navy);
+        }
+
+        .checklist-item label {
+            flex: 1;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+
+        .checklist-item.checked label {
+            text-decoration: line-through;
+            color: var(--text-muted);
+        }
+
+        /* Environment Variables Table */
+        .env-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        .env-table th {
+            text-align: left;
+            padding: 0.75rem 1rem;
+            background: var(--bg-tertiary);
+            font-weight: 600;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .env-table td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .env-name {
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 0.8rem;
+            color: var(--info);
+        }
+
+        .required-badge {
+            display: inline-block;
+            padding: 0.125rem 0.375rem;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .required-badge.required { background: var(--danger-bg); color: var(--danger); }
+        .required-badge.optional { background: var(--bg-tertiary); color: var(--text-muted); }
+
+        /* Command Blocks */
+        .command-block {
+            position: relative;
+            background: #1e293b;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            overflow-x: auto;
+        }
+
+        .command-block pre {
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 0.875rem;
+            color: #e2e8f0;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .command-block .comment {
+            color: #64748b;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 4px;
+            padding: 0.375rem 0.75rem;
+            color: #94a3b8;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .copy-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .copy-btn.copied {
+            background: var(--success);
+            color: white;
+        }
+
+        .copy-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .stat-card .number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--navy);
+        }
+
+        [data-theme="dark"] .stat-card .number {
+            color: var(--navy-light);
+        }
+
+        .stat-card .label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            padding: 1.5rem 2rem;
+            margin-top: 2rem;
+        }
+
+        .footer-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .footer-text {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+        }
+
+        .footer-links a:hover {
+            color: var(--navy);
+        }
+
+        /* Print Styles */
+        @media print {
+            .header, .nav-bar, .theme-toggle, .search-box, .copy-btn {
+                display: none !important;
+            }
+
+            .section {
+                break-inside: avoid;
+                box-shadow: none;
+                border: 1px solid #ddd;
+            }
+
+            .section.collapsed .section-content {
+                display: block !important;
+            }
+
+            body {
+                background: white;
+                color: black;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .search-box input {
+                width: 200px;
+            }
+
+            .nav-links {
+                justify-content: center;
+            }
+
+            .main-content {
+                padding: 1rem;
+            }
+
+            .architecture-diagram {
+                grid-template-columns: 1fr;
+            }
+
+            .footer-content {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+
+        /* Highlight for search */
+        .highlight {
+            background: #fef08a;
+            padding: 0 2px;
+            border-radius: 2px;
+        }
+
+        [data-theme="dark"] .highlight {
+            background: #854d0e;
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: relative;
+        }
+
+        .tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--navy);
+            color: white;
+            padding: 0.5rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            z-index: 10;
+        }
+
+        .tooltip:hover::after {
+            opacity: 1;
+        }
+
+        /* Connection lines for architecture */
+        .arch-connector {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem;
+            color: var(--text-muted);
+        }
+
+        .arch-connector svg {
+            width: 24px;
+            height: 24px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo-section">
+                <div class="logo-placeholder">ACES</div>
+                <div class="title-group">
+                    <h1>DoD Contracting AI</h1>
+                    <p>Tech Stack & Production Readiness</p>
+                </div>
+            </div>
+            <div class="header-controls">
+                <div class="search-box">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                    <input type="text" id="searchInput" placeholder="Search documentation...">
+                </div>
+                <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+                    <svg id="sunIcon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+                    </svg>
+                    <svg id="moonIcon" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display:none;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav-bar">
+        <ul class="nav-links">
+            <li><a href="#overview" class="active">Overview</a></li>
+            <li><a href="#architecture">Architecture</a></li>
+            <li><a href="#backend">Backend</a></li>
+            <li><a href="#frontend">Frontend</a></li>
+            <li><a href="#infrastructure">Infrastructure</a></li>
+            <li><a href="#api-endpoints">API Endpoints</a></li>
+            <li><a href="#agents">Agents</a></li>
+            <li><a href="#production">Production Readiness</a></li>
+            <li><a href="#env-vars">Environment</a></li>
+            <li><a href="#commands">Quick Start</a></li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Overview Section -->
+        <section id="overview" class="section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2>
+                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                    System Overview
+                </h2>
+                <svg class="collapse-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+            <div class="section-content">
+                <p style="margin-bottom: 1rem; color: var(--text-secondary);">
+                    AI-powered DoD acquisition document generation system that automates procurement workflows using specialized agents, RAG-based context retrieval, document lineage tracking, and compliance validation.
+                </p>
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; padding: 0.75rem; background: var(--bg-tertiary); border-radius: 8px; font-size: 0.8rem;">
+                    <span style="display: flex; align-items: center; gap: 0.375rem;">
+                        <span style="padding: 0.125rem 0.5rem; background: var(--info-bg); color: var(--info); border-radius: 4px; font-weight: 500;">Version</span>
+                        <span style="color: var(--text-muted);">= Implemented</span>
+                    </span>
+                    <span style="display: flex; align-items: center; gap: 0.375rem;">
+                        <span style="padding: 0.125rem 0.5rem; background: var(--bg-tertiary); color: var(--text-muted); border-radius: 4px; font-weight: 500; border: 1px solid var(--border-color);">Optional</span>
+                        <span style="color: var(--text-muted);">= Works without it</span>
+                    </span>
+                    <span style="display: flex; align-items: center; gap: 0.375rem;">
+                        <span style="padding: 0.125rem 0.5rem; background: var(--warning-bg); color: var(--warning); border-radius: 4px; font-weight: 500;">Planned</span>
+                        <span style="color: var(--text-muted);">= Not yet implemented</span>
+                    </span>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="number">40</div>
+                        <div class="label">Specialized Agents</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number">95+</div>
+                        <div class="label">API Endpoints</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number">162</div>
+                        <div class="label">React Components</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number">7</div>
+                        <div class="label">Database Models</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number">13</div>
+                        <div class="label">Core Services</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number">29</div>
+                        <div class="label">Document Templates</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Architecture Section -->
+        <section id="architecture" class="section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2>
+                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                    </svg>
+                    Architecture Overview
+                </h2>
+                <svg class="collapse-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+            <div class="section-content">
+                <div class="architecture-diagram">
+                    <div class="arch-layer frontend">
+                        <h3>Frontend</h3>
+                        <div class="arch-item">
+                            <span>React</span>
+                            <span class="version">18.3.1</span>
+                        </div>
+                        <div class="arch-item">
+                            <span>TypeScript</span>
+                            <span class="version">5.5.3</span>
+                        </div>
+                        <div class="arch-item">
+                            <span>Vite</span>
+                            <span class="version">5.4.8</span>
+                        </div>
+                        <div class="arch-item">
+                            <span>Tailwind CSS</span>
+                            <span class="version">3.4.13</span>
+                        </div>
+                    </div>
+
+                    <div class="arch-layer api">
+                        <h3>API Gateway</h3>
+                        <div class="arch-item">
+                            <span>FastAPI</span>
+                            <span class="version">0.104.1</span>
+                        </div>
+                        <div class="arch-item">
+                            <span>Uvicorn</span>
+                            <span class="version">ASGI</span>
+                        </div>
+                        <div class="arch-item">
+                            <span>WebSocket</span>
+                            <span class="version">Real-time</span>
+                        </div>
+                        <div class="arch-item">
+                            <span>JWT Auth</span>
+                            <span class="version">RBAC</span>
+                        </div>
+                    </div>
+
+                    <div class="arch-layer backend">
+                        <h3>Backend Services</h3>
+                        <div class="arch-item">
+                            <span>Agent Router</span>
+                            <span class="version">44 agents</span>
+                        </div>
+                        <div class="arch-item">
+                            <span>Generation Coordinator</span>
+                            <span class="version">Orchestration</span>
+                        </div>
+                        <div class="arch-item">
+                            <span>RAG Service</span>
+                            <span class="version">FAISS</span>
+                        </div>
+                        <div class="arch-item">
+                            <span>Celery</span>
+                            <span class="optional-badge">Optional</span>
+                            <span class="version">5.3.4</span>
+                        </div>
+                    </div>
+
+                    <div class="arch-layer data">
+                        <h3>Data Layer</h3>
+                        <div class="arch-item">
+                            <span>PostgreSQL/SQLite</span>
+                            <span class="version">Database</span>
+                        </div>
+                        <div class="arch-item">
+                            <span>Redis</span>
+                            <span class="optional-badge">Optional</span>
+                            <span class="version">Cache/Broker</span>
+                        </div>
+                        <div class="arch-item">
+                            <span>FAISS</span>
+                            <span class="version">Vector Store</span>
+                        </div>
+                        <div class="arch-item">
+                            <span>Local Filesystem</span>
+                            <span class="version">File Storage</span>
+                        </div>
+                    </div>
+
+                    <div class="arch-layer external">
+                        <h3>External Services</h3>
+                        <div class="arch-item">
+                            <span>Claude API</span>
+                            <span class="version">Anthropic</span>
+                        </div>
+                        <div class="arch-item">
+                            <span>Tavily</span>
+                            <span class="version">Optional</span>
+                        </div>
+                        <div class="arch-item">
+                            <span>S3</span>
+                            <span class="planned-badge">Planned</span>
+                            <span class="version">File Storage</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Backend Tech Stack -->
+        <section id="backend" class="section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2>
+                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/>
+                    </svg>
+                    Backend Tech Stack
+                </h2>
+                <svg class="collapse-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+            <div class="section-content">
+                <div class="tech-grid">
+                    <div class="tech-card">
+                        <h4>Core Framework</h4>
+                        <ul>
+                            <li><span>FastAPI</span><span class="version-badge">0.104.1</span></li>
+                            <li><span>Python</span><span class="version-badge">3.9+</span></li>
+                            <li><span>Uvicorn</span><span class="version-badge">ASGI</span></li>
+                            <li><span>Pydantic</span><span class="version-badge">2.x</span></li>
+                        </ul>
+                    </div>
+                    <div class="tech-card">
+                        <h4>Database & ORM</h4>
+                        <ul>
+                            <li><span>SQLAlchemy</span><span class="version-badge">2.0.23</span></li>
+                            <li><span>Alembic</span><span class="version-badge">Migrations</span></li>
+                            <li><span>PostgreSQL</span><span class="version-badge">Current</span></li>
+                        </ul>
+                    </div>
+                    <div class="tech-card">
+                        <h4>Authentication</h4>
+                        <ul>
+                            <li><span>python-jose</span><span class="version-badge">JWT</span></li>
+                            <li><span>PBKDF2-SHA256</span><span class="version-badge">Hashing</span></li>
+                            <li><span>RBAC</span><span class="version-badge">5 roles</span></li>
+                        </ul>
+                    </div>
+                    <div class="tech-card">
+                        <h4>Task Queue</h4>
+                        <ul>
+                            <li><span>Celery</span><span class="version-badge optional">Optional</span></li>
+                            <li><span>Redis</span><span class="version-badge optional">Optional Broker</span></li>
+                            <li><span>Flower</span><span class="version-badge planned">Planned</span></li>
+                        </ul>
+                    </div>
+                    <div class="tech-card">
+                        <h4>AI/LLM Integration</h4>
+                        <ul>
+                            <li><span>Anthropic Claude</span><span class="version-badge">claude-sonnet-4</span></li>
+                            <li><span>Anthropic SDK</span><span class="version-badge">Direct API</span></li>
+                            <li><span>sentence-transformers</span><span class="version-badge">Embeddings</span></li>
+                        </ul>
+                    </div>
+                    <div class="tech-card">
+                        <h4>RAG/Vector Store</h4>
+                        <ul>
+                            <li><span>FAISS</span><span class="version-badge">CPU</span></li>
+                            <li><span>all-MiniLM-L6-v2</span><span class="version-badge">Embeddings</span></li>
+                            <li><span>Docling</span><span class="version-badge">Parsing</span></li>
+                        </ul>
+                    </div>
+                    <div class="tech-card">
+                        <h4>Document Processing</h4>
+                        <ul>
+                            <li><span>Docling</span><span class="version-badge">PDF/Doc</span></li>
+                            <li><span>PyPDF2</span><span class="version-badge">PDF</span></li>
+                            <li><span>python-docx</span><span class="version-badge">DOCX</span></li>
+                            <li><span>pdfkit</span><span class="version-badge">Export</span></li>
+                        </ul>
+                    </div>
+                    <div class="tech-card">
+                        <h4>Real-time</h4>
+                        <ul>
+                            <li><span>WebSockets</span><span class="version-badge">FastAPI</span></li>
+                            <li><span>Redis Pub/Sub</span><span class="version-badge optional">Optional</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Frontend Tech Stack -->
+        <section id="frontend" class="section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2>
+                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                    </svg>
+                    Frontend Tech Stack
+                </h2>
+                <svg class="collapse-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+            <div class="section-content">
+                <div class="tech-grid">
+                    <div class="tech-card">
+                        <h4>Core Framework</h4>
+                        <ul>
+                            <li><span>React</span><span class="version-badge">18.3.1</span></li>
+                            <li><span>TypeScript</span><span class="version-badge">5.5.3</span></li>
+                            <li><span>Vite</span><span class="version-badge">5.4.8</span></li>
+                        </ul>
+                    </div>
+                    <div class="tech-card">
+                        <h4>UI Components</h4>
+                        <ul>
+                            <li><span>shadcn/ui</span><span class="version-badge">Library</span></li>
+                            <li><span>Radix UI</span><span class="version-badge">26 components</span></li>
+                            <li><span>Lucide Icons</span><span class="version-badge">Icons</span></li>
+                        </ul>
+                    </div>
+                    <div class="tech-card">
+                        <h4>Styling</h4>
+                        <ul>
+                            <li><span>Tailwind CSS</span><span class="version-badge">3.4.13</span></li>
+                            <li><span>class-variance-authority</span><span class="version-badge">CVA</span></li>
+                            <li><span>tailwind-merge</span><span class="version-badge">Utility</span></li>
+                        </ul>
+                    </div>
+                    <div class="tech-card">
+                        <h4>State Management</h4>
+                        <ul>
+                            <li><span>React Query</span><span class="version-badge">5.90.6</span></li>
+                            <li><span>Context API</span><span class="version-badge">Built-in</span></li>
+                            <li><span>React Hook Form</span><span class="version-badge">Forms</span></li>
+                        </ul>
+                    </div>
+                    <div class="tech-card">
+                        <h4>Rich Text Editor</h4>
+                        <ul>
+                            <li><span>Tiptap</span><span class="version-badge">3.x</span></li>
+                            <li><span>Starter Kit</span><span class="version-badge">Extensions</span></li>
+                            <li><span>Table Extension</span><span class="version-badge">Tables</span></li>
+                        </ul>
+                    </div>
+                    <div class="tech-card">
+                        <h4>Data Visualization</h4>
+                        <ul>
+                            <li><span>Recharts</span><span class="version-badge">2.12.7</span></li>
+                            <li><span>date-fns</span><span class="version-badge">Date Utils</span></li>
+                        </ul>
+                    </div>
+                    <div class="tech-card">
+                        <h4>Form Validation</h4>
+                        <ul>
+                            <li><span>Zod</span><span class="version-badge">Schema</span></li>
+                            <li><span>@hookform/resolvers</span><span class="version-badge">Integration</span></li>
+                        </ul>
+                    </div>
+                    <div class="tech-card">
+                        <h4>Routing & HTTP</h4>
+                        <ul>
+                            <li><span>React Router</span><span class="version-badge">6.x</span></li>
+                            <li><span>Axios</span><span class="version-badge">HTTP Client</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Infrastructure -->
+        <section id="infrastructure" class="section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2>
+                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                    </svg>
+                    Infrastructure Dependencies
+                </h2>
+                <svg class="collapse-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+            <div class="section-content">
+                <div class="tech-grid">
+                    <div class="tech-card">
+                        <h4>Redis <span class="version-badge optional" style="font-size: 0.65rem;">Optional</span></h4>
+                        <ul>
+                            <li><span>Caching</span><span class="version-badge">Graceful Fallback</span></li>
+                            <li><span>Message Broker</span><span class="version-badge">For Celery</span></li>
+                            <li><span>Pub/Sub</span><span class="version-badge">Real-time</span></li>
+                            <li><span>Rate Limiting</span><span class="version-badge planned">Planned</span></li>
+                        </ul>
+                    </div>
+                    <div class="tech-card">
+                        <h4>Database</h4>
+                        <ul>
+                            <li><span>PostgreSQL</span><span class="version-badge">Current</span></li>
+                            <li><span>SQLite</span><span class="version-badge optional">Supported</span></li>
+                            <li><span>Connection Pooling</span><span class="version-badge planned">Planned</span></li>
+                        </ul>
+                    </div>
+                    <div class="tech-card">
+                        <h4>File Storage</h4>
+                        <ul>
+                            <li><span>Local Filesystem</span><span class="version-badge">Current</span></li>
+                            <li><span>AWS S3</span><span class="version-badge planned">Planned</span></li>
+                            <li><span>Document Exports</span><span class="version-badge">PDF/DOCX</span></li>
+                        </ul>
+                    </div>
+                    <div class="tech-card">
+                        <h4>Deployment <span class="version-badge planned" style="font-size: 0.65rem;">Planned</span></h4>
+                        <ul>
+                            <li><span>Docker</span><span class="version-badge planned">Planned</span></li>
+                            <li><span>Kubernetes</span><span class="version-badge planned">Planned</span></li>
+                            <li><span>Nginx</span><span class="version-badge planned">Planned</span></li>
+                            <li><span>Load Balancing</span><span class="version-badge planned">Planned</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- API Endpoints -->
+        <section id="api-endpoints" class="section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2>
+                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    API Endpoints (95+)
+                </h2>
+                <svg class="collapse-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+            <div class="section-content">
+                <div class="api-table-container">
+                    <table class="api-table">
+                        <thead>
+                            <tr>
+                                <th>Method</th>
+                                <th>Endpoint</th>
+                                <th>Description</th>
+                                <th>Category</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Authentication -->
+                            <tr>
+                                <td><span class="method-badge post">POST</span></td>
+                                <td class="endpoint-path">/api/auth/register</td>
+                                <td>User registration</td>
+                                <td><span class="category-badge">Auth</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge post">POST</span></td>
+                                <td class="endpoint-path">/api/auth/login</td>
+                                <td>User login</td>
+                                <td><span class="category-badge">Auth</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge get">GET</span></td>
+                                <td class="endpoint-path">/api/auth/me</td>
+                                <td>Current user info</td>
+                                <td><span class="category-badge">Auth</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge get">GET</span></td>
+                                <td class="endpoint-path">/api/users/me/stats</td>
+                                <td>Personal analytics</td>
+                                <td><span class="category-badge">User</span></td>
+                            </tr>
+                            <!-- Admin -->
+                            <tr>
+                                <td><span class="method-badge get">GET</span></td>
+                                <td class="endpoint-path">/api/admin/users</td>
+                                <td>List all users</td>
+                                <td><span class="category-badge">Admin</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge put">PUT</span></td>
+                                <td class="endpoint-path">/api/admin/users/{id}/role</td>
+                                <td>Update user role</td>
+                                <td><span class="category-badge">Admin</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge post">POST</span></td>
+                                <td class="endpoint-path">/api/admin/bootstrap</td>
+                                <td>Create first admin</td>
+                                <td><span class="category-badge">Admin</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge delete">DELETE</span></td>
+                                <td class="endpoint-path">/api/admin/users/{id}</td>
+                                <td>Delete user</td>
+                                <td><span class="category-badge">Admin</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge get">GET</span></td>
+                                <td class="endpoint-path">/api/admin/analytics</td>
+                                <td>Organization analytics</td>
+                                <td><span class="category-badge">Admin</span></td>
+                            </tr>
+                            <!-- Projects -->
+                            <tr>
+                                <td><span class="method-badge get">GET</span></td>
+                                <td class="endpoint-path">/api/projects</td>
+                                <td>List projects</td>
+                                <td><span class="category-badge">Projects</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge post">POST</span></td>
+                                <td class="endpoint-path">/api/projects</td>
+                                <td>Create project</td>
+                                <td><span class="category-badge">Projects</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge get">GET</span></td>
+                                <td class="endpoint-path">/api/projects/{id}/documents</td>
+                                <td>Project documents</td>
+                                <td><span class="category-badge">Projects</span></td>
+                            </tr>
+                            <!-- Documents -->
+                            <tr>
+                                <td><span class="method-badge post">POST</span></td>
+                                <td class="endpoint-path">/api/documents/{id}/generate</td>
+                                <td>Generate document</td>
+                                <td><span class="category-badge">Documents</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge get">GET</span></td>
+                                <td class="endpoint-path">/api/documents/{id}/generation-status</td>
+                                <td>Check generation status</td>
+                                <td><span class="category-badge">Documents</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge post">POST</span></td>
+                                <td class="endpoint-path">/api/generate-documents</td>
+                                <td>Generate selected documents</td>
+                                <td><span class="category-badge">Generation</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge post">POST</span></td>
+                                <td class="endpoint-path">/api/analyze-generation-plan</td>
+                                <td>Phase analysis</td>
+                                <td><span class="category-badge">Generation</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge post">POST</span></td>
+                                <td class="endpoint-path">/api/projects/{id}/generate-batch</td>
+                                <td>Batch generation</td>
+                                <td><span class="category-badge">Generation</span></td>
+                            </tr>
+                            <!-- Approvals -->
+                            <tr>
+                                <td><span class="method-badge post">POST</span></td>
+                                <td class="endpoint-path">/api/documents/{id}/request-approval</td>
+                                <td>Request approval</td>
+                                <td><span class="category-badge">Approvals</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge post">POST</span></td>
+                                <td class="endpoint-path">/api/approvals/{id}/approve</td>
+                                <td>Approve document</td>
+                                <td><span class="category-badge">Approvals</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge get">GET</span></td>
+                                <td class="endpoint-path">/api/phases/{id}/validate-transition</td>
+                                <td>Validate transition</td>
+                                <td><span class="category-badge">Phases</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge post">POST</span></td>
+                                <td class="endpoint-path">/api/phase-transitions/{id}/approve</td>
+                                <td>Approve transition</td>
+                                <td><span class="category-badge">Phases</span></td>
+                            </tr>
+                            <!-- RAG -->
+                            <tr>
+                                <td><span class="method-badge post">POST</span></td>
+                                <td class="endpoint-path">/api/rag/upload</td>
+                                <td>Upload to knowledge base</td>
+                                <td><span class="category-badge">RAG</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge post">POST</span></td>
+                                <td class="endpoint-path">/api/rag/search</td>
+                                <td>Search documents</td>
+                                <td><span class="category-badge">RAG</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge get">GET</span></td>
+                                <td class="endpoint-path">/api/rag/stats</td>
+                                <td>Vector store stats</td>
+                                <td><span class="category-badge">RAG</span></td>
+                            </tr>
+                            <!-- Lineage -->
+                            <tr>
+                                <td><span class="method-badge get">GET</span></td>
+                                <td class="endpoint-path">/api/documents/{id}/lineage</td>
+                                <td>Document lineage</td>
+                                <td><span class="category-badge">Lineage</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge get">GET</span></td>
+                                <td class="endpoint-path">/api/documents/{id}/timeline</td>
+                                <td>Document timeline</td>
+                                <td><span class="category-badge">Lineage</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge get">GET</span></td>
+                                <td class="endpoint-path">/api/documents/{id}/influence-graph</td>
+                                <td>Influence visualization</td>
+                                <td><span class="category-badge">Lineage</span></td>
+                            </tr>
+                            <!-- Export -->
+                            <tr>
+                                <td><span class="method-badge get">GET</span></td>
+                                <td class="endpoint-path">/api/export/{id}/pdf</td>
+                                <td>Download PDF</td>
+                                <td><span class="category-badge">Export</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge get">GET</span></td>
+                                <td class="endpoint-path">/api/export/{id}/docx</td>
+                                <td>Download DOCX</td>
+                                <td><span class="category-badge">Export</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge post">POST</span></td>
+                                <td class="endpoint-path">/api/export/compliance-report</td>
+                                <td>Generate compliance report</td>
+                                <td><span class="category-badge">Export</span></td>
+                            </tr>
+                            <!-- Comparison -->
+                            <tr>
+                                <td><span class="method-badge post">POST</span></td>
+                                <td class="endpoint-path">/api/comparison/start</td>
+                                <td>Start A/B comparison</td>
+                                <td><span class="category-badge">Comparison</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge get">GET</span></td>
+                                <td class="endpoint-path">/api/comparison/results/{id}</td>
+                                <td>Get comparison results</td>
+                                <td><span class="category-badge">Comparison</span></td>
+                            </tr>
+                            <!-- WebSocket -->
+                            <tr>
+                                <td><span class="method-badge ws">WS</span></td>
+                                <td class="endpoint-path">/ws/{project_id}</td>
+                                <td>Real-time project updates</td>
+                                <td><span class="category-badge">WebSocket</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge ws">WS</span></td>
+                                <td class="endpoint-path">/api/ws/guided-flow/{id}</td>
+                                <td>Guided flow updates</td>
+                                <td><span class="category-badge">WebSocket</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p style="margin-top: 1rem; font-size: 0.875rem; color: var(--text-muted);">
+                    * This is a representative sample. Full API documentation available at <code>/docs</code> (Swagger UI) or <code>/redoc</code> (ReDoc).
+                </p>
+            </div>
+        </section>
+
+        <!-- Agents -->
+        <section id="agents" class="section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2>
+                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                    </svg>
+                    Specialized Agents (40)
+                </h2>
+                <svg class="collapse-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+            <div class="section-content">
+                <div class="agent-category">
+                    <h3>RFP Section Generators (6)</h3>
+                    <div class="agent-list">
+                        <span class="agent-chip"><span class="dot"></span>SectionBGeneratorAgent</span>
+                        <span class="agent-chip"><span class="dot"></span>SectionHGeneratorAgent</span>
+                        <span class="agent-chip"><span class="dot"></span>SectionIGeneratorAgent</span>
+                        <span class="agent-chip"><span class="dot"></span>SectionKGeneratorAgent</span>
+                        <span class="agent-chip"><span class="dot"></span>SectionLGeneratorAgent</span>
+                        <span class="agent-chip"><span class="dot"></span>SectionMGeneratorAgent</span>
+                    </div>
+                </div>
+
+                <div class="agent-category">
+                    <h3>Work Statement Agents (6)</h3>
+                    <div class="agent-list">
+                        <span class="agent-chip"><span class="dot"></span>PWSWriterAgent</span>
+                        <span class="agent-chip"><span class="dot"></span>SOWWriterAgent</span>
+                        <span class="agent-chip"><span class="dot"></span>SOOWriterAgent</span>
+                        <span class="agent-chip"><span class="dot"></span>PWSOrchestrator</span>
+                        <span class="agent-chip"><span class="dot"></span>SOWOrchestrator</span>
+                        <span class="agent-chip"><span class="dot"></span>SOOOrchestrator</span>
+                    </div>
+                </div>
+
+                <div class="agent-category">
+                    <h3>Pre-Solicitation Agents (7)</h3>
+                    <div class="agent-list">
+                        <span class="agent-chip"><span class="dot"></span>MarketResearchReportGeneratorAgent</span>
+                        <span class="agent-chip"><span class="dot"></span>AcquisitionPlanGeneratorAgent</span>
+                        <span class="agent-chip"><span class="dot"></span>SourcesSoughtGeneratorAgent</span>
+                        <span class="agent-chip"><span class="dot"></span>IGCEGeneratorAgent</span>
+                        <span class="agent-chip"><span class="dot"></span>IndustryDayGeneratorAgent</span>
+                        <span class="agent-chip"><span class="dot"></span>RFIGeneratorAgent</span>
+                        <span class="agent-chip"><span class="dot"></span>PreSolicitationNoticeGeneratorAgent</span>
+                    </div>
+                </div>
+
+                <div class="agent-category">
+                    <h3>Post-Solicitation Agents (6)</h3>
+                    <div class="agent-list">
+                        <span class="agent-chip"><span class="dot"></span>SourceSelectionPlanGeneratorAgent</span>
+                        <span class="agent-chip"><span class="dot"></span>EvaluationScorecardGeneratorAgent</span>
+                        <span class="agent-chip"><span class="dot"></span>SSDDGeneratorAgent</span>
+                        <span class="agent-chip"><span class="dot"></span>AwardNotificationGeneratorAgent</span>
+                        <span class="agent-chip"><span class="dot"></span>DebriefingGeneratorAgent</span>
+                        <span class="agent-chip"><span class="dot"></span>AmendmentGeneratorAgent</span>
+                    </div>
+                </div>
+
+                <div class="agent-category">
+                    <h3>Quality & Orchestration (8)</h3>
+                    <div class="agent-list">
+                        <span class="agent-chip"><span class="dot"></span>QualityAgent</span>
+                        <span class="agent-chip"><span class="dot"></span>RefinementAgent</span>
+                        <span class="agent-chip"><span class="dot"></span>QAManagerAgent</span>
+                        <span class="agent-chip"><span class="dot"></span>Orchestrator</span>
+                        <span class="agent-chip"><span class="dot"></span>PreSolicitationOrchestrator</span>
+                        <span class="agent-chip"><span class="dot"></span>SolicitationPackageOrchestrator</span>
+                        <span class="agent-chip"><span class="dot"></span>PostSolicitationOrchestrator</span>
+                        <span class="agent-chip"><span class="dot"></span>RFPOrchestrator</span>
+                    </div>
+                </div>
+
+                <div class="agent-category">
+                    <h3>Form & Document Generators (4)</h3>
+                    <div class="agent-list">
+                        <span class="agent-chip"><span class="dot"></span>SF26GeneratorAgent</span>
+                        <span class="agent-chip"><span class="dot"></span>SF33GeneratorAgent</span>
+                        <span class="agent-chip"><span class="dot"></span>PPQGeneratorAgent</span>
+                        <span class="agent-chip"><span class="dot"></span>QASPGeneratorAgent</span>
+                    </div>
+                </div>
+
+                <div class="agent-category">
+                    <h3>Utility Agents (3)</h3>
+                    <div class="agent-list">
+                        <span class="agent-chip"><span class="dot"></span>ResearchAgent</span>
+                        <span class="agent-chip"><span class="dot"></span>ReportWriterAgent</span>
+                        <span class="agent-chip"><span class="dot"></span>RFPWriterAgent</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Production Readiness Checklist -->
+        <section id="production" class="section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2>
+                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Production Readiness Checklist
+                </h2>
+                <svg class="collapse-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+            <div class="section-content">
+                <!-- Security -->
+                <div class="checklist-section" data-category="security">
+                    <div class="checklist-header">
+                        <h3>
+                            <span class="priority-badge p0">P0 - Critical</span>
+                            Security
+                        </h3>
+                    </div>
+                    <div class="progress-bar"><div class="fill" style="width: 0%"></div></div>
+                    <div class="progress-text">0 / 6 completed</div>
+                    <ul class="checklist-items">
+                        <li class="checklist-item">
+                            <input type="checkbox" id="sec-1" data-category="security">
+                            <label for="sec-1">Remove exposed secrets from .env.example</label>
+                        </li>
+                        <li class="checklist-item">
+                            <input type="checkbox" id="sec-2" data-category="security">
+                            <label for="sec-2">Generate production SECRET_KEY (256-bit random)</label>
+                        </li>
+                        <li class="checklist-item">
+                            <input type="checkbox" id="sec-3" data-category="security">
+                            <label for="sec-3">Configure HTTPS with reverse proxy (nginx/Caddy)</label>
+                        </li>
+                        <li class="checklist-item">
+                            <input type="checkbox" id="sec-4" data-category="security">
+                            <label for="sec-4">Set production CORS origins (remove wildcard)</label>
+                        </li>
+                        <li class="checklist-item">
+                            <input type="checkbox" id="sec-5" data-category="security">
+                            <label for="sec-5">Add Multi-Factor Authentication (MFA) support</label>
+                        </li>
+                        <li class="checklist-item">
+                            <input type="checkbox" id="sec-6" data-category="security">
+                            <label for="sec-6">Implement CAC/PIV integration (DoD requirement)</label>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Infrastructure -->
+                <div class="checklist-section" data-category="infrastructure">
+                    <div class="checklist-header">
+                        <h3>
+                            <span class="priority-badge p1">P1 - High</span>
+                            Infrastructure
+                        </h3>
+                    </div>
+                    <div class="progress-bar"><div class="fill" style="width: 0%"></div></div>
+                    <div class="progress-text">0 / 6 completed</div>
+                    <ul class="checklist-items">
+                        <li class="checklist-item">
+                            <input type="checkbox" id="infra-1" data-category="infrastructure">
+                            <label for="infra-1">Create Dockerfile and docker-compose.yml</label>
+                        </li>
+                        <li class="checklist-item">
+                            <input type="checkbox" id="infra-2" data-category="infrastructure">
+                            <label for="infra-2">Set up Kubernetes manifests (deployment, service, ingress)</label>
+                        </li>
+                        <li class="checklist-item">
+                            <input type="checkbox" id="infra-3" data-category="infrastructure">
+                            <label for="infra-3">Configure production PostgreSQL with connection pooling</label>
+                        </li>
+                        <li class="checklist-item">
+                            <input type="checkbox" id="infra-4" data-category="infrastructure">
+                            <label for="infra-4">Set up Redis cluster for HA</label>
+                        </li>
+                        <li class="checklist-item">
+                            <input type="checkbox" id="infra-5" data-category="infrastructure">
+                            <label for="infra-5">Configure S3 bucket for file storage</label>
+                        </li>
+                        <li class="checklist-item">
+                            <input type="checkbox" id="infra-6" data-category="infrastructure">
+                            <label for="infra-6">Set up load balancer with health checks</label>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Observability -->
+                <div class="checklist-section" data-category="observability">
+                    <div class="checklist-header">
+                        <h3>
+                            <span class="priority-badge p1">P1 - High</span>
+                            Observability
+                        </h3>
+                    </div>
+                    <div class="progress-bar"><div class="fill" style="width: 0%"></div></div>
+                    <div class="progress-text">0 / 5 completed</div>
+                    <ul class="checklist-items">
+                        <li class="checklist-item">
+                            <input type="checkbox" id="obs-1" data-category="observability">
+                            <label for="obs-1">Implement structured JSON logging</label>
+                        </li>
+                        <li class="checklist-item">
+                            <input type="checkbox" id="obs-2" data-category="observability">
+                            <label for="obs-2">Set up centralized log aggregation (ELK/Splunk)</label>
+                        </li>
+                        <li class="checklist-item">
+                            <input type="checkbox" id="obs-3" data-category="observability">
+                            <label for="obs-3">Configure monitoring dashboards (Grafana/Datadog)</label>
+                        </li>
+                        <li class="checklist-item">
+                            <input type="checkbox" id="obs-4" data-category="observability">
+                            <label for="obs-4">Set up alerting (PagerDuty/OpsGenie)</label>
+                        </li>
+                        <li class="checklist-item">
+                            <input type="checkbox" id="obs-5" data-category="observability">
+                            <label for="obs-5">Implement APM (Application Performance Monitoring)</label>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Database -->
+                <div class="checklist-section" data-category="database">
+                    <div class="checklist-header">
+                        <h3>
+                            <span class="priority-badge p1">P1 - High</span>
+                            Database
+                        </h3>
+                    </div>
+                    <div class="progress-bar"><div class="fill" style="width: 0%"></div></div>
+                    <div class="progress-text">0 / 4 completed</div>
+                    <ul class="checklist-items">
+                        <li class="checklist-item">
+                            <input type="checkbox" id="db-1" data-category="database">
+                            <label for="db-1">Initialize Alembic migration environment</label>
+                        </li>
+                        <li class="checklist-item">
+                            <input type="checkbox" id="db-2" data-category="database">
+                            <label for="db-2">Set up automated backups (daily snapshots)</label>
+                        </li>
+                        <li class="checklist-item">
+                            <input type="checkbox" id="db-3" data-category="database">
+                            <label for="db-3">Configure connection pooling (PgBouncer)</label>
+                        </li>
+                        <li class="checklist-item">
+                            <input type="checkbox" id="db-4" data-category="database">
+                            <label for="db-4">Implement database failover/replication</label>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Compliance -->
+                <div class="checklist-section" data-category="compliance">
+                    <div class="checklist-header">
+                        <h3>
+                            <span class="priority-badge p2">P2-P3</span>
+                            Compliance (DoD)
+                        </h3>
+                    </div>
+                    <div class="progress-bar"><div class="fill" style="width: 0%"></div></div>
+                    <div class="progress-text">0 / 5 completed</div>
+                    <ul class="checklist-items">
+                        <li class="checklist-item">
+                            <input type="checkbox" id="comp-1" data-category="compliance">
+                            <label for="comp-1">FedRAMP documentation package</label>
+                        </li>
+                        <li class="checklist-item">
+                            <input type="checkbox" id="comp-2" data-category="compliance">
+                            <label for="comp-2">NIST 800-53 control mapping</label>
+                        </li>
+                        <li class="checklist-item">
+                            <input type="checkbox" id="comp-3" data-category="compliance">
+                            <label for="comp-3">STIG compliance verification</label>
+                        </li>
+                        <li class="checklist-item">
+                            <input type="checkbox" id="comp-4" data-category="compliance">
+                            <label for="comp-4">Penetration testing (annual)</label>
+                        </li>
+                        <li class="checklist-item">
+                            <input type="checkbox" id="comp-5" data-category="compliance">
+                            <label for="comp-5">ATO package preparation</label>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Testing -->
+                <div class="checklist-section" data-category="testing">
+                    <div class="checklist-header">
+                        <h3>
+                            <span class="priority-badge p1">P1 - High</span>
+                            Testing & CI/CD
+                        </h3>
+                    </div>
+                    <div class="progress-bar"><div class="fill" style="width: 0%"></div></div>
+                    <div class="progress-text">0 / 4 completed</div>
+                    <ul class="checklist-items">
+                        <li class="checklist-item">
+                            <input type="checkbox" id="test-1" data-category="testing">
+                            <label for="test-1">Set up CI pipeline (GitHub Actions/GitLab CI)</label>
+                        </li>
+                        <li class="checklist-item">
+                            <input type="checkbox" id="test-2" data-category="testing">
+                            <label for="test-2">Configure automated testing on PR</label>
+                        </li>
+                        <li class="checklist-item">
+                            <input type="checkbox" id="test-3" data-category="testing">
+                            <label for="test-3">Set up staging environment</label>
+                        </li>
+                        <li class="checklist-item">
+                            <input type="checkbox" id="test-4" data-category="testing">
+                            <label for="test-4">Implement blue-green deployments</label>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Environment Variables -->
+        <section id="env-vars" class="section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2>
+                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    Environment Variables
+                </h2>
+                <svg class="collapse-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+            <div class="section-content">
+                <div class="api-table-container">
+                    <table class="env-table">
+                        <thead>
+                            <tr>
+                                <th>Variable</th>
+                                <th>Required</th>
+                                <th>Default</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="env-name">ANTHROPIC_API_KEY</td>
+                                <td><span class="required-badge required">Required</span></td>
+                                <td>-</td>
+                                <td>Claude API key for LLM generation</td>
+                            </tr>
+                            <tr>
+                                <td class="env-name">DATABASE_URL</td>
+                                <td><span class="required-badge optional">Optional</span></td>
+                                <td>sqlite:///./app.db</td>
+                                <td>Database connection string</td>
+                            </tr>
+                            <tr>
+                                <td class="env-name">SECRET_KEY</td>
+                                <td><span class="required-badge required">Required</span></td>
+                                <td>-</td>
+                                <td>JWT signing key (use 256-bit random in production)</td>
+                            </tr>
+                            <tr>
+                                <td class="env-name">REDIS_URL</td>
+                                <td><span class="required-badge optional">Optional</span></td>
+                                <td>redis://localhost:6379</td>
+                                <td>Redis connection URL for caching and Celery</td>
+                            </tr>
+                            <tr>
+                                <td class="env-name">TAVILY_API_KEY</td>
+                                <td><span class="required-badge optional">Optional</span></td>
+                                <td>-</td>
+                                <td>Tavily API key for web search in agents</td>
+                            </tr>
+                            <tr>
+                                <td class="env-name">CORS_ORIGINS</td>
+                                <td><span class="required-badge optional">Optional</span></td>
+                                <td>*</td>
+                                <td>Allowed CORS origins (comma-separated)</td>
+                            </tr>
+                            <tr>
+                                <td class="env-name">LOG_LEVEL</td>
+                                <td><span class="required-badge optional">Optional</span></td>
+                                <td>INFO</td>
+                                <td>Logging level (DEBUG, INFO, WARNING, ERROR)</td>
+                            </tr>
+                            <tr>
+                                <td class="env-name">ENVIRONMENT</td>
+                                <td><span class="required-badge optional">Optional</span></td>
+                                <td>development</td>
+                                <td>Environment mode (development, staging, production)</td>
+                            </tr>
+                            <tr>
+                                <td class="env-name">S3_BUCKET</td>
+                                <td><span class="required-badge optional">Planned</span></td>
+                                <td>-</td>
+                                <td>S3 bucket name for file storage (not yet implemented)</td>
+                            </tr>
+                            <tr>
+                                <td class="env-name">AWS_ACCESS_KEY_ID</td>
+                                <td><span class="required-badge optional">Planned</span></td>
+                                <td>-</td>
+                                <td>AWS access key for S3 (not yet implemented)</td>
+                            </tr>
+                            <tr>
+                                <td class="env-name">AWS_SECRET_ACCESS_KEY</td>
+                                <td><span class="required-badge optional">Planned</span></td>
+                                <td>-</td>
+                                <td>AWS secret key for S3 (not yet implemented)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quick Start Commands -->
+        <section id="commands" class="section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2>
+                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    Quick Start Commands
+                </h2>
+                <svg class="collapse-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+            <div class="section-content">
+                <h4 style="margin-bottom: 1rem; color: var(--text-primary);">Start Everything</h4>
+                <div class="command-block">
+                    <button class="copy-btn" onclick="copyCommand(this)">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                        </svg>
+                        Copy
+                    </button>
+                    <pre><span class="comment"># Start all services</span>
+./start_all.sh
+
+<span class="comment"># Or separately:</span>
+./start_backend.sh   <span class="comment"># Backend on http://localhost:8000</span>
+./start_frontend.sh  <span class="comment"># Frontend on http://localhost:5173</span></pre>
+                </div>
+
+                <h4 style="margin-bottom: 1rem; color: var(--text-primary);">Development</h4>
+                <div class="command-block">
+                    <button class="copy-btn" onclick="copyCommand(this)">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                        </svg>
+                        Copy
+                    </button>
+                    <pre><span class="comment"># Backend with hot reload</span>
+cd apps/api && uvicorn main:app --reload --port 8000
+
+<span class="comment"># Frontend dev server</span>
+cd apps/web && npm run dev</pre>
+                </div>
+
+                <h4 style="margin-bottom: 1rem; color: var(--text-primary);">Database</h4>
+                <div class="command-block">
+                    <button class="copy-btn" onclick="copyCommand(this)">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                        </svg>
+                        Copy
+                    </button>
+                    <pre><span class="comment"># Seed database with sample data</span>
+python tools/setup/seed_database.py
+
+<span class="comment"># Run migrations</span>
+python tools/migrations/run_migrations.py
+
+<span class="comment"># Setup RAG vector store</span>
+python tools/setup/setup_rag.py</pre>
+                </div>
+
+                <h4 style="margin-bottom: 1rem; color: var(--text-primary);">Testing</h4>
+                <div class="command-block">
+                    <button class="copy-btn" onclick="copyCommand(this)">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                        </svg>
+                        Copy
+                    </button>
+                    <pre><span class="comment"># Run all tests</span>
+cd tools/testing && python run_all_tests.py
+
+<span class="comment"># Run specific test suites</span>
+python -m pytest tools/testing/test_all_agents.py -v
+python -m pytest tools/testing/test_api_endpoints.py -v
+python -m pytest tools/testing/test_integration.py -v</pre>
+                </div>
+
+                <h4 style="margin-bottom: 1rem; color: var(--text-primary);">Lint & Format</h4>
+                <div class="command-block">
+                    <button class="copy-btn" onclick="copyCommand(this)">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                        </svg>
+                        Copy
+                    </button>
+                    <pre><span class="comment"># Frontend linting</span>
+cd apps/web && npm run lint
+
+<span class="comment"># Backend formatting</span>
+cd apps/api && black . && isort .</pre>
+                </div>
+
+                <h4 style="margin-bottom: 1rem; color: var(--text-primary);">Celery Worker <span class="version-badge optional" style="font-size: 0.7rem; margin-left: 0.5rem;">Optional - Requires Redis</span></h4>
+                <div class="command-block">
+                    <button class="copy-btn" onclick="copyCommand(this)">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                        </svg>
+                        Copy
+                    </button>
+                    <pre><span class="comment"># Requires Redis running first: redis-server</span>
+<span class="comment"># Start Celery worker (optional - app works without it)</span>
+cd apps/api && celery -A celery_app worker --loglevel=info
+
+<span class="comment"># Flower monitoring (not yet installed - planned)</span>
+<span class="comment"># pip install flower && celery -A celery_app flower --port=5555</span></pre>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-text">
+                DoD Contracting AI - Tech Stack Documentation v1.0
+            </div>
+            <div class="footer-links">
+                <a href="#overview">Back to Top</a>
+                <a href="/docs">API Docs</a>
+                <a href="/redoc">ReDoc</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Theme Toggle
+        const themeToggle = document.getElementById('themeToggle');
+        const sunIcon = document.getElementById('sunIcon');
+        const moonIcon = document.getElementById('moonIcon');
+
+        function setTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+            if (theme === 'dark') {
+                sunIcon.style.display = 'none';
+                moonIcon.style.display = 'block';
+            } else {
+                sunIcon.style.display = 'block';
+                moonIcon.style.display = 'none';
+            }
+        }
+
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        setTheme(savedTheme);
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            setTheme(currentTheme === 'dark' ? 'light' : 'dark');
+        });
+
+        // Section Toggle
+        function toggleSection(header) {
+            const section = header.closest('.section');
+            section.classList.toggle('collapsed');
+        }
+
+        // Search Functionality
+        const searchInput = document.getElementById('searchInput');
+        let searchTimeout;
+
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                const query = e.target.value.toLowerCase().trim();
+                filterContent(query);
+            }, 300);
+        });
+
+        function filterContent(query) {
+            const sections = document.querySelectorAll('.section');
+
+            // Remove existing highlights
+            document.querySelectorAll('.highlight').forEach(el => {
+                el.outerHTML = el.textContent;
+            });
+
+            if (!query) {
+                sections.forEach(section => {
+                    section.classList.remove('hidden');
+                });
+                return;
+            }
+
+            sections.forEach(section => {
+                const text = section.textContent.toLowerCase();
+                if (text.includes(query)) {
+                    section.classList.remove('hidden');
+                    section.classList.remove('collapsed');
+
+                    // Highlight matches
+                    highlightMatches(section, query);
+                } else {
+                    section.classList.add('hidden');
+                }
+            });
+        }
+
+        function highlightMatches(container, query) {
+            const walker = document.createTreeWalker(
+                container.querySelector('.section-content'),
+                NodeFilter.SHOW_TEXT,
+                null,
+                false
+            );
+
+            const textNodes = [];
+            while (walker.nextNode()) {
+                if (walker.currentNode.textContent.toLowerCase().includes(query)) {
+                    textNodes.push(walker.currentNode);
+                }
+            }
+
+            textNodes.forEach(node => {
+                const text = node.textContent;
+                const regex = new RegExp(`(${query})`, 'gi');
+                if (regex.test(text)) {
+                    const span = document.createElement('span');
+                    span.innerHTML = text.replace(regex, '<span class="highlight">$1</span>');
+                    node.parentNode.replaceChild(span, node);
+                }
+            });
+        }
+
+        // Copy to Clipboard
+        function copyCommand(button) {
+            const block = button.closest('.command-block');
+            const code = block.querySelector('pre').textContent;
+
+            navigator.clipboard.writeText(code).then(() => {
+                button.classList.add('copied');
+                button.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Copied!';
+
+                setTimeout(() => {
+                    button.classList.remove('copied');
+                    button.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg> Copy';
+                }, 2000);
+            });
+        }
+
+        // Checklist Functionality
+        function initializeChecklist() {
+            const checkboxes = document.querySelectorAll('.checklist-item input[type="checkbox"]');
+
+            // Load saved state
+            const savedState = JSON.parse(localStorage.getItem('checklistState') || '{}');
+
+            checkboxes.forEach(checkbox => {
+                if (savedState[checkbox.id]) {
+                    checkbox.checked = true;
+                    checkbox.closest('.checklist-item').classList.add('checked');
+                }
+
+                checkbox.addEventListener('change', (e) => {
+                    const item = e.target.closest('.checklist-item');
+                    if (e.target.checked) {
+                        item.classList.add('checked');
+                    } else {
+                        item.classList.remove('checked');
+                    }
+
+                    // Save state
+                    const state = JSON.parse(localStorage.getItem('checklistState') || '{}');
+                    state[e.target.id] = e.target.checked;
+                    localStorage.setItem('checklistState', JSON.stringify(state));
+
+                    // Update progress
+                    updateProgress(e.target.dataset.category);
+                });
+            });
+
+            // Initial progress update
+            const categories = ['security', 'infrastructure', 'observability', 'database', 'compliance', 'testing'];
+            categories.forEach(updateProgress);
+        }
+
+        function updateProgress(category) {
+            const section = document.querySelector(`.checklist-section[data-category="${category}"]`);
+            if (!section) return;
+
+            const checkboxes = section.querySelectorAll('input[type="checkbox"]');
+            const checked = section.querySelectorAll('input[type="checkbox"]:checked').length;
+            const total = checkboxes.length;
+            const percentage = total > 0 ? (checked / total) * 100 : 0;
+
+            const progressFill = section.querySelector('.progress-bar .fill');
+            const progressText = section.querySelector('.progress-text');
+
+            progressFill.style.width = `${percentage}%`;
+            progressText.textContent = `${checked} / ${total} completed`;
+        }
+
+        // Initialize checklist on load
+        initializeChecklist();
+
+        // Smooth scroll for navigation
+        document.querySelectorAll('.nav-links a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = link.getAttribute('href').slice(1);
+                const target = document.getElementById(targetId);
+
+                if (target) {
+                    // Remove active class from all links
+                    document.querySelectorAll('.nav-links a').forEach(l => l.classList.remove('active'));
+                    link.classList.add('active');
+
+                    // Scroll to section
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                    // Expand section if collapsed
+                    target.classList.remove('collapsed');
+                }
+            });
+        });
+
+        // Update active nav link on scroll
+        const observerOptions = {
+            root: null,
+            rootMargin: '-100px 0px -50% 0px',
+            threshold: 0
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const id = entry.target.id;
+                    document.querySelectorAll('.nav-links a').forEach(link => {
+                        link.classList.toggle('active', link.getAttribute('href') === `#${id}`);
+                    });
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.section[id]').forEach(section => {
+            observer.observe(section);
+        });
+    </script>
+</body>
+</html>

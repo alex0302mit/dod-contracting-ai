@@ -210,6 +210,50 @@ def check_celery_health() -> dict:
         }
 
 
+# ========================================
+# Worker Initialization
+# ========================================
+
+from celery.signals import worker_process_init
+
+@worker_process_init.connect
+def init_worker_process(**kwargs):
+    """
+    Initialize resources when a Celery worker PROCESS starts.
+
+    Using worker_process_init (not worker_init) ensures this runs
+    AFTER forking, which is required for PyTorch/SentenceTransformer
+    models that are not fork-safe.
+
+    For prefork pool: runs in each forked worker process
+    For solo/threads pool: runs in the main worker process
+    """
+    import os
+    print("🔧 Initializing Celery worker process resources...")
+
+    try:
+        # Preload cache service (fork-safe)
+        from backend.services.cache_service import get_cache_service
+        cache = get_cache_service()
+        print(f"✅ Cache service: {'connected' if cache.is_connected else 'not connected'}")
+    except Exception as e:
+        print(f"⚠️  Cache service preload failed: {e}")
+
+    try:
+        # Preload RAG service (loads SentenceTransformer model + FAISS index)
+        # This must happen AFTER fork to avoid SIGSEGV on macOS
+        if os.environ.get("ANTHROPIC_API_KEY"):
+            from backend.services.rag_service import get_rag_service
+            rag = get_rag_service()
+            print(f"✅ RAG service preloaded: {len(rag.vector_store.chunks)} chunks")
+        else:
+            print("⚠️  ANTHROPIC_API_KEY not set, skipping RAG preload")
+    except Exception as e:
+        print(f"⚠️  RAG service preload failed (will retry on first use): {e}")
+
+    print("✅ Worker process initialization complete")
+
+
 if __name__ == "__main__":
     # Allow running celery directly: python -m backend.celery_app worker
     celery_app.start()

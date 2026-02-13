@@ -85,9 +85,10 @@ export function GenerationTimeline({ documents, onUpdate }: GenerationTimelinePr
   };
 
   // Handle opening in editor
+  // Passes project_id to enable project-aware mode (all generated docs loaded as sections)
   const handleOpenInEditor = (document: ProjectDocument) => {
     if (document.generated_content) {
-      navigateToEditor(document.generated_content, document.document_name);
+      navigateToEditor(document.generated_content, document.document_name, document.id, document.project_id);
       toast.success(`Opened "${document.document_name}" in editor`);
     }
   };

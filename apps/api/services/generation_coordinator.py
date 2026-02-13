@@ -32,7 +32,8 @@ class GenerationTask:
         task_id: str,
         document_names: List[str],
         assumptions: List[Dict[str, str]],
-        linked_assumptions: Optional[Dict[str, List[str]]] = None
+        linked_assumptions: Optional[Dict[str, List[str]]] = None,
+        document_ids: Optional[Dict[str, str]] = None
     ):
         """
         Initialize generation task
@@ -42,11 +43,13 @@ class GenerationTask:
             document_names: List of document names to generate
             assumptions: List of assumption dictionaries
             linked_assumptions: Optional mapping of document -> assumption IDs
+            document_ids: Optional mapping of document name -> database UUID
         """
         self.task_id = task_id
         self.document_names = document_names
         self.assumptions = assumptions
         self.linked_assumptions = linked_assumptions or {}
+        self.document_ids = document_ids or {}
 
         # Status tracking
         self.status = "pending"  # pending, in_progress, completed, failed
@@ -273,12 +276,20 @@ class GenerationCoordinator:
                         task.linked_assumptions
                     )
 
+                    # Get RAG metadata for reasoning tracking
+                    rag_metadata = task.agent_metadata.get("_rag_context", {})
+
+                    # Get document_id if available (for reasoning storage)
+                    doc_id = task.document_ids.get(doc_name)
+
                     # Generate document using appropriate agent
                     result = await self._generate_single_document(
                         document_name=doc_name,
                         assumptions=doc_assumptions,
                         context=context_text,
-                        all_assumptions=assumptions_text
+                        all_assumptions=assumptions_text,
+                        document_id=doc_id,
+                        rag_metadata=rag_metadata
                     )
 
                     # Store results
@@ -355,7 +366,9 @@ class GenerationCoordinator:
         document_name: str,
         assumptions: List[Dict[str, str]],
         context: str,
-        all_assumptions: str
+        all_assumptions: str,
+        document_id: Optional[str] = None,
+        rag_metadata: Optional[Dict] = None
     ) -> Dict:
         """
         Generate a single document using specialized agent or generic generation
@@ -365,10 +378,14 @@ class GenerationCoordinator:
             assumptions: Linked assumptions for this document
             context: RAG context text
             all_assumptions: All assumptions formatted
+            document_id: Optional document ID for reasoning tracking
+            rag_metadata: Optional RAG context metadata for reasoning
 
         Returns:
             Dictionary with content, metadata, and citations
         """
+        from backend.services.reasoning_tracker import ReasoningTracker
+
         # Try to get specialized agent
         agent = None
         agent_name = "GenericClaude"
@@ -378,19 +395,54 @@ class GenerationCoordinator:
             if agent:
                 agent_name = agent.__class__.__name__
 
+        # Create reasoning tracker for this document
+        tracker = ReasoningTracker(document_name=document_name, agent_name=agent_name)
+
+        # Record RAG context if provided
+        if rag_metadata:
+            tracker.add_step(
+                "context_retrieval",
+                f"Retrieved {rag_metadata.get('chunks_retrieved', 0)} knowledge chunks",
+                duration_ms=0,
+                chunks_count=rag_metadata.get('chunks_retrieved', 0),
+                phase_filter=rag_metadata.get('phase_filter')
+            )
+            tracker.rag_chunk_ids = rag_metadata.get('chunk_ids', [])
+            tracker.rag_phase_filter = rag_metadata.get('phase_filter')
+
+        # Record agent selection
+        tracker.add_step(
+            "agent_selection",
+            f"Selected {agent_name} for {document_name}",
+            duration_ms=0
+        )
+
         # Generate using specialized agent if available
+        result = None
         if agent:
             try:
-                # Call specialized agent's generate method
-                result = await self._call_specialized_agent(
-                    agent=agent,
-                    document_name=document_name,
-                    assumptions=assumptions,
-                    context=context
-                )
+                with tracker.step("llm_generation", f"Generating content with {agent_name}"):
+                    # Call specialized agent's generate method
+                    # Pass tracker so agents can record actual token usage via call_llm()
+                    result = await self._call_specialized_agent(
+                        agent=agent,
+                        document_name=document_name,
+                        assumptions=assumptions,
+                        context=context,
+                        tracker=tracker
+                    )
 
-                return {
-                    "content": result["content"],
+                # Token usage is now captured by the tracker via call_llm() in agents
+                # If agents don't use tracker, we fall back to estimation
+                content = result.get("content", "")
+                if tracker.total_output_tokens == 0:
+                    # Fallback estimation if agent didn't record tokens
+                    estimated_tokens = len(content.split()) * 2
+                    tracker.total_output_tokens = estimated_tokens
+                    tracker.total_input_tokens = len(all_assumptions.split()) * 2 + len(context.split()) * 2
+
+                result = {
+                    "content": content,
                     "metadata": {
                         "agent": agent_name,
                         "method": "specialized_agent",
@@ -401,22 +453,36 @@ class GenerationCoordinator:
 
             except Exception as e:
                 print(f"Error with specialized agent {agent_name}: {e}")
+                tracker.add_step("error", f"Agent error: {str(e)}", duration_ms=0)
                 # Fall back to generic generation
-                pass
+                result = None
 
-        # Generic generation fallback
-        return await self._generate_generic(
-            document_name=document_name,
-            assumptions=all_assumptions,
-            context=context
-        )
+        if result is None:
+            # Generic generation fallback
+            with tracker.step("llm_generation", "Generating content with GenericClaude"):
+                result = await self._generate_generic(
+                    document_name=document_name,
+                    assumptions=all_assumptions,
+                    context=context
+                )
+            tracker.agent_name = "GenericClaude"
+
+        # Save reasoning data if document_id is provided
+        if document_id:
+            reasoning_data = tracker.finalize()
+            self.save_reasoning_to_db(document_id, reasoning_data)
+            # Add reasoning reference to metadata
+            result["metadata"]["has_reasoning"] = True
+
+        return result
 
     async def _call_specialized_agent(
         self,
         agent,
         document_name: str,
         assumptions: List[Dict[str, str]],
-        context: str
+        context: str,
+        tracker: Optional['ReasoningTracker'] = None
     ) -> Dict:
         """
         Call a specialized agent's generation method
@@ -426,10 +492,16 @@ class GenerationCoordinator:
             document_name: Name of document
             assumptions: Assumptions for this document
             context: RAG context
+            tracker: Optional ReasoningTracker for capturing token usage
 
         Returns:
             Generation result with content and citations
         """
+        # Import ReasoningTracker type for type hints
+        from typing import TYPE_CHECKING
+        if TYPE_CHECKING:
+            from backend.services.reasoning_tracker import ReasoningTracker
+
         # Build prompt for agent
         assumptions_text = "\n".join([
             f"- {a['text']} (Source: {a.get('source', 'User')})"
@@ -471,13 +543,16 @@ class GenerationCoordinator:
             )
         elif hasattr(agent, 'execute'):
             # Legacy execute method (Phase 1 agents)
-            # Include project_info so agents can access program name, description, etc.
+            # Include project_info and reasoning_tracker so agents can:
+            # - Access program name, description, etc.
+            # - Pass tracker to call_llm() for accurate token tracking
             task = {
                 'project_info': project_info,
                 'requirements_content': assumptions_text,
                 'requirements': assumptions_text,  # Keep for backwards compatibility
                 'context': context,
-                'assumptions': assumptions
+                'assumptions': assumptions,
+                'reasoning_tracker': tracker  # Pass tracker for token capture
             }
             result = agent.execute(task)
             # Convert execute result format to generate result format
@@ -677,23 +752,55 @@ class GenerationCoordinator:
         if self.use_specialized_agents and self.agent_router:
             agent = self.agent_router.get_agent_for_document(document_name)
 
+        # Get document_id and RAG metadata for reasoning tracking
+        doc_id = task.document_ids.get(document_name)
+        rag_metadata = task.agent_metadata.get("_rag_context", {})
+
         # If agent has collaboration enabled, use collaborative generation
         if agent and hasattr(agent, 'has_collaboration_enabled') and agent.has_collaboration_enabled():
-            # Pass dependencies to agent
+            # Create reasoning tracker for collaboration path
+            from backend.services.reasoning_tracker import ReasoningTracker
+            agent_name = agent.__class__.__name__
+            tracker = ReasoningTracker(document_name=document_name, agent_name=agent_name)
+            
+            # Record RAG context
+            if rag_metadata:
+                tracker.add_step(
+                    "context_retrieval",
+                    f"Retrieved {rag_metadata.get('chunks_retrieved', 0)} knowledge chunks",
+                    duration_ms=0,
+                    chunks_count=rag_metadata.get('chunks_retrieved', 0),
+                    phase_filter=rag_metadata.get('phase_filter')
+                )
+                tracker.rag_chunk_ids = rag_metadata.get('chunk_ids', [])
+                tracker.rag_phase_filter = rag_metadata.get('phase_filter')
+            
+            # Pass dependencies and tracker to agent
             result = await self._call_specialized_agent_with_collaboration(
                 agent=agent,
                 document_name=document_name,
                 assumptions=doc_assumptions,
                 context=context_text,
-                dependencies=dependency_content
+                dependencies=dependency_content,
+                tracker=tracker
             )
+            
+            # Save reasoning data if document_id is provided
+            if doc_id:
+                reasoning_data = tracker.finalize()
+                self.save_reasoning_to_db(doc_id, reasoning_data)
+                if "metadata" not in result:
+                    result["metadata"] = {}
+                result["metadata"]["has_reasoning"] = True
         else:
-            # Legacy generation (no collaboration)
+            # Legacy generation (no collaboration) - creates its own tracker
             result = await self._generate_single_document(
                 document_name=document_name,
                 assumptions=doc_assumptions,
                 context=context_text,
-                all_assumptions=assumptions_text
+                all_assumptions=assumptions_text,
+                document_id=doc_id,
+                rag_metadata=rag_metadata
             )
 
         return result
@@ -704,7 +811,8 @@ class GenerationCoordinator:
         document_name: str,
         assumptions: List[Dict[str, str]],
         context: str,
-        dependencies: Dict[str, str]
+        dependencies: Dict[str, str],
+        tracker: Optional['ReasoningTracker'] = None
     ) -> Dict:
         """
         Call specialized agent with collaboration features
@@ -715,6 +823,7 @@ class GenerationCoordinator:
             assumptions: Assumptions for this document
             context: RAG context
             dependencies: Dictionary of dependency_name -> content
+            tracker: Optional ReasoningTracker for capturing token usage
 
         Returns:
             Generation result with content and citations
@@ -766,12 +875,13 @@ class GenerationCoordinator:
                 context=context
             )
         else:
-            # Fall back to base method
+            # Fall back to base method with tracker
             return await self._call_specialized_agent(
                 agent=agent,
                 document_name=document_name,
                 assumptions=assumptions,
-                context=context
+                context=context,
+                tracker=tracker
             )
 
         return result
@@ -1043,6 +1153,56 @@ Write the section content now:"""
                 unique.append(citation)
 
         return unique[:10]  # Limit to 10 citations
+
+    def save_reasoning_to_db(
+        self,
+        document_id: str,
+        reasoning_data: Dict
+    ) -> Optional[str]:
+        """
+        Save reasoning metadata to database for Chain-of-Thought display.
+
+        Args:
+            document_id: UUID of the generated document
+            reasoning_data: Dictionary from ReasoningTracker.finalize()
+
+        Returns:
+            ID of created reasoning record, or None on failure
+        """
+        try:
+            from backend.database.base import SessionLocal
+            from backend.models.reasoning import GenerationReasoning
+            import uuid
+
+            db = SessionLocal()
+            try:
+                reasoning = GenerationReasoning(
+                    document_id=uuid.UUID(document_id),
+                    agent_name=reasoning_data.get("agent_name", "Unknown"),
+                    model_used=reasoning_data.get("model_used", "claude-sonnet-4-20250514"),
+                    temperature=reasoning_data.get("temperature", 0.7),
+                    input_tokens=reasoning_data.get("input_tokens", 0),
+                    output_tokens=reasoning_data.get("output_tokens", 0),
+                    total_cost_usd=reasoning_data.get("total_cost_usd", 0.0),
+                    rag_chunks_retrieved=reasoning_data.get("rag_chunks_retrieved", 0),
+                    rag_chunk_ids=reasoning_data.get("rag_chunk_ids", []),
+                    rag_query=reasoning_data.get("rag_query"),
+                    rag_phase_filter=reasoning_data.get("rag_phase_filter"),
+                    confidence_score=reasoning_data.get("confidence_score"),
+                    generation_time_ms=reasoning_data.get("generation_time_ms", 0),
+                    reasoning_steps=reasoning_data.get("reasoning_steps", []),
+                    full_prompt=reasoning_data.get("full_prompt"),
+                    full_response=reasoning_data.get("full_response"),
+                )
+                db.add(reasoning)
+                db.commit()
+                db.refresh(reasoning)
+                return str(reasoning.id)
+            finally:
+                db.close()
+        except Exception as e:
+            print(f"[GenerationCoordinator] Failed to save reasoning: {e}")
+            return None
 
 
 # Singleton instance

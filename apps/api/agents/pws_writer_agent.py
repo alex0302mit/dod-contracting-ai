@@ -72,6 +72,7 @@ class PWSWriterAgent(BaseAgent):
             task: Dictionary with:
                 - project_info: Project information
                 - config: Optional configuration overrides
+                - reasoning_tracker: Optional ReasoningTracker for token tracking
 
         Returns:
             Dictionary with:
@@ -79,6 +80,10 @@ class PWSWriterAgent(BaseAgent):
                 - metadata: Document metadata
                 - word_count: Total word count
         """
+        # Extract reasoning tracker from task for token usage tracking
+        # Store as instance variable so helper methods can access it
+        self._current_tracker = self.get_tracker_from_task(task)
+        
         project_info = task.get('project_info', {})
         config = task.get('config', {})
         program_name = project_info.get('program_name', 'Unknown')
@@ -286,8 +291,8 @@ class PWSWriterAgent(BaseAgent):
                 section_name, project_info, guidance, rag_context
             )
         
-        # Generate content
-        content = self.call_llm(prompt, max_tokens=2000)
+        # Generate content - pass tracker for token usage tracking
+        content = self.call_llm(prompt, max_tokens=2000, tracker=self._current_tracker)
         
         return content.strip()
     
@@ -854,7 +859,7 @@ Return ONLY valid JSON, no other text.
 
 JSON:"""
                 
-                response = self.call_llm(prompt, max_tokens=1500)
+                response = self.call_llm(prompt, max_tokens=1500, tracker=self._current_tracker)
                 
                 # Extract JSON from response
                 import json
@@ -948,7 +953,7 @@ Generate a 2-3 paragraph background that covers:
 
 Write in professional government contracting language. Be specific to {program_name}."""
 
-        background = self.call_llm(prompt, max_tokens=500).strip()
+        background = self.call_llm(prompt, max_tokens=500, tracker=self._current_tracker).strip()
         return background
 
     def _generate_scope_from_project_info(self, project_info: Dict) -> Dict:
@@ -981,7 +986,7 @@ etc.
 
 Focus on specific service areas relevant to this type of system."""
 
-        functional_areas = self.call_llm(prompt_functional, max_tokens=300).strip()
+        functional_areas = self.call_llm(prompt_functional, max_tokens=300, tracker=self._current_tracker).strip()
         generated['functional_areas'] = functional_areas
 
         # Generate geographic scope
@@ -1008,7 +1013,7 @@ Provide as a bulleted list:
 
 Use realistic Government/DoD systems relevant to this type of acquisition."""
 
-        system_interfaces = self.call_llm(prompt_systems, max_tokens=200).strip()
+        system_interfaces = self.call_llm(prompt_systems, max_tokens=200, tracker=self._current_tracker).strip()
         generated['system_interfaces'] = system_interfaces
 
         return generated

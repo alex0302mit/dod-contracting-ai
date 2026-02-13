@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market Research Report - Input Form</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .field-required::after {
+            content: " *";
+            color: #ef4444;
+        }
+        .section-icon {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        .quality-indicator {
+            transition: all 0.3s ease;
+        }
+        .tooltip {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .has-tooltip:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+    <!-- Header -->
+    <div class="bg-white border-b border-slate-200 sticky top-0 z-10">
+        <div class="max-w-4xl mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-xl font-semibold text-slate-900">Market Research Report</h1>
+                    <p class="text-sm text-slate-500">FAR 10.001-10.002 Compliant Market Research</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <!-- Quality Score Indicator -->
+                    <div class="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg">
+                        <div class="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></div>
+                        <span class="text-sm font-medium text-amber-700">Input Quality: 45%</span>
+                    </div>
+                    <button class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-200">
+                        Save Draft
+                    </button>
+                    <button class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+                        Generate Report
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-4xl mx-auto px-6 py-8">
+        <!-- Quality Progress Bar -->
+        <div class="mb-8 p-4 bg-white rounded-xl border border-slate-200">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium text-slate-700">Input Completeness</span>
+                <span class="text-sm text-slate-500">7 of 15 fields completed</span>
+            </div>
+            <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full" style="width: 45%"></div>
+            </div>
+            <div class="mt-3 flex gap-2 flex-wrap">
+                <span class="px-2 py-1 bg-red-50 text-red-600 text-xs rounded-md">Missing: NAICS Code</span>
+                <span class="px-2 py-1 bg-red-50 text-red-600 text-xs rounded-md">Missing: Security Requirements</span>
+                <span class="px-2 py-1 bg-amber-50 text-amber-600 text-xs rounded-md">Recommended: Incumbent Info</span>
+            </div>
+        </div>
+
+        <!-- Section 1: Program Information -->
+        <div class="mb-6 bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center gap-3">
+                <div class="section-icon bg-blue-100 text-blue-600">📋</div>
+                <div>
+                    <h2 class="font-semibold text-slate-900">Program Information</h2>
+                    <p class="text-sm text-slate-500">Basic details about the acquisition</p>
+                </div>
+                <div class="ml-auto flex items-center gap-1">
+                    <div class="w-2 h-2 bg-green-400 rounded-full"></div>
+                    <span class="text-xs text-slate-500">3/4 complete</span>
+                </div>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5 field-required">Program Name</label>
+                        <input type="text" value="Army Logistics Management System Modernization"
+                               class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5 field-required">Estimated Value</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-2 text-slate-400">$</span>
+                            <input type="text" value="15,000,000 - 25,000,000"
+                                   class="w-full pl-7 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5 field-required">Description</label>
+                    <textarea rows="3" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                              placeholder="Describe the program objectives, scope, and key requirements...">Modernize the legacy Army Logistics Management System (ALMS) from on-premise infrastructure to a cloud-based solution. The system manages inventory tracking, supply chain visibility, and maintenance scheduling for 500,000+ assets across 200 locations.</textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5 field-required">Period of Performance</label>
+                        <select class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white">
+                            <option>Base + 4 Option Years</option>
+                            <option>Base + 2 Option Years</option>
+                            <option>Single Year</option>
+                            <option>IDIQ (5 Year Ordering Period)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Number of Users</label>
+                        <input type="text" value="15,000 active users"
+                               class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: Industry Codes -->
+        <div class="mb-6 bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center gap-3">
+                <div class="section-icon bg-purple-100 text-purple-600">🏭</div>
+                <div>
+                    <h2 class="font-semibold text-slate-900">Industry Codes</h2>
+                    <p class="text-sm text-slate-500">NAICS and PSC codes for vendor searches</p>
+                </div>
+                <div class="ml-auto flex items-center gap-1">
+                    <div class="w-2 h-2 bg-red-400 rounded-full"></div>
+                    <span class="text-xs text-red-600 font-medium">Required</span>
+                </div>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div class="flex items-start gap-2">
+                        <span class="text-amber-500 mt-0.5">⚠️</span>
+                        <div>
+                            <p class="text-sm font-medium text-amber-800">NAICS Code Required</p>
+                            <p class="text-sm text-amber-700">The correct NAICS code determines which vendors appear in market research. Wrong code = wrong vendor landscape.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="has-tooltip relative">
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5 field-required">Primary NAICS Code</label>
+                        <select class="w-full px-3 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-red-50">
+                            <option value="">Select NAICS Code...</option>
+                            <option value="541512">541512 - Computer Systems Design Services</option>
+                            <option value="541511">541511 - Custom Computer Programming</option>
+                            <option value="541519">541519 - Other Computer Related Services</option>
+                            <option value="518210">518210 - Data Processing & Hosting</option>
+                            <option value="541330">541330 - Engineering Services</option>
+                        </select>
+                        <div class="tooltip absolute left-0 top-full mt-1 p-2 bg-slate-800 text-white text-xs rounded-lg w-64 z-10">
+                            NAICS determines small business size standards and which vendors are searchable in SAM.gov
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Secondary NAICS (Optional)</label>
+                        <select class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white">
+                            <option value="">Select if applicable...</option>
+                            <option value="541512">541512 - Computer Systems Design Services</option>
+                            <option value="541511">541511 - Custom Computer Programming</option>
+                            <option value="541519">541519 - Other Computer Related Services</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">PSC Code</label>
+                    <select class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white">
+                        <option value="">Select PSC Code...</option>
+                        <option value="D302">D302 - IT and Telecom - Systems Development</option>
+                        <option value="D306">D306 - IT and Telecom - Systems Analysis</option>
+                        <option value="D307">D307 - IT and Telecom - IT Strategy</option>
+                        <option value="D310">D310 - IT and Telecom - Cyber Security</option>
+                        <option value="D399">D399 - IT and Telecom - Other</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: Incumbent Information -->
+        <div class="mb-6 bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center gap-3">
+                <div class="section-icon bg-orange-100 text-orange-600">🔄</div>
+                <div>
+                    <h2 class="font-semibold text-slate-900">Incumbent Information</h2>
+                    <p class="text-sm text-slate-500">Current contractor details (if re-compete)</p>
+                </div>
+                <div class="ml-auto">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="isRecompete" class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" onchange="toggleIncumbentFields()">
+                        <span class="text-sm text-slate-600">This is a re-compete</span>
+                    </label>
+                </div>
+            </div>
+            <div id="incumbentFields" class="p-6 space-y-4 bg-slate-50/50 hidden">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Current Contractor</label>
+                        <input type="text" placeholder="e.g., Acme Corp"
+                               class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Contract Number</label>
+                        <input type="text" placeholder="e.g., W52P1J-20-C-0042"
+                               class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Current Contract Value</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-2 text-slate-400">$</span>
+                            <input type="text" placeholder="e.g., 18,500,000"
+                                   class="w-full pl-7 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Contract End Date</label>
+                        <input type="date" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">Performance Issues / Gaps</label>
+                    <textarea rows="2" placeholder="Describe any issues with current performance that the new contract should address..."
+                              class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"></textarea>
+                    <p class="mt-1 text-xs text-slate-500">This helps shape requirements and evaluation criteria for the new contract</p>
+                </div>
+            </div>
+            <div id="incumbentPlaceholder" class="p-6 text-center text-slate-400">
+                <p class="text-sm">Check "This is a re-compete" above to add incumbent contractor details</p>
+            </div>
+        </div>
+
+        <!-- Section 4: Security & Compliance -->
+        <div class="mb-6 bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center gap-3">
+                <div class="section-icon bg-red-100 text-red-600">🔒</div>
+                <div>
+                    <h2 class="font-semibold text-slate-900">Security & Compliance</h2>
+                    <p class="text-sm text-slate-500">Clearance and certification requirements</p>
+                </div>
+                <div class="ml-auto flex items-center gap-1">
+                    <div class="w-2 h-2 bg-red-400 rounded-full"></div>
+                    <span class="text-xs text-red-600 font-medium">Critical for vendor filtering</span>
+                </div>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5 field-required">Clearance Level</label>
+                        <select class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white">
+                            <option value="">Select...</option>
+                            <option value="none">None Required</option>
+                            <option value="public_trust">Public Trust</option>
+                            <option value="secret">Secret</option>
+                            <option value="top_secret">Top Secret</option>
+                            <option value="ts_sci">TS/SCI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5 field-required">FedRAMP Level</label>
+                        <select class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white">
+                            <option value="">Select...</option>
+                            <option value="none">Not Required</option>
+                            <option value="low">FedRAMP Low</option>
+                            <option value="moderate">FedRAMP Moderate</option>
+                            <option value="high">FedRAMP High</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Impact Level</label>
+                        <select class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white">
+                            <option value="">Select...</option>
+                            <option value="il2">IL2 (Public)</option>
+                            <option value="il4">IL4 (CUI)</option>
+                            <option value="il5">IL5 (CUI + Mission Critical)</option>
+                            <option value="il6">IL6 (Secret)</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Other Certifications Required</label>
+                    <div class="flex flex-wrap gap-2">
+                        <label class="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200">
+                            <input type="checkbox" class="w-4 h-4 rounded border-slate-300 text-blue-600">
+                            <span class="text-sm">CMMC Level 2</span>
+                        </label>
+                        <label class="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200">
+                            <input type="checkbox" class="w-4 h-4 rounded border-slate-300 text-blue-600">
+                            <span class="text-sm">CMMC Level 3</span>
+                        </label>
+                        <label class="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200">
+                            <input type="checkbox" class="w-4 h-4 rounded border-slate-300 text-blue-600">
+                            <span class="text-sm">ISO 27001</span>
+                        </label>
+                        <label class="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200">
+                            <input type="checkbox" class="w-4 h-4 rounded border-slate-300 text-blue-600">
+                            <span class="text-sm">SOC 2 Type II</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 5: Competition Strategy -->
+        <div class="mb-6 bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center gap-3">
+                <div class="section-icon bg-green-100 text-green-600">🎯</div>
+                <div>
+                    <h2 class="font-semibold text-slate-900">Competition Strategy</h2>
+                    <p class="text-sm text-slate-500">Small business goals and competition approach</p>
+                </div>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Small Business Preference</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                            <input type="radio" name="sb_pref" class="w-4 h-4 text-blue-600">
+                            <div>
+                                <span class="text-sm font-medium text-slate-700">Full & Open Competition</span>
+                                <p class="text-xs text-slate-500">No small business restriction</p>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                            <input type="radio" name="sb_pref" class="w-4 h-4 text-blue-600">
+                            <div>
+                                <span class="text-sm font-medium text-slate-700">Small Business Set-Aside</span>
+                                <p class="text-xs text-slate-500">General small business</p>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 border border-blue-200 bg-blue-50 rounded-lg cursor-pointer transition-colors">
+                            <input type="radio" name="sb_pref" class="w-4 h-4 text-blue-600" checked>
+                            <div>
+                                <span class="text-sm font-medium text-slate-700">SDVOSB Set-Aside</span>
+                                <p class="text-xs text-slate-500">Service-Disabled Veteran-Owned</p>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                            <input type="radio" name="sb_pref" class="w-4 h-4 text-blue-600">
+                            <div>
+                                <span class="text-sm font-medium text-slate-700">8(a) Set-Aside</span>
+                                <p class="text-xs text-slate-500">SBA 8(a) program</p>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                            <input type="radio" name="sb_pref" class="w-4 h-4 text-blue-600">
+                            <div>
+                                <span class="text-sm font-medium text-slate-700">HUBZone Set-Aside</span>
+                                <p class="text-xs text-slate-500">Historically Underutilized Business Zone</p>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                            <input type="radio" name="sb_pref" class="w-4 h-4 text-blue-600">
+                            <div>
+                                <span class="text-sm font-medium text-slate-700">WOSB Set-Aside</span>
+                                <p class="text-xs text-slate-500">Women-Owned Small Business</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Geographic Requirements</label>
+                        <select class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white">
+                            <option value="">No geographic restriction</option>
+                            <option value="conus">CONUS Only</option>
+                            <option value="oconus">OCONUS Required</option>
+                            <option value="specific">Specific Location Required</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">On-Site Work Location</label>
+                        <input type="text" placeholder="e.g., Fort Liberty, NC"
+                               class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">Known Capable Vendors</label>
+                    <textarea rows="2" placeholder="List any vendors you know are capable (from prior RFIs, industry research, etc.)..."
+                              class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 6: Market Context -->
+        <div class="mb-6 bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center gap-3">
+                <div class="section-icon bg-indigo-100 text-indigo-600">📊</div>
+                <div>
+                    <h2 class="font-semibold text-slate-900">Market Context</h2>
+                    <p class="text-sm text-slate-500">Prior research and known market conditions</p>
+                </div>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Prior Market Research Activities</label>
+                        <div class="space-y-2">
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" class="w-4 h-4 rounded border-slate-300 text-blue-600">
+                                <span class="text-sm text-slate-700">RFI Published</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" class="w-4 h-4 rounded border-slate-300 text-blue-600">
+                                <span class="text-sm text-slate-700">Sources Sought Notice Posted</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" class="w-4 h-4 rounded border-slate-300 text-blue-600">
+                                <span class="text-sm text-slate-700">Industry Day Conducted</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" class="w-4 h-4 rounded border-slate-300 text-blue-600">
+                                <span class="text-sm text-slate-700">One-on-One Vendor Meetings</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Number of Responses (if RFI/SS)</label>
+                        <input type="number" placeholder="e.g., 12"
+                               class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">Known Market Challenges</label>
+                    <textarea rows="2" placeholder="e.g., Limited vendors with both IL5 hosting and SDVOSB certification..."
+                              class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">Additional Context / Notes</label>
+                    <textarea rows="2" placeholder="Any other information that would help generate a more accurate market research report..."
+                              class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Expected Output Preview -->
+        <div class="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
+            <h3 class="font-semibold text-slate-900 mb-2">📄 Expected Output Quality</h3>
+            <p class="text-sm text-slate-600 mb-3">Based on your inputs, here's what the generated report will include:</p>
+            <div class="grid grid-cols-3 gap-4 text-sm">
+                <div class="p-3 bg-white rounded-lg">
+                    <div class="text-slate-500 mb-1">Vendor Analysis</div>
+                    <div class="font-medium text-amber-600">⚠️ Generic</div>
+                    <div class="text-xs text-slate-500 mt-1">Add NAICS code for specific vendor counts</div>
+                </div>
+                <div class="p-3 bg-white rounded-lg">
+                    <div class="text-slate-500 mb-1">Pricing Data</div>
+                    <div class="font-medium text-green-600">✓ Good</div>
+                    <div class="text-xs text-slate-500 mt-1">Value range provided</div>
+                </div>
+                <div class="p-3 bg-white rounded-lg">
+                    <div class="text-slate-500 mb-1">Competition Strategy</div>
+                    <div class="font-medium text-green-600">✓ Specific</div>
+                    <div class="text-xs text-slate-500 mt-1">SDVOSB set-aside selected</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex justify-end gap-3">
+            <button class="px-6 py-2.5 text-slate-600 hover:text-slate-800">
+                Cancel
+            </button>
+            <button class="px-6 py-2.5 bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200">
+                Save Draft
+            </button>
+            <button class="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 flex items-center gap-2">
+                <span>Generate Market Research Report</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function toggleIncumbentFields() {
+            const checkbox = document.getElementById('isRecompete');
+            const fields = document.getElementById('incumbentFields');
+            const placeholder = document.getElementById('incumbentPlaceholder');
+
+            if (checkbox.checked) {
+                fields.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+            } else {
+                fields.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+            }
+        }
+
+        // Add interactivity for radio buttons
+        document.querySelectorAll('input[name="sb_pref"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                document.querySelectorAll('input[name="sb_pref"]').forEach(r => {
+                    r.closest('label').classList.remove('border-blue-200', 'bg-blue-50');
+                    r.closest('label').classList.add('border-slate-200');
+                });
+                if (this.checked) {
+                    this.closest('label').classList.remove('border-slate-200');
+                    this.closest('label').classList.add('border-blue-200', 'bg-blue-50');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

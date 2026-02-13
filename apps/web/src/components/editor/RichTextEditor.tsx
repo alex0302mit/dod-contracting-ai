@@ -388,7 +388,7 @@ export function RichTextEditor({
   return (
     <div
       ref={editorContainerRef}
-      className="flex flex-col h-full border rounded-lg bg-white shadow-sm relative overflow-y-auto"
+      className="flex flex-col border rounded-lg bg-white shadow-sm relative"
       data-gramm="false"
       data-gramm_editor="false"
       data-enable-grammarly="false"

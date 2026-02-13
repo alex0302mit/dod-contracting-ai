@@ -86,11 +86,16 @@ class IGCEGeneratorAgent(BaseAgent):
                 - project_info: Program details (name, org, value, period)
                 - requirements_content: PWS/SOW/SOO content
                 - config: Optional configuration (contract_type, etc.)
+                - reasoning_tracker: Optional ReasoningTracker for token tracking
         
         Returns:
             Dictionary with IGCE content and metadata
         """
         self.log("Starting IGCE generation")
+        
+        # Extract reasoning tracker from task for token usage tracking
+        # Store as instance variable so helper methods can access it
+        self._current_tracker = self.get_tracker_from_task(task)
         
         project_info = task.get('project_info', {})
         requirements_content = task.get('requirements_content', '')
@@ -243,7 +248,7 @@ Please provide:
 
 Format as JSON with keys: labor_categories, wbs_elements, cost_drivers"""
         
-        response = self.call_llm(prompt, max_tokens=2000)
+        response = self.call_llm(prompt, max_tokens=2000, tracker=self._current_tracker)
         
         # Parse response (simplified - in production, use proper JSON parsing)
         labor_categories = self._extract_labor_categories_from_response(response)
@@ -653,7 +658,7 @@ Return ONLY valid JSON, no other text.
 
 JSON:"""
                 
-                response = self.call_llm(prompt, max_tokens=1500)
+                response = self.call_llm(prompt, max_tokens=1500, tracker=self._current_tracker)
                 
                 # Extract JSON from response
                 json_match = re.search(r'\{[\s\S]*\}', response.strip())

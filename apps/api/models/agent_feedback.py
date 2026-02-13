@@ -7,7 +7,7 @@ Used to track agent performance and improve generation quality over time.
 
 from sqlalchemy import Column, String, Text, DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID  # Use PostgreSQL UUID for consistency with other models
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from backend.database.base import Base
 import uuid
 from datetime import datetime
@@ -26,7 +26,7 @@ class AgentFeedback(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
     # What was rated - UUID foreign keys to match referenced table column types
-    document_id = Column(UUID(as_uuid=True), ForeignKey("project_documents.id"), nullable=False)
+    document_id = Column(UUID(as_uuid=True), ForeignKey("project_documents.id", ondelete="CASCADE"), nullable=False)
     section_name = Column(String(255), nullable=True)  # Optional section within document
     agent_name = Column(String(255), nullable=False)  # Name of the agent that generated content
 
@@ -44,7 +44,11 @@ class AgentFeedback(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    document = relationship("ProjectDocument", backref="feedback")
+    document = relationship(
+        "ProjectDocument",
+        backref=backref("feedback", passive_deletes=True),
+        passive_deletes=True
+    )
     user = relationship("User", backref="feedback_given")
 
     def to_dict(self):

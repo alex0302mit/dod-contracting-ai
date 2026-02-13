@@ -903,6 +903,21 @@ export const documentGenerationApi = {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   },
+
+  deleteDocument: async (documentId: string): Promise<{ message: string }> => {
+    return apiRequest(`/api/documents/${documentId}`, { method: 'DELETE' });
+  },
+
+  /**
+   * Clear AI-generated content, resetting the document back to pending state.
+   * Unlike deleteDocument, this preserves the checklist entry so the document
+   * can be regenerated later. Associated artifacts (versions, lineage, reasoning,
+   * feedback) are also removed for a clean slate.
+   * @param documentId - The document whose generation should be cleared
+   */
+  clearGeneration: async (documentId: string): Promise<{ message: string; document_id: string; document_name: string }> => {
+    return apiRequest(`/api/documents/${documentId}/clear-generation`, { method: 'POST' });
+  },
 };
 
 export const stepsApi = {
@@ -2244,6 +2259,92 @@ export const versionApi = {
 };
 
 // ============================================================================
+// Reasoning API - Chain-of-Thought Display
+// ============================================================================
+
+/**
+ * Single reasoning step in the generation timeline
+ */
+export interface ReasoningStep {
+  step_type: string;
+  description: string;
+  timestamp: string;
+  duration_ms: number;
+  details?: Record<string, any>;
+}
+
+/**
+ * Complete reasoning data for a document generation
+ */
+export interface ReasoningData {
+  id: string;
+  document_id: string;
+  agent_name: string;
+  model_used: string;
+  temperature?: number;
+  input_tokens: number;
+  output_tokens: number;
+  total_cost_usd: number;
+  rag_chunks_retrieved: number;
+  rag_chunk_ids: string[];
+  rag_query?: string;
+  rag_phase_filter?: string;
+  confidence_score?: number;
+  generation_time_ms: number;
+  reasoning_steps: ReasoningStep[];
+  created_at: string;
+  // Debug fields (admin only)
+  full_prompt?: string;
+  full_response?: string;
+  // When no data exists
+  message?: string;
+  document_name?: string;
+}
+
+/**
+ * Response from reasoning history endpoint
+ */
+export interface ReasoningHistoryResponse {
+  document_id: string;
+  document_name: string;
+  total: number;
+  records: ReasoningData[];
+}
+
+/**
+ * Reasoning API - Chain-of-Thought transparency for AI document generation
+ *
+ * Provides insight into:
+ * - Token usage and cost
+ * - RAG chunks used as sources
+ * - Step-by-step reasoning timeline
+ * - Debug data for admins
+ */
+export const reasoningApi = {
+  /**
+   * Get reasoning data for a document's most recent generation
+   *
+   * @param documentId - The document ID
+   * @param includeDebug - Request full prompt/response (admin only)
+   * @returns Reasoning data or message if none available
+   */
+  get: async (documentId: string, includeDebug = false): Promise<ReasoningData> => {
+    return apiRequest(`/api/documents/${documentId}/reasoning?include_debug=${includeDebug}`);
+  },
+
+  /**
+   * Get reasoning history for all generations of a document
+   *
+   * @param documentId - The document ID
+   * @param limit - Maximum records to return (1-50)
+   * @returns List of reasoning records
+   */
+  getHistory: async (documentId: string, limit = 10): Promise<ReasoningHistoryResponse> => {
+    return apiRequest(`/api/documents/${documentId}/reasoning/history?limit=${limit}`);
+  },
+};
+
+// ============================================================================
 // Export all APIs
 // ============================================================================
 
@@ -2262,5 +2363,6 @@ export default {
   copilot: copilotApi,
   quality: qualityApi,
   version: versionApi,
+  reasoning: reasoningApi,
   createWebSocket,
 };

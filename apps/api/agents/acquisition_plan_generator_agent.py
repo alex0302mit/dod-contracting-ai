@@ -84,11 +84,16 @@ class AcquisitionPlanGeneratorAgent(BaseAgent):
                 - requirements_content: Requirements documentation
                 - market_research_results: Market research summary (optional)
                 - config: Optional configuration
+                - reasoning_tracker: Optional ReasoningTracker for token tracking
         
         Returns:
             Dictionary with Acquisition Plan content and metadata
         """
         self.log("Starting Acquisition Plan generation")
+        
+        # Extract reasoning tracker from task for token usage tracking
+        # Store as instance variable so helper methods can access it
+        self._current_tracker = self.get_tracker_from_task(task)
 
         project_info = task.get('project_info', {})
         requirements_content = task.get('requirements_content', '')

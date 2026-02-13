@@ -54,7 +54,7 @@ def init_db():
         User, ProcurementProject, ProcurementPhase, ProcurementStep,
         ProjectPermission, Notification, AuditLog,
         DocumentChecklistTemplate, ProjectDocument, DocumentUpload, DocumentApproval,
-        AgentFeedback, DocumentContentVersion
+        AgentFeedback, DocumentContentVersion, GenerationReasoning
     )
     Base.metadata.create_all(bind=engine)
     print("Database initialized successfully")
