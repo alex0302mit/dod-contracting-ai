@@ -16,11 +16,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wkhtmltopdf \
     && rm -rf /var/lib/apt/lists/*
 
-# Install CPU-only PyTorch first to avoid pulling the 2 GB CUDA variant
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
-
 COPY apps/api/requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+
+# Install all deps in one pass so pip resolves compatible versions across
+# torch, transformers, and sentence-transformers.
+# --extra-index-url provides CPU-only PyTorch wheels (smaller than CUDA).
+RUN pip install --no-cache-dir \
+    -r requirements.txt \
+    --extra-index-url https://download.pytorch.org/whl/cpu
 
 # ---------------------------------------------------------------------------
 # Stage 2: Copy application code (fast rebuild on code-only changes)
