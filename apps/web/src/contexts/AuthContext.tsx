@@ -22,7 +22,7 @@ interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name: string, role: UserRole) => Promise<void>;
+  signUp: (email: string, password: string, name: string) => Promise<{ message: string }>;
   signOut: () => Promise<void>;
   hasRole: (roles: UserRole | UserRole[]) => boolean;
   canAccessProject: (projectId: string) => Promise<boolean>;
@@ -57,10 +57,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(response.user as AuthUser);
   };
 
-  const signUp = async (email: string, password: string, name: string, role: UserRole) => {
-    await authApi.register(email, password, name, role);
-    // After registration, automatically log in
-    await signIn(email, password);
+  const signUp = async (email: string, password: string, name: string) => {
+    const response = await authApi.register(email, password, name, 'viewer');
+    return { message: response.message };
   };
 
   const signOut = async () => {

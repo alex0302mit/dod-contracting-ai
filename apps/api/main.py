@@ -337,13 +337,14 @@ def register(
             detail="Email already registered"
         )
 
-    # Create new user - always as viewer (admins upgrade roles later)
+    # Create new user - always as viewer, inactive until admin approval
     hashed_password = get_password_hash(password)
     new_user = User(
         email=email,
         name=name,
         hashed_password=hashed_password,
-        role=UserRole.VIEWER  # Always viewer - admins upgrade roles
+        role=UserRole.VIEWER,  # Always viewer - admins upgrade roles
+        is_active=False  # Pending admin approval
     )
     db.add(new_user)
     db.commit()
@@ -359,7 +360,7 @@ def register(
         changes={"email": email, "role": UserRole.VIEWER.value, "ip": request.client.host if request.client else "unknown"}
     )
 
-    return {"message": "User created successfully", "user": new_user.to_dict()}
+    return {"message": "Registration submitted. Your account is pending admin approval.", "user": new_user.to_dict()}
 
 
 @app.post("/api/auth/login", tags=["Authentication"])
@@ -430,7 +431,7 @@ def login(request: Request, email: str, password: str, db: Session = Depends(get
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account is deactivated"
+            detail="Your account is pending admin approval."
         )
 
     # Reset failed login attempts on successful login
@@ -835,6 +836,44 @@ def admin_delete_user(
     )
 
     return {"message": f"User {user.email} has been deactivated"}
+
+
+@app.put("/api/admin/users/{user_id}/activate", tags=["Admin"])
+def admin_activate_user(
+    user_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Activate a user account (Admin only).
+
+    Used to approve newly registered users whose accounts are pending approval.
+    """
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.is_active = True
+    db.commit()
+
+    log_audit_event(
+        db=db,
+        user_id=str(current_user.id),
+        action="user_activated",
+        entity_type="user",
+        entity_id=str(user_id),
+        changes={
+            "activated_by": current_user.email,
+            "activated_user_email": user.email
+        }
+    )
+
+    return {"message": f"User {user.email} has been activated", "user": user.to_dict()}
 
 
 # ============================================================================

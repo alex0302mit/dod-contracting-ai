@@ -147,11 +147,24 @@ export function AdminUserManagement() {
     try {
       await adminApi.deactivateUser(userId);
       toast.success('User deactivated successfully');
-      // Refresh the list
       fetchUsers();
     } catch (error: any) {
       console.error('Error deactivating user:', error);
       toast.error(error.message || 'Failed to deactivate user');
+    }
+  };
+
+  // Handle user activation (approve pending registration)
+  const handleActivate = async (userId: string) => {
+    try {
+      await adminApi.activateUser(userId);
+      toast.success('User approved successfully');
+      setUsers(users.map(u =>
+        u.id === userId ? { ...u, is_active: true } : u
+      ));
+    } catch (error: any) {
+      console.error('Error activating user:', error);
+      toast.error(error.message || 'Failed to approve user');
     }
   };
 
@@ -463,8 +476,8 @@ export function AdminUserManagement() {
                             Active
                           </Badge>
                         ) : (
-                          <Badge className="bg-red-100 text-red-800 border-red-200" variant="outline">
-                            Inactive
+                          <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200" variant="outline">
+                            Pending
                           </Badge>
                         )}
                       </TableCell>
@@ -472,6 +485,16 @@ export function AdminUserManagement() {
                         {user.created_at ? format(new Date(user.created_at), 'MMM d, yyyy') : 'N/A'}
                       </TableCell>
                       <TableCell className="text-right">
+                        {user.id !== currentUser?.id && !user.is_active && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-green-600 hover:text-green-700 hover:bg-green-50 mr-2"
+                            onClick={() => handleActivate(user.id)}
+                          >
+                            Approve
+                          </Button>
+                        )}
                         {user.id !== currentUser?.id && user.is_active && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -483,7 +506,7 @@ export function AdminUserManagement() {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Deactivate User</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Are you sure you want to deactivate {user.name}'s account? 
+                                  Are you sure you want to deactivate {user.name}'s account?
                                   They will no longer be able to log in.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>

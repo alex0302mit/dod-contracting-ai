@@ -222,6 +222,13 @@ export const adminApi = {
     });
   },
 
+  // Activate a user account (admin only) - approves pending registrations
+  activateUser: async (userId: string): Promise<{ message: string; user: User }> => {
+    return apiRequest(`/api/admin/users/${userId}/activate`, {
+      method: 'PUT',
+    });
+  },
+
   // Bootstrap first admin (only works if no admin exists)
   bootstrapAdmin: async (email: string, password: string, name: string): Promise<{ message: string; user: User }> => {
     const params = new URLSearchParams({ email, password, name });
