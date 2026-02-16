@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import { authApi, projectsApi } from '@/services/api';
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { authApi, projectsApi, type OrganizationMember } from '@/services/api';
 
 type UserRole = 'admin' | 'contracting_officer' | 'program_manager' | 'approver' | 'viewer';
 
@@ -16,24 +16,55 @@ interface AuthUser {
   };
   is_active: boolean;
   created_at: string;
+  organizations?: OrganizationMember[];
 }
 
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name: string) => Promise<{ message: string }>;
+  signUp: (email: string, password: string, name: string, organizationId: string) => Promise<{ message: string }>;
   signOut: () => Promise<void>;
   hasRole: (roles: UserRole | UserRole[]) => boolean;
   canAccessProject: (projectId: string) => Promise<boolean>;
   canEditProject: (projectId: string) => Promise<boolean>;
+  activeOrgId: string | null;
+  setActiveOrgId: (orgId: string | null) => void;
+  userOrganizations: OrganizationMember[];
 }
+
+const AUTH_ORG_KEY = 'aces_active_org_id';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeOrgId, setActiveOrgIdState] = useState<string | null>(
+    () => localStorage.getItem(AUTH_ORG_KEY)
+  );
+
+  // Derive organizations from user data
+  const userOrganizations = user?.organizations ?? [];
+
+  // Set active org and persist to localStorage
+  const setActiveOrgId = useCallback((orgId: string | null) => {
+    setActiveOrgIdState(orgId);
+    if (orgId) {
+      localStorage.setItem(AUTH_ORG_KEY, orgId);
+    } else {
+      localStorage.removeItem(AUTH_ORG_KEY);
+    }
+  }, []);
+
+  // Auto-select primary org when user loads
+  useEffect(() => {
+    if (user?.organizations && user.organizations.length > 0 && !activeOrgId) {
+      const primary = user.organizations.find(m => m.is_primary);
+      const orgId = primary ? primary.organization_id : user.organizations[0].organization_id;
+      setActiveOrgId(orgId);
+    }
+  }, [user, activeOrgId, setActiveOrgId]);
 
   useEffect(() => {
     // Check if user is already logged in
@@ -57,14 +88,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(response.user as AuthUser);
   };
 
-  const signUp = async (email: string, password: string, name: string) => {
-    const response = await authApi.register(email, password, name, 'viewer');
+  const signUp = async (email: string, password: string, name: string, organizationId: string) => {
+    const response = await authApi.register(email, password, name, 'viewer', organizationId);
     return { message: response.message };
   };
 
   const signOut = async () => {
     authApi.logout();
     setUser(null);
+    setActiveOrgId(null);
   };
 
   const hasRole = (roles: UserRole | UserRole[]) => {
@@ -113,6 +145,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         hasRole,
         canAccessProject,
         canEditProject,
+        activeOrgId,
+        setActiveOrgId,
+        userOrganizations,
       }}
     >
       {children}

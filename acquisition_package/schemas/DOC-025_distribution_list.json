@@ -1,0 +1,49 @@
+{
+  "document_id": "DOC-025",
+  "title": "Contract Distribution List",
+  "regulatory_references": [
+    "FAR 4.2",
+    "DFARS 204.2",
+    "PGI 204.201"
+  ],
+  "required_when": "at_contract_award",
+  "fields": {
+    "recipients": {
+      "type": "array",
+      "required": true,
+      "item_type": "object",
+      "properties": {
+        "recipient_role": {
+          "type": "string"
+        },
+        "organization": {
+          "type": "string"
+        },
+        "copies": {
+          "type": "integer"
+        },
+        "purpose": {
+          "type": "string"
+        }
+      },
+      "default_recipients": [
+        "Contractor",
+        "Contracting Officer",
+        "COR",
+        "DCMA",
+        "DCAA",
+        "Finance/DFAS",
+        "Small Business Office",
+        "Legal Counsel",
+        "Program Manager",
+        "Contract File"
+      ]
+    }
+  },
+  "validation_rules": [
+    {
+      "rule": "Must include DCMA if contract administration is delegated",
+      "severity": "error"
+    }
+  ]
+}

@@ -20,3 +20,5 @@ export { TrackerScreen } from './TrackerScreen';
 export { ApprovalsScreen } from './ApprovalsScreen';
 export { SourcesScreen } from './SourcesScreen';
 export { ExportScreen } from './ExportScreen';
+export { GenerateDocumentScreen } from './GenerateDocumentScreen';
+export { MyDocumentsScreen } from './MyDocumentsScreen';

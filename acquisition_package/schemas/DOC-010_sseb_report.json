@@ -1,0 +1,126 @@
+{
+  "document_id": "DOC-010",
+  "title": "Source Selection Evaluation Board (SSEB) Report",
+  "regulatory_references": [
+    "FAR 15.305",
+    "DFARS 215.305",
+    "DoD Source Selection Procedures"
+  ],
+  "required_when": "competitive_negotiated_acquisition",
+  "requires_human_input": true,
+  "human_input_description": "Evaluator findings, strengths, weaknesses, deficiencies, and risk assessments for each proposal",
+  "fields": {
+    "executive_summary": {
+      "solicitation_number": {
+        "type": "string",
+        "required": true,
+        "source": "DOC-008.solicitation_number"
+      },
+      "proposals_received": {
+        "type": "integer",
+        "required": true
+      },
+      "evaluation_period": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "start": {
+            "type": "date"
+          },
+          "end": {
+            "type": "date"
+          }
+        }
+      },
+      "sseb_chair": {
+        "type": "string",
+        "required": true
+      }
+    },
+    "offeror_evaluations": {
+      "type": "array",
+      "required": true,
+      "item_type": "object",
+      "properties": {
+        "offeror_name": {
+          "type": "string"
+        },
+        "factor_ratings": {
+          "type": "array",
+          "item_type": "object",
+          "properties": {
+            "factor": {
+              "type": "string"
+            },
+            "subfactor": {
+              "type": "string"
+            },
+            "rating": {
+              "type": "string"
+            },
+            "risk": {
+              "type": "string"
+            }
+          }
+        },
+        "strengths": {
+          "type": "array",
+          "item_type": "object",
+          "properties": {
+            "description": {
+              "type": "text"
+            },
+            "proposal_reference": {
+              "type": "string"
+            }
+          }
+        },
+        "weaknesses": {
+          "type": "array",
+          "item_type": "object",
+          "properties": {
+            "description": {
+              "type": "text"
+            },
+            "proposal_reference": {
+              "type": "string"
+            }
+          }
+        },
+        "deficiencies": {
+          "type": "array",
+          "item_type": "object"
+        },
+        "risks": {
+          "type": "array",
+          "item_type": "object"
+        },
+        "evaluated_price": {
+          "type": "currency"
+        },
+        "overall_narrative": {
+          "type": "text"
+        }
+      }
+    },
+    "summary_ratings_matrix": {
+      "type": "table",
+      "required": true,
+      "description": "Matrix comparing all offerors across all factors"
+    }
+  },
+  "validation_rules": [
+    {
+      "rule": "Every factor from DOC-009 must have a rating for each offeror",
+      "severity": "error"
+    },
+    {
+      "rule": "Ratings must use the exact scale defined in DOC-009",
+      "severity": "error"
+    },
+    {
+      "rule": "Each strength/weakness must reference specific proposal section",
+      "severity": "warning"
+    }
+  ]
+}

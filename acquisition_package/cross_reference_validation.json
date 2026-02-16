@@ -1,0 +1,302 @@
+{
+  "description": "Cross-reference validation rules that the orchestrator or QA agent uses to verify data consistency across the entire 28-document package. Run after each document is generated and again as a final package validation.",
+  
+  "validation_categories": {
+    "exact_match": "Values must be identical across documents",
+    "consistency": "Values must be logically consistent (not necessarily identical)",
+    "derived": "Value in target is derived from / computed using source value",
+    "reference": "Target document references source document content"
+  },
+
+  "exact_match_rules": [
+    {
+      "rule_id": "XR-001",
+      "description": "Total estimated cost must match across all documents that reference it",
+      "field": "total_estimated_cost",
+      "source": "DOC-003.total_estimated_cost",
+      "must_match": [
+        "DOC-001.estimated_total_program_cost",
+        "DOC-004.estimated_value",
+        "DOC-017.funding.amount"
+      ],
+      "tolerance": 0,
+      "severity": "error"
+    },
+    {
+      "rule_id": "XR-002",
+      "description": "Contract number must be identical everywhere it appears",
+      "field": "contract_number",
+      "source": "DOC-018.contract_number",
+      "must_match": [
+        "DOC-019.header.contract_number",
+        "DOC-020.appointment_info.contract_number",
+        "DOC-021.contract_info.contract_number",
+        "DOC-024.contract_info.contract_number",
+        "DOC-025.recipients[*].contract_reference",
+        "DOC-027.award_notice.contract_number",
+        "DOC-028.contract_summary.contract_number"
+      ],
+      "severity": "error"
+    },
+    {
+      "rule_id": "XR-003",
+      "description": "Contractor name must be identical across all post-award documents",
+      "field": "contractor_name",
+      "source": "DOC-018.contractor.name",
+      "must_match": [
+        "DOC-020.appointment_info.contractor",
+        "DOC-021.contract_info.contractor.name",
+        "DOC-024.contract_info.contractor",
+        "DOC-027.award_notice.contractor_name",
+        "DOC-028.contract_summary.contractor"
+      ],
+      "severity": "error"
+    },
+    {
+      "rule_id": "XR-004",
+      "description": "NAICS code must be consistent across all documents",
+      "field": "naics_code",
+      "source": "DOC-001.program_summary.naics_code",
+      "must_match": [
+        "DOC-008.section_a.naics_code",
+        "DOC-013.acquisition_info.naics_code",
+        "DOC-027.award_notice.naics_code"
+      ],
+      "severity": "error"
+    },
+    {
+      "rule_id": "XR-005",
+      "description": "Evaluation factors must be verbatim across SSP, evaluation criteria, and solicitation Section M",
+      "field": "evaluation_factors",
+      "source": "DOC-007.evaluation_factors",
+      "must_match": [
+        "DOC-008.section_m_evaluation.factors",
+        "DOC-009.factors[*].factor_name"
+      ],
+      "severity": "error",
+      "note": "Mismatch here is the #1 source of successful bid protests"
+    },
+    {
+      "rule_id": "XR-006",
+      "description": "Solicitation number must match across all documents",
+      "field": "solicitation_number",
+      "source": "DOC-008.section_a.solicitation_number",
+      "must_match": [
+        "DOC-010.executive_summary.solicitation_number",
+        "DOC-011.decision_summary.solicitation_number",
+        "DOC-026.header.solicitation_number",
+        "DOC-027.award_notice.solicitation_number"
+      ],
+      "severity": "error"
+    },
+    {
+      "rule_id": "XR-007",
+      "description": "Period of performance must match across all documents",
+      "field": "period_of_performance",
+      "source": "DOC-006.scope.period_of_performance",
+      "must_match": [
+        "DOC-001.program_summary.period_of_performance",
+        "DOC-008.section_f_deliveries",
+        "DOC-018.section_a.period_of_performance",
+        "DOC-020.appointment_info.period_of_performance",
+        "DOC-028.contract_summary.period_of_performance"
+      ],
+      "severity": "error"
+    }
+  ],
+
+  "consistency_rules": [
+    {
+      "rule_id": "XR-100",
+      "description": "Competition strategy must be consistent across planning and execution documents",
+      "checks": [
+        {"doc": "DOC-001", "field": "acquisition_approach.competition_strategy"},
+        {"doc": "DOC-002", "field": "recommendations.recommended_competition_strategy"},
+        {"doc": "DOC-008", "field": "section_a.set_aside_status"},
+        {"doc": "DOC-013", "field": "sb_review.recommended_set_aside"}
+      ],
+      "logic": "All documents must reflect the same competition decision",
+      "severity": "error"
+    },
+    {
+      "rule_id": "XR-101",
+      "description": "Contract type must be consistent across all documents",
+      "checks": [
+        {"doc": "DOC-001", "field": "acquisition_approach.contract_type"},
+        {"doc": "DOC-002", "field": "recommendations.recommended_contract_type"},
+        {"doc": "DOC-005", "field": "header.d_and_f_type", "note": "Must be T&M/LH D&F if contract type is T&M/LH"},
+        {"doc": "DOC-008", "field": "implied_from_clauses"},
+        {"doc": "DOC-012", "field": "header.contract_type"},
+        {"doc": "DOC-018", "field": "section_a.contract_type"}
+      ],
+      "severity": "error"
+    },
+    {
+      "rule_id": "XR-102",
+      "description": "Security classification must be consistent",
+      "checks": [
+        {"doc": "DOC-006", "field": "security_requirements.clearance_level"},
+        {"doc": "DOC-014", "field": "security_requirements.highest_classification"},
+        {"doc": "DOC-008", "field": "security_clauses_included"}
+      ],
+      "logic": "If DOC-006 specifies classified, DOC-014 must exist and classification levels must align",
+      "severity": "error"
+    },
+    {
+      "rule_id": "XR-103",
+      "description": "Small business determination must flow consistently",
+      "checks": [
+        {"doc": "DOC-002", "field": "findings.small_business_capability.can_perform"},
+        {"doc": "DOC-001", "field": "acquisition_approach.set_aside_determination"},
+        {"doc": "DOC-013", "field": "sb_review.recommended_set_aside"},
+        {"doc": "DOC-008", "field": "section_a.set_aside_status"}
+      ],
+      "logic": "If market research finds SB can perform, set-aside recommendation should follow unless documented justification exists",
+      "severity": "warning"
+    },
+    {
+      "rule_id": "XR-104",
+      "description": "Negotiated price must not exceed certified funding",
+      "checks": [
+        {"doc": "DOC-012", "field": "header.negotiated_price"},
+        {"doc": "DOC-017", "field": "funding.amount"},
+        {"doc": "DOC-018", "field": "section_a.obligation_amount"}
+      ],
+      "logic": "DOC-018.obligation_amount <= DOC-017.funding.amount AND DOC-018.total_value == DOC-012.negotiated_price",
+      "severity": "error",
+      "note": "Anti-Deficiency Act violation if obligation exceeds available funds"
+    },
+    {
+      "rule_id": "XR-105",
+      "description": "QASP surveillance items must trace to PWS tasks",
+      "checks": [
+        {"doc": "DOC-006", "field": "tasks[*].task_number"},
+        {"doc": "DOC-019", "field": "surveillance_matrix[*].pws_paragraph"}
+      ],
+      "logic": "Every task in DOC-006 should have at least one surveillance entry in DOC-019",
+      "severity": "warning"
+    },
+    {
+      "rule_id": "XR-106",
+      "description": "SSEB ratings must use the scales defined in evaluation criteria",
+      "checks": [
+        {"doc": "DOC-009", "field": "rating_definitions[*].rating"},
+        {"doc": "DOC-010", "field": "offeror_evaluations[*].factor_ratings[*].rating"}
+      ],
+      "logic": "Every rating in DOC-010 must be a valid value from DOC-009 rating definitions",
+      "severity": "error"
+    },
+    {
+      "rule_id": "XR-107",
+      "description": "COR appointment must reference correct contract and QASP",
+      "checks": [
+        {"doc": "DOC-018", "field": "contract_number"},
+        {"doc": "DOC-019", "field": "surveillance_matrix"},
+        {"doc": "DOC-020", "field": "responsibilities.surveillance"}
+      ],
+      "logic": "DOC-020 surveillance responsibilities should reference DOC-019 methods",
+      "severity": "warning"
+    }
+  ],
+
+  "conditional_existence_rules": [
+    {
+      "rule_id": "XR-200",
+      "description": "J&A must exist if competition is not full and open",
+      "condition": "DOC-001.acquisition_approach.competition_strategy != 'Full and Open'",
+      "required_document": "DOC-004",
+      "severity": "error"
+    },
+    {
+      "rule_id": "XR-201",
+      "description": "D&F must exist if contract type is T&M or LH",
+      "condition": "DOC-001.acquisition_approach.contract_type in ['T&M', 'LH']",
+      "required_document": "DOC-005",
+      "severity": "error"
+    },
+    {
+      "rule_id": "XR-202",
+      "description": "DD 254 must exist if security requirements include classified access",
+      "condition": "DOC-006.security_requirements.clearance_level not in ['None', 'UNCLASSIFIED']",
+      "required_document": "DOC-014",
+      "severity": "error"
+    },
+    {
+      "rule_id": "XR-203",
+      "description": "DD 2579 must exist for acquisitions above SAT",
+      "condition": "DOC-003.total_estimated_cost > 250000",
+      "required_document": "DOC-013",
+      "severity": "error"
+    },
+    {
+      "rule_id": "XR-204",
+      "description": "DD 1547 must exist for cost-type contracts",
+      "condition": "DOC-001.acquisition_approach.contract_type in ['CPFF','CPAF','CPIF','FPI']",
+      "required_document": "DOC-015",
+      "severity": "error"
+    },
+    {
+      "rule_id": "XR-205",
+      "description": "SB Subcontracting Plan required for large business primes above threshold",
+      "condition": "DOC-003.total_estimated_cost > 750000 AND DOC-022.contractor_info.business_size != 'small'",
+      "required_document": "DOC-024",
+      "severity": "error"
+    },
+    {
+      "rule_id": "XR-206",
+      "description": "J&A approval level must match dollar value",
+      "condition": "DOC-004 exists",
+      "check": "DOC-004.approval_chain.approving_authority matches threshold tier for DOC-004.header.estimated_value",
+      "severity": "error"
+    }
+  ],
+
+  "mathematical_validation_rules": [
+    {
+      "rule_id": "XR-300",
+      "description": "IGCE total must equal sum of cost elements",
+      "document": "DOC-003",
+      "formula": "total_estimated_cost == SUM(cost_elements[*].total)",
+      "severity": "error"
+    },
+    {
+      "rule_id": "XR-301",
+      "description": "IGCE labor cost must equal hours × rate for each category",
+      "document": "DOC-003",
+      "formula": "FOR EACH labor_detail: annual_cost == hours_per_year * hourly_rate",
+      "severity": "error"
+    },
+    {
+      "rule_id": "XR-302",
+      "description": "Profit percentage validation",
+      "document": "DOC-015",
+      "formula": "total_profit_objective.percentage == (total_profit_objective.amount / total_cost_excl_profit) * 100",
+      "severity": "error"
+    },
+    {
+      "rule_id": "XR-303",
+      "description": "SB subcontracting goals must total correctly",
+      "document": "DOC-024",
+      "formula": "EACH goal_dollars == total_subcontracting_dollars * (goal_pct / 100)",
+      "severity": "error"
+    },
+    {
+      "rule_id": "XR-304",
+      "description": "CLIN totals must sum to contract total",
+      "document": "DOC-008",
+      "formula": "SUM(section_b_clins[*].total) should approximate DOC-003.total_estimated_cost",
+      "tolerance_pct": 5,
+      "severity": "warning"
+    }
+  ],
+
+  "execution_instructions": {
+    "per_document_validation": "After each document is generated, run all rules where this document is a SOURCE. Report any warnings/errors to the orchestrator.",
+    "package_validation": "After all documents are generated, run ALL rules. Generate a validation report with pass/fail for each rule.",
+    "error_handling": {
+      "error": "BLOCK package completion. Flag to orchestrator for re-generation of affected document.",
+      "warning": "LOG and include in validation report. Allow package to proceed but flag for human review.",
+      "info": "LOG for audit trail only."
+    }
+  }
+}

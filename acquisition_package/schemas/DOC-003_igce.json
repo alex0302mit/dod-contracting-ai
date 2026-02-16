@@ -1,0 +1,212 @@
+{
+  "document_id": "DOC-003",
+  "title": "Independent Government Cost Estimate (IGCE)",
+  "regulatory_references": [
+    "FAR 15.404",
+    "DFARS 215.404",
+    "DFARS PGI 215.404"
+  ],
+  "required_when": "always",
+  "fields": {
+    "header": {
+      "program_title": {
+        "type": "string",
+        "required": true
+      },
+      "prepared_by": {
+        "type": "string",
+        "required": true
+      },
+      "date_prepared": {
+        "type": "date",
+        "required": true
+      },
+      "contracting_officer": {
+        "type": "string",
+        "required": true
+      },
+      "base_period": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "start_date": {
+            "type": "date"
+          },
+          "end_date": {
+            "type": "date"
+          }
+        }
+      },
+      "option_periods": {
+        "type": "array",
+        "required": false,
+        "item_type": "object",
+        "properties": {
+          "period_name": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "date"
+          },
+          "end_date": {
+            "type": "date"
+          }
+        }
+      }
+    },
+    "cost_elements": {
+      "type": "array",
+      "required": true,
+      "item_type": "object",
+      "properties": {
+        "element_name": {
+          "type": "enum",
+          "options": [
+            "Direct Labor",
+            "Subcontractor Costs",
+            "Materials and Supplies",
+            "Travel",
+            "Other Direct Costs",
+            "Overhead/Indirect",
+            "G&A Expense",
+            "Profit/Fee"
+          ]
+        },
+        "base_year": {
+          "type": "currency",
+          "required": true
+        },
+        "option_year_1": {
+          "type": "currency",
+          "required": false
+        },
+        "option_year_2": {
+          "type": "currency",
+          "required": false
+        },
+        "option_year_3": {
+          "type": "currency",
+          "required": false
+        },
+        "option_year_4": {
+          "type": "currency",
+          "required": false
+        },
+        "total": {
+          "type": "currency",
+          "computed": true,
+          "formula": "sum(base_year, option_years)"
+        }
+      }
+    },
+    "labor_detail": {
+      "type": "array",
+      "required": true,
+      "item_type": "object",
+      "properties": {
+        "labor_category": {
+          "type": "string"
+        },
+        "hours_per_year": {
+          "type": "number"
+        },
+        "hourly_rate": {
+          "type": "currency"
+        },
+        "rate_basis": {
+          "type": "string",
+          "description": "Source for rate: GS scale, BLS, prior contract, vendor quote"
+        },
+        "annual_cost": {
+          "type": "currency",
+          "computed": true,
+          "formula": "hours_per_year * hourly_rate"
+        }
+      }
+    },
+    "total_estimated_cost": {
+      "type": "currency",
+      "required": true,
+      "computed": true,
+      "formula": "sum(all cost_elements.total)",
+      "cross_reference": "Must be reflected in DOC-001, DOC-004, DOC-017"
+    },
+    "methodology": {
+      "estimating_method": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "Analogy",
+          "Parametric",
+          "Engineering Build-up",
+          "Catalog/Market Pricing",
+          "Expert Opinion",
+          "Hybrid"
+        ]
+      },
+      "data_sources": {
+        "type": "array",
+        "required": true,
+        "item_type": "string"
+      },
+      "labor_rate_basis": {
+        "type": "text",
+        "required": true
+      },
+      "escalation_factor": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "percentage": {
+            "type": "number"
+          },
+          "source": {
+            "type": "string"
+          }
+        }
+      },
+      "key_assumptions": {
+        "type": "array",
+        "required": true,
+        "item_type": "string",
+        "min_items": 1
+      }
+    },
+    "certification": {
+      "estimator": {
+        "type": "signature_block",
+        "required": true
+      },
+      "reviewer": {
+        "type": "signature_block",
+        "required": true
+      },
+      "cor_or_pm": {
+        "type": "signature_block",
+        "required": true
+      }
+    }
+  },
+  "validation_rules": [
+    {
+      "rule": "total_estimated_cost must equal sum of all cost_elements",
+      "severity": "error"
+    },
+    {
+      "rule": "Profit/fee percentage should be between 5-15% for most contract types",
+      "severity": "warning"
+    },
+    {
+      "rule": "If contract_type is FFP, estimate must include contractor risk premium in pricing",
+      "severity": "info"
+    },
+    {
+      "rule": "Escalation factor must be documented with source",
+      "severity": "error"
+    },
+    {
+      "rule": "At least one data source must be cited",
+      "severity": "error"
+    }
+  ]
+}

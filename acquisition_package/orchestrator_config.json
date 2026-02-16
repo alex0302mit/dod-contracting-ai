@@ -1,0 +1,188 @@
+{
+  "orchestrator_config": {
+    "name": "DoD Acquisition Package Orchestrator",
+    "version": "2.0",
+    "description": "Configuration for the master orchestrator agent that coordinates all 28 document-generating agents, manages the shared data store, resolves dependencies, and runs cross-reference validation.",
+    
+    "initialization": {
+      "required_user_inputs": {
+        "description": "Minimum information needed from the user/requirements owner to bootstrap the entire package",
+        "fields": {
+          "program_name": {"type": "string", "required": true, "example": "Next-Gen Cyber Defense Platform"},
+          "requirement_description": {"type": "text", "required": true, "example": "The organization requires a managed cybersecurity monitoring service..."},
+          "estimated_dollar_value": {"type": "currency", "required": true, "example": 5000000},
+          "service_branch": {"type": "enum", "required": true, "options": ["USMC", "USSF", "USN", "USAF"]},
+          "contracting_office": {"type": "string", "required": true},
+          "requiring_activity": {"type": "string", "required": true},
+          "desired_period_of_performance": {"type": "string", "required": true, "example": "1 base year + 4 option years"},
+          "security_level": {"type": "enum", "required": true, "options": ["Unclassified", "CUI", "Secret", "Top Secret", "TS/SCI"]},
+          "urgency": {"type": "enum", "required": false, "options": ["Routine", "Urgent", "Emergency"]}
+        }
+      },
+      "derived_parameters": {
+        "description": "Parameters the orchestrator computes from user inputs to drive conditional logic",
+        "computations": [
+          {"param": "requires_acquisition_plan", "logic": "estimated_dollar_value > 50000000"},
+          {"param": "requires_j_and_a", "logic": "Set after DOC-002 market research; True if sole source recommended"},
+          {"param": "requires_d_and_f", "logic": "Set after DOC-001 strategy; True if T&M/LH selected"},
+          {"param": "requires_dd254", "logic": "security_level not in ['Unclassified']"},
+          {"param": "requires_dd2579", "logic": "estimated_dollar_value > 250000"},
+          {"param": "requires_dd1547", "logic": "Set after DOC-001 strategy; True if cost-type contract"},
+          {"param": "requires_ssp", "logic": "Set after DOC-001 strategy; True if competitive negotiated"},
+          {"param": "requires_sb_subcontracting", "logic": "estimated_dollar_value > 750000 (evaluated after award to known contractor)"},
+          {"param": "requires_synopsis", "logic": "estimated_dollar_value > 25000"},
+          {"param": "j_and_a_approval_tier", "logic": "Based on estimated_dollar_value per FAR 6.304 thresholds"}
+        ]
+      }
+    },
+
+    "shared_data_store": {
+      "description": "Central key-value store that all agents read from and write to. This is the primary mechanism for cross-document data sharing. Each agent writes its outputs here; downstream agents read their inputs from here.",
+      "schema": {
+        "program": {
+          "name": null,
+          "description": null,
+          "service_branch": null,
+          "contracting_office": null,
+          "requiring_activity": null
+        },
+        "requirement": {
+          "pws_full_text": null,
+          "document_type": null,
+          "tasks": [],
+          "deliverables": [],
+          "performance_standards": [],
+          "labor_categories": [],
+          "security_level": null,
+          "dd254_required": null,
+          "period_of_performance": {"base": null, "options": []},
+          "place_of_performance": null
+        },
+        "market_research": {
+          "commercial_availability": null,
+          "capable_sources_count": null,
+          "small_business_capable": null,
+          "price_range": {"low": null, "high": null},
+          "recommended_approach": null,
+          "recommended_contract_type": null,
+          "recommended_competition": null,
+          "recommended_set_aside": null,
+          "naics_code": null,
+          "size_standard": null
+        },
+        "cost_estimate": {
+          "total_estimated_cost": null,
+          "cost_elements": [],
+          "labor_detail": [],
+          "methodology": null,
+          "escalation_factor": null,
+          "clin_structure": []
+        },
+        "strategy": {
+          "competition_strategy": null,
+          "contract_type": null,
+          "contract_vehicle": null,
+          "set_aside_determination": null,
+          "source_selection_methodology": null,
+          "evaluation_factors": [],
+          "ssa_name": null,
+          "risk_assessment": {}
+        },
+        "solicitation": {
+          "solicitation_number": null,
+          "issue_date": null,
+          "closing_date": null,
+          "clin_structure": [],
+          "clauses": [],
+          "evaluation_criteria": [],
+          "rating_definitions": []
+        },
+        "evaluation": {
+          "proposals_received": null,
+          "offeror_evaluations": [],
+          "summary_ratings_matrix": null,
+          "selected_offeror": null,
+          "selected_offeror_cage": null,
+          "selected_offeror_uei": null
+        },
+        "negotiation": {
+          "igce_total": null,
+          "proposed_amount": null,
+          "negotiated_amount": null,
+          "profit_objective": null,
+          "fair_reasonable_basis": null
+        },
+        "contract": {
+          "contract_number": null,
+          "award_date": null,
+          "contractor": {"name": null, "address": null, "cage_code": null, "uei": null},
+          "total_value": null,
+          "obligation_amount": null,
+          "contract_type": null,
+          "fund_cite": null,
+          "appropriation": null
+        },
+        "administration": {
+          "cor_name": null,
+          "cor_office": null,
+          "cor_certification_level": null,
+          "dcma_assignment": null,
+          "qasp_surveillance_items": [],
+          "distribution_list": []
+        }
+      },
+      "access_rules": {
+        "write": "Each agent writes ONLY to its designated section after generation",
+        "read": "Each agent reads from any section needed per its schema dependencies",
+        "lock": "Once a tier completes and downstream agents begin, upstream data is LOCKED (immutable without full re-cascade)"
+      }
+    },
+
+    "agent_registry": {
+      "description": "Maps each document to its responsible agent with configuration",
+      "agents": [
+        {"agent_id": "AGENT-001", "document": "DOC-001", "schema": "schemas/DOC-001_acquisition_strategy.json", "prompt": "prompts/DOC-001_acquisition_strategy.md", "writes_to": ["strategy"], "reads_from": ["requirement", "market_research", "cost_estimate"]},
+        {"agent_id": "AGENT-002", "document": "DOC-002", "schema": "schemas/DOC-002_market_research.json", "prompt": "prompts/DOC-002_market_research.md", "writes_to": ["market_research"], "reads_from": ["requirement"]},
+        {"agent_id": "AGENT-003", "document": "DOC-003", "schema": "schemas/DOC-003_igce.json", "prompt": "prompts/DOC-003_igce.md", "writes_to": ["cost_estimate"], "reads_from": ["requirement", "market_research"]},
+        {"agent_id": "AGENT-004", "document": "DOC-004", "schema": "schemas/DOC-004_justification_approval.json", "prompt": "prompts/DOC-004_justification_approval.md", "writes_to": [], "reads_from": ["strategy", "market_research", "cost_estimate", "requirement"], "conditional": true},
+        {"agent_id": "AGENT-005", "document": "DOC-005", "schema": "schemas/DOC-005_determination_findings.json", "prompt": "prompts/DOC-005_determination_findings.md", "writes_to": [], "reads_from": ["strategy", "requirement"], "conditional": true},
+        {"agent_id": "AGENT-006", "document": "DOC-006", "schema": "schemas/DOC-006_pws_sow_soo.json", "prompt": "prompts/DOC-006_pws_sow_soo.md", "writes_to": ["requirement"], "reads_from": ["program"]},
+        {"agent_id": "AGENT-007", "document": "DOC-007", "schema": "schemas/DOC-007_source_selection_plan.json", "prompt": "prompts/DOC-007_source_selection_plan.md", "writes_to": ["solicitation"], "reads_from": ["strategy", "requirement"], "conditional": true},
+        {"agent_id": "AGENT-008", "document": "DOC-008", "schema": "schemas/DOC-008_solicitation.json", "prompt": "prompts/DOC-008_solicitation.md", "writes_to": ["solicitation"], "reads_from": ["strategy", "cost_estimate", "requirement", "market_research"]},
+        {"agent_id": "AGENT-009", "document": "DOC-009", "schema": "schemas/DOC-009_evaluation_criteria.json", "prompt": "prompts/DOC-009_evaluation_criteria.md", "writes_to": ["solicitation"], "reads_from": ["requirement", "solicitation"]},
+        {"agent_id": "AGENT-010", "document": "DOC-010", "schema": "schemas/DOC-010_sseb_report.json", "prompt": "prompts/DOC-010_sseb_report.md", "writes_to": ["evaluation"], "reads_from": ["solicitation"], "requires_human_input": true},
+        {"agent_id": "AGENT-011", "document": "DOC-011", "schema": "schemas/DOC-011_ssdd.json", "prompt": "prompts/DOC-011_ssdd.md", "writes_to": ["evaluation"], "reads_from": ["evaluation", "solicitation"], "requires_human_input": true},
+        {"agent_id": "AGENT-012", "document": "DOC-012", "schema": "schemas/DOC-012_pnm_bcm.json", "prompt": "prompts/DOC-012_pnm_bcm.md", "writes_to": ["negotiation"], "reads_from": ["cost_estimate", "evaluation"]},
+        {"agent_id": "AGENT-013", "document": "DOC-013", "schema": "schemas/DOC-013_dd2579.json", "prompt": "prompts/DOC-013_dd2579.md", "writes_to": [], "reads_from": ["market_research", "requirement"], "conditional": true},
+        {"agent_id": "AGENT-014", "document": "DOC-014", "schema": "schemas/DOC-014_dd254.json", "prompt": "prompts/DOC-014_dd254.md", "writes_to": [], "reads_from": ["requirement"], "conditional": true},
+        {"agent_id": "AGENT-015", "document": "DOC-015", "schema": "schemas/DOC-015_dd1547.json", "prompt": "prompts/DOC-015_dd1547.md", "writes_to": ["negotiation"], "reads_from": ["cost_estimate"], "conditional": true},
+        {"agent_id": "AGENT-016", "document": "DOC-016", "schema": "schemas/DOC-016_legal_review.json", "prompt": "prompts/DOC-016_legal_review.md", "writes_to": [], "reads_from": ["strategy", "cost_estimate", "solicitation"]},
+        {"agent_id": "AGENT-017", "document": "DOC-017", "schema": "schemas/DOC-017_purchase_request.json", "prompt": "prompts/DOC-017_purchase_request.md", "writes_to": ["contract"], "reads_from": ["cost_estimate", "requirement"]},
+        {"agent_id": "AGENT-018", "document": "DOC-018", "schema": "schemas/DOC-018_contract_ucf.json", "prompt": "prompts/DOC-018_contract_ucf.md", "writes_to": ["contract"], "reads_from": ["strategy", "requirement", "solicitation", "evaluation", "negotiation"]},
+        {"agent_id": "AGENT-019", "document": "DOC-019", "schema": "schemas/DOC-019_qasp.json", "prompt": "prompts/DOC-019_qasp.md", "writes_to": ["administration"], "reads_from": ["requirement"]},
+        {"agent_id": "AGENT-020", "document": "DOC-020", "schema": "schemas/DOC-020_cor_appointment.json", "prompt": "prompts/DOC-020_cor_appointment.md", "writes_to": ["administration"], "reads_from": ["contract", "administration"]},
+        {"agent_id": "AGENT-021", "document": "DOC-021", "schema": "schemas/DOC-021_cpars_evaluation.json", "prompt": "prompts/DOC-021_cpars_evaluation.md", "writes_to": [], "reads_from": ["contract", "administration"], "requires_human_input": true},
+        {"agent_id": "AGENT-022", "document": "DOC-022", "schema": "schemas/DOC-022_responsibility_determination.json", "prompt": "prompts/DOC-022_responsibility_determination.md", "writes_to": [], "reads_from": ["evaluation"]},
+        {"agent_id": "AGENT-023", "document": "DOC-023", "schema": "schemas/DOC-023_oci_determination.json", "prompt": "prompts/DOC-023_oci_determination.md", "writes_to": [], "reads_from": ["strategy", "requirement"]},
+        {"agent_id": "AGENT-024", "document": "DOC-024", "schema": "schemas/DOC-024_sb_subcontracting_plan.json", "prompt": "prompts/DOC-024_sb_subcontracting_plan.md", "writes_to": [], "reads_from": ["contract"], "conditional": true},
+        {"agent_id": "AGENT-025", "document": "DOC-025", "schema": "schemas/DOC-025_distribution_list.json", "prompt": "prompts/DOC-025_distribution_list.md", "writes_to": ["administration"], "reads_from": ["contract", "administration"]},
+        {"agent_id": "AGENT-026", "document": "DOC-026", "schema": "schemas/DOC-026_debriefing.json", "prompt": "prompts/DOC-026_debriefing.md", "writes_to": [], "reads_from": ["solicitation", "evaluation"], "conditional": true},
+        {"agent_id": "AGENT-027", "document": "DOC-027", "schema": "schemas/DOC-027_award_notice.json", "prompt": "prompts/DOC-027_award_notice.md", "writes_to": [], "reads_from": ["contract"]},
+        {"agent_id": "AGENT-028", "document": "DOC-028", "schema": "schemas/DOC-028_admin_plan.json", "prompt": "prompts/DOC-028_admin_plan.md", "writes_to": ["administration"], "reads_from": ["contract", "administration"]}
+      ]
+    },
+
+    "execution_protocol": {
+      "step_1": "Collect required_user_inputs from user",
+      "step_2": "Compute derived_parameters",
+      "step_3": "Load dependency_graph.json and determine which conditional documents are needed",
+      "step_4": "Initialize shared_data_store with user inputs in 'program' section",
+      "step_5": "Execute Tier 1 agents (DOC-006)",
+      "step_6": "For each subsequent tier: execute all agents in parallel within the tier, wait for all to complete, run per-document validation, write outputs to shared_data_store",
+      "step_7": "At human gates (GATE-1, GATE-2): pause execution, present current package state to user, collect human inputs, resume",
+      "step_8": "After all tiers complete: run full cross_reference_validation.json rules",
+      "step_9": "Generate validation report. If any 'error' severity rules fail, flag affected documents for re-generation",
+      "step_10": "Output final document package in requested format (JSON, DOCX, PDF)"
+    }
+  }
+}

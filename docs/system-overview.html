@@ -1,0 +1,1622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ACES: AI Contracting & Evaluation System - System Documentation</title>
+<style>
+  /* =========== RESET & BASE =========== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; font-size: 16px; }
+  body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    color: #1e293b;
+    background: #f8fafc;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* =========== LAYOUT =========== */
+  .page-wrapper { display: flex; min-height: 100vh; }
+  .sidebar {
+    position: fixed; top: 0; left: 0; width: 280px; height: 100vh;
+    background: #0f172a; color: #cbd5e1; overflow-y: auto;
+    padding: 1.5rem 0; z-index: 100;
+    border-right: 1px solid #1e293b;
+  }
+  .main-content {
+    margin-left: 280px; flex: 1; min-width: 0;
+    padding: 0 2rem 4rem;
+    max-width: 1000px;
+  }
+
+  /* =========== SIDEBAR =========== */
+  .sidebar-brand {
+    padding: 0 1.5rem 1.25rem;
+    border-bottom: 1px solid #1e293b;
+    margin-bottom: 1rem;
+  }
+  .sidebar-brand h2 {
+    font-size: 1.1rem; font-weight: 700; color: #e2e8f0;
+    letter-spacing: 0.05em;
+  }
+  .sidebar-brand span { font-size: 0.7rem; color: #64748b; display: block; margin-top: 0.25rem; letter-spacing: 0.04em; text-transform: uppercase; }
+  .sidebar nav { padding: 0 0.75rem; }
+  .sidebar a {
+    display: block; padding: 0.45rem 0.75rem; margin: 1px 0;
+    color: #94a3b8; text-decoration: none; font-size: 0.82rem;
+    border-radius: 6px; transition: all 0.15s;
+  }
+  .sidebar a:hover { color: #e2e8f0; background: #1e293b; }
+  .sidebar a.active { color: #38bdf8; background: #172554; }
+  .sidebar .nav-group { margin-top: 1rem; }
+  .sidebar .nav-group-label {
+    font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em;
+    color: #475569; padding: 0 0.75rem; margin-bottom: 0.35rem; font-weight: 600;
+  }
+
+  /* =========== HERO =========== */
+  .hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0c4a6e 100%);
+    color: white; padding: 4rem 3rem; margin: 0 -2rem; position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; top: -50%; right: -20%; width: 600px; height: 600px;
+    border-radius: 50%; background: radial-gradient(circle, rgba(56,189,248,0.08) 0%, transparent 70%);
+  }
+  .hero::after {
+    content: ''; position: absolute; bottom: -40%; left: -10%; width: 500px; height: 500px;
+    border-radius: 50%; background: radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 70%);
+  }
+  .hero h1 { font-size: 2.5rem; font-weight: 800; margin-bottom: 0.5rem; position: relative; z-index: 1; letter-spacing: -0.02em; }
+  .hero h1 .accent { color: #38bdf8; }
+  .hero .tagline { font-size: 1.1rem; color: #94a3b8; max-width: 650px; position: relative; z-index: 1; }
+  .hero .version-badge {
+    display: inline-block; background: rgba(56,189,248,0.15); color: #38bdf8;
+    padding: 0.2rem 0.75rem; border-radius: 100px; font-size: 0.75rem;
+    margin-bottom: 1rem; font-weight: 600; border: 1px solid rgba(56,189,248,0.2);
+  }
+
+  /* =========== SECTIONS =========== */
+  section { padding: 2.5rem 0; border-bottom: 1px solid #e2e8f0; }
+  section:last-child { border-bottom: none; }
+  h2.section-title {
+    font-size: 1.6rem; font-weight: 700; color: #0f172a;
+    margin-bottom: 1rem; padding-bottom: 0.5rem;
+    border-bottom: 3px solid #0ea5e9;
+    display: inline-block;
+  }
+  h3 { font-size: 1.15rem; font-weight: 600; color: #1e293b; margin: 1.5rem 0 0.75rem; }
+  h4 { font-size: 0.95rem; font-weight: 600; color: #334155; margin: 1rem 0 0.5rem; }
+  p { margin-bottom: 0.75rem; color: #475569; }
+  .lead { font-size: 1.05rem; color: #334155; margin-bottom: 1.25rem; }
+
+  /* =========== TABLES =========== */
+  table {
+    width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem;
+    font-size: 0.85rem;
+  }
+  th {
+    background: #0f172a; color: #e2e8f0; padding: 0.65rem 0.9rem;
+    text-align: left; font-weight: 600; font-size: 0.78rem;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  td { padding: 0.55rem 0.9rem; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+  tr:hover td { background: #f1f5f9; }
+  .mono { font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace; font-size: 0.8rem; }
+
+  /* =========== ARCH DIAGRAM =========== */
+  .arch-diagram {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1.5rem;
+    margin: 1.5rem 0;
+    position: relative;
+  }
+  .arch-box {
+    background: white; border: 2px solid #e2e8f0; border-radius: 12px;
+    padding: 1.25rem; text-align: center; position: relative;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .arch-box:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+  .arch-box .icon { font-size: 1.8rem; margin-bottom: 0.4rem; }
+  .arch-box .label { font-weight: 700; font-size: 0.9rem; color: #0f172a; }
+  .arch-box .tech { font-size: 0.75rem; color: #64748b; margin-top: 0.25rem; }
+  .arch-box.frontend { border-color: #6366f1; border-top: 4px solid #6366f1; }
+  .arch-box.backend { border-color: #0ea5e9; border-top: 4px solid #0ea5e9; }
+  .arch-box.database { border-color: #10b981; border-top: 4px solid #10b981; }
+  .arch-box.ai { border-color: #f59e0b; border-top: 4px solid #f59e0b; }
+  .arch-box.vector { border-color: #8b5cf6; border-top: 4px solid #8b5cf6; }
+  .arch-box.cache { border-color: #ef4444; border-top: 4px solid #ef4444; }
+  .arch-connectors {
+    display: flex; justify-content: center; align-items: center;
+    padding: 0.5rem 0; gap: 3rem;
+  }
+  .connector {
+    width: 60px; height: 2px; background: #94a3b8; position: relative;
+  }
+  .connector::after {
+    content: ''; position: absolute; right: -4px; top: -4px;
+    border: 5px solid transparent; border-left: 6px solid #94a3b8;
+  }
+  .connector.bidir::before {
+    content: ''; position: absolute; left: -4px; top: -4px;
+    border: 5px solid transparent; border-right: 6px solid #94a3b8;
+  }
+
+  /* =========== AGENT CARDS =========== */
+  .agent-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin: 1rem 0; }
+  .agent-card {
+    background: white; border: 1px solid #e2e8f0; border-radius: 8px;
+    padding: 0.75rem 1rem; font-size: 0.82rem;
+  }
+  .agent-card .agent-name { font-weight: 600; color: #0f172a; font-size: 0.85rem; }
+  .agent-card .agent-desc { color: #64748b; margin-top: 0.15rem; font-size: 0.78rem; }
+  .agent-category {
+    background: #0f172a; color: #38bdf8; padding: 0.45rem 1rem;
+    border-radius: 8px 8px 0 0; font-size: 0.78rem; font-weight: 600;
+    letter-spacing: 0.03em; margin-top: 1.25rem;
+  }
+  .agent-category-grid {
+    border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;
+    background: white; padding: 0.75rem;
+  }
+
+  /* =========== FLOW STEPS =========== */
+  .flow-steps { margin: 1.5rem 0; }
+  .flow-step {
+    display: flex; gap: 1rem; margin-bottom: 0.75rem; align-items: flex-start;
+  }
+  .flow-num {
+    width: 32px; height: 32px; border-radius: 50%; background: #0ea5e9;
+    color: white; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.85rem; flex-shrink: 0;
+  }
+  .flow-content { flex: 1; padding-top: 0.2rem; }
+  .flow-content strong { color: #0f172a; }
+  .flow-content p { margin: 0.15rem 0 0; font-size: 0.85rem; color: #64748b; }
+  .flow-arrow {
+    width: 2px; height: 16px; background: #cbd5e1; margin: 0 0 0 15px;
+  }
+
+  /* =========== PHASE TIMELINE =========== */
+  .phase-timeline { display: flex; gap: 0; margin: 1.5rem 0; overflow-x: auto; }
+  .phase-block {
+    flex: 1; min-width: 220px; border: 2px solid #e2e8f0; padding: 1rem;
+    position: relative; background: white;
+  }
+  .phase-block:first-child { border-radius: 12px 0 0 12px; }
+  .phase-block:last-child { border-radius: 0 12px 12px 0; }
+  .phase-block:not(:last-child)::after {
+    content: ''; position: absolute; right: -12px; top: 50%; transform: translateY(-50%);
+    width: 0; height: 0; border: 10px solid transparent; border-left: 12px solid #0ea5e9;
+    z-index: 1;
+  }
+  .phase-block .phase-num {
+    font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: #64748b; font-weight: 600; margin-bottom: 0.25rem;
+  }
+  .phase-block .phase-name { font-weight: 700; color: #0f172a; font-size: 0.95rem; margin-bottom: 0.5rem; }
+  .phase-block ul { list-style: none; padding: 0; }
+  .phase-block li {
+    font-size: 0.78rem; color: #475569; padding: 0.15rem 0;
+    padding-left: 1rem; position: relative;
+  }
+  .phase-block li::before {
+    content: ''; position: absolute; left: 0; top: 0.5rem;
+    width: 6px; height: 6px; border-radius: 50%; background: #0ea5e9;
+  }
+  .phase-block li.optional::before { background: #94a3b8; border: 1px solid #94a3b8; background: transparent; }
+  .phase-block.phase-1 { border-top: 4px solid #f59e0b; }
+  .phase-block.phase-2 { border-top: 4px solid #0ea5e9; }
+  .phase-block.phase-3 { border-top: 4px solid #8b5cf6; }
+  .phase-block.phase-4 { border-top: 4px solid #10b981; }
+
+  /* =========== COLLAPSIBLE =========== */
+  details { margin: 0.5rem 0; }
+  details summary {
+    cursor: pointer; padding: 0.6rem 1rem; background: #f1f5f9;
+    border: 1px solid #e2e8f0; border-radius: 8px; font-weight: 600;
+    font-size: 0.88rem; color: #1e293b; list-style: none;
+    display: flex; align-items: center; gap: 0.5rem;
+    transition: background 0.15s;
+  }
+  details summary:hover { background: #e2e8f0; }
+  details summary::before { content: '\25B6'; font-size: 0.6rem; transition: transform 0.2s; color: #64748b; }
+  details[open] summary::before { transform: rotate(90deg); }
+  details[open] summary { border-radius: 8px 8px 0 0; background: #0f172a; color: #e2e8f0; border-color: #0f172a; }
+  details[open] summary::before { color: #38bdf8; }
+  details .details-content {
+    border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;
+    padding: 1rem; background: white;
+  }
+
+  /* =========== ENDPOINT LIST =========== */
+  .endpoint {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.35rem 0; font-size: 0.82rem; border-bottom: 1px solid #f1f5f9;
+  }
+  .endpoint:last-child { border-bottom: none; }
+  .method {
+    display: inline-block; padding: 0.1rem 0.4rem; border-radius: 4px;
+    font-size: 0.7rem; font-weight: 700; min-width: 52px; text-align: center;
+    font-family: 'SF Mono', monospace;
+  }
+  .method.get { background: #dcfce7; color: #166534; }
+  .method.post { background: #dbeafe; color: #1e40af; }
+  .method.put { background: #fef3c7; color: #92400e; }
+  .method.patch { background: #fef3c7; color: #92400e; }
+  .method.delete { background: #fee2e2; color: #991b1b; }
+  .method.ws { background: #ede9fe; color: #5b21b6; }
+  .endpoint .path { font-family: 'SF Mono', monospace; font-size: 0.78rem; color: #334155; }
+  .endpoint .desc { color: #94a3b8; font-size: 0.75rem; margin-left: auto; }
+
+  /* =========== CODE BLOCKS =========== */
+  code, .code {
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    background: #f1f5f9; padding: 0.15rem 0.4rem; border-radius: 4px;
+    font-size: 0.82rem; color: #0f172a;
+  }
+  pre {
+    background: #0f172a; color: #e2e8f0; padding: 1.25rem;
+    border-radius: 10px; overflow-x: auto; font-size: 0.82rem;
+    line-height: 1.6; margin: 1rem 0;
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+  .cmd { color: #38bdf8; }
+  .comment { color: #64748b; }
+  .string { color: #a5f3fc; }
+
+  /* =========== BADGES & PILLS =========== */
+  .badge {
+    display: inline-block; padding: 0.15rem 0.5rem; border-radius: 100px;
+    font-size: 0.7rem; font-weight: 600;
+  }
+  .badge.required { background: #fee2e2; color: #991b1b; }
+  .badge.optional { background: #f1f5f9; color: #64748b; }
+  .badge.role { background: #ede9fe; color: #5b21b6; }
+
+  /* =========== CARD GRID =========== */
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin: 1rem 0; }
+  .card {
+    background: white; border: 1px solid #e2e8f0; border-radius: 10px;
+    padding: 1.25rem; transition: box-shadow 0.2s;
+  }
+  .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+  .card .card-title { font-weight: 700; color: #0f172a; margin-bottom: 0.35rem; font-size: 0.9rem; }
+  .card .card-text { color: #64748b; font-size: 0.82rem; }
+
+  /* =========== RESPONSIVE =========== */
+  @media (max-width: 900px) {
+    .sidebar { display: none; }
+    .main-content { margin-left: 0; padding: 0 1rem 3rem; max-width: 100%; }
+    .hero { padding: 2.5rem 1.5rem; margin: 0 -1rem; }
+    .hero h1 { font-size: 1.8rem; }
+    .arch-diagram { grid-template-columns: 1fr 1fr; }
+    .agent-grid { grid-template-columns: 1fr; }
+    .phase-timeline { flex-direction: column; }
+    .phase-block { border-radius: 8px !important; }
+    .phase-block:not(:last-child)::after { display: none; }
+  }
+
+  /* =========== SCROLLBAR =========== */
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+
+  /* =========== MISC =========== */
+  .divider { height: 1px; background: #e2e8f0; margin: 1.5rem 0; }
+  .text-muted { color: #94a3b8; }
+  .text-sm { font-size: 0.82rem; }
+  .mt-1 { margin-top: 0.5rem; }
+  .mt-2 { margin-top: 1rem; }
+  .mb-1 { margin-bottom: 0.5rem; }
+  .flex-gap { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+  /* ER Diagram */
+  .er-diagram { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1rem 0; }
+  .er-entity {
+    background: white; border: 2px solid #e2e8f0; border-radius: 8px; overflow: hidden;
+    font-size: 0.78rem;
+  }
+  .er-entity .er-header {
+    background: #0f172a; color: #38bdf8; padding: 0.5rem 0.75rem;
+    font-weight: 700; font-size: 0.82rem;
+  }
+  .er-entity .er-fields { padding: 0.5rem 0.75rem; }
+  .er-entity .er-field { padding: 0.15rem 0; color: #475569; display: flex; justify-content: space-between; }
+  .er-entity .er-field .er-type { color: #94a3b8; font-family: monospace; font-size: 0.72rem; }
+  .er-entity .er-field.pk { color: #0ea5e9; font-weight: 600; }
+  .er-entity .er-field.fk { color: #8b5cf6; }
+  @media (max-width: 900px) { .er-diagram { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 600px) { .er-diagram { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- SIDEBAR NAVIGATION -->
+<!-- ============================================================ -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <h2>ACES</h2>
+    <span>System Documentation v1.0</span>
+  </div>
+  <nav>
+    <a href="#overview">System Overview</a>
+    <a href="#architecture">Architecture</a>
+    <a href="#tech-stack">Tech Stack</a>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Core Systems</div>
+      <a href="#agents">The 44 Agents</a>
+      <a href="#generation-flow">Document Generation Flow</a>
+      <a href="#phases">Procurement Phases</a>
+      <a href="#rag">RAG Knowledge Base</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Platform</div>
+      <a href="#multi-tenancy">Organizations &amp; Multi-Tenancy</a>
+      <a href="#database">Database Models</a>
+      <a href="#api">API Endpoints</a>
+      <a href="#frontend">Frontend Architecture</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Operations</div>
+      <a href="#security">Security &amp; Compliance</a>
+      <a href="#quickstart">Quick Start</a>
+    </div>
+  </nav>
+</aside>
+
+<!-- ============================================================ -->
+<!-- MAIN CONTENT -->
+<!-- ============================================================ -->
+<div class="main-content">
+
+<!-- HERO -->
+<div class="hero" id="top">
+  <div class="version-badge">v1.0 &mdash; Full-Stack AI Platform</div>
+  <h1><span class="accent">ACES:</span> AI Contracting &amp; Evaluation System</h1>
+  <p class="tagline">
+    An AI-powered platform that automates DoD acquisition document generation using 44 specialized agents,
+    RAG-based context retrieval, multi-phase procurement workflows, and real-time collaboration.
+  </p>
+</div>
+
+<!-- ============================================================ -->
+<!-- 1. SYSTEM OVERVIEW -->
+<!-- ============================================================ -->
+<section id="overview">
+  <h2 class="section-title">System Overview</h2>
+  <p class="lead">
+    ACES transforms the traditionally manual, error-prone DoD procurement document lifecycle into an
+    AI-assisted, compliance-validated workflow. From market research through contract award, the system
+    guides contracting officers through each phase with intelligent document generation, quality assurance,
+    and approval routing.
+  </p>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title">44 Specialized Agents</div>
+      <div class="card-text">Purpose-built AI agents for every procurement document type &mdash; from Market Research Reports to SF-33 forms, each trained on FAR/DFARS regulations.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">RAG Knowledge Base</div>
+      <div class="card-text">Upload prior contracts, regulations, and strategy documents. FAISS-indexed vectors provide contextual retrieval during generation with full document lineage.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Phase-Gated Workflow</div>
+      <div class="card-text">Three-phase procurement lifecycle (Pre-Solicitation, Solicitation, Post-Solicitation) with gate validations, approval workflows, and transition controls.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Real-Time Collaboration</div>
+      <div class="card-text">WebSocket-powered live updates for document generation progress, multi-user editing, and notification broadcasting across project teams.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Multi-Tenant Organizations</div>
+      <div class="card-text">Hierarchical organization structure with materialized path queries, role-based membership, and cross-organization project sharing.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Compliance &amp; Audit</div>
+      <div class="card-text">NIST 800-53 security headers, complete audit logging, document lineage tracking, and approval chain records for DoD compliance requirements.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 2. ARCHITECTURE -->
+<!-- ============================================================ -->
+<section id="architecture">
+  <h2 class="section-title">Architecture</h2>
+  <p class="lead">ACES follows a modern three-tier architecture with an AI orchestration layer connecting the frontend, backend, and intelligence services.</p>
+
+  <div class="arch-diagram">
+    <div class="arch-box frontend">
+      <div class="icon">&#9881;</div>
+      <div class="label">Frontend</div>
+      <div class="tech">React 18 + TypeScript</div>
+      <div class="tech">Vite, Tailwind CSS, shadcn/ui</div>
+      <div class="tech">Port 5173</div>
+    </div>
+    <div class="arch-box backend">
+      <div class="icon">&#9881;</div>
+      <div class="label">Backend API</div>
+      <div class="tech">FastAPI + Python 3.9+</div>
+      <div class="tech">SQLAlchemy ORM, Pydantic</div>
+      <div class="tech">Port 8000</div>
+    </div>
+    <div class="arch-box ai">
+      <div class="icon">&#10024;</div>
+      <div class="label">AI Engine</div>
+      <div class="tech">Claude claude-sonnet-4-20250514</div>
+      <div class="tech">44 Specialized Agents</div>
+      <div class="tech">Quality &amp; Compliance Checks</div>
+    </div>
+  </div>
+
+  <div class="arch-diagram" style="grid-template-columns: 1fr 1fr 1fr;">
+    <div class="arch-box database">
+      <div class="icon">&#128451;</div>
+      <div class="label">Database</div>
+      <div class="tech">PostgreSQL / SQLite</div>
+      <div class="tech">12+ Tables, UUID PKs</div>
+    </div>
+    <div class="arch-box vector">
+      <div class="icon">&#128270;</div>
+      <div class="label">Vector Store</div>
+      <div class="tech">FAISS (CPU-based)</div>
+      <div class="tech">Docling PDF Processing</div>
+    </div>
+    <div class="arch-box cache">
+      <div class="icon">&#9889;</div>
+      <div class="label">Cache Layer</div>
+      <div class="tech">Redis (optional)</div>
+      <div class="tech">Cache Invalidation Service</div>
+    </div>
+  </div>
+
+  <h3>Data Flow</h3>
+  <p class="text-sm">
+    <strong>Frontend</strong> &harr; REST API / WebSocket &harr; <strong>Backend</strong> &harr;
+    Agent Router &harr; <strong>AI Agents</strong> &harr; Claude API<br>
+    <strong>Backend</strong> &harr; SQLAlchemy ORM &harr; <strong>Database</strong><br>
+    <strong>AI Agents</strong> &harr; RAG Service &harr; <strong>FAISS Vector Store</strong>
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<!-- 3. TECH STACK -->
+<!-- ============================================================ -->
+<section id="tech-stack">
+  <h2 class="section-title">Tech Stack</h2>
+  <table>
+    <thead>
+      <tr><th>Layer</th><th>Technology</th><th>Purpose</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Backend</strong></td><td>FastAPI 0.104.1, Python 3.9+</td><td>REST API, WebSocket server, async request handling</td></tr>
+      <tr><td><strong>ORM</strong></td><td>SQLAlchemy</td><td>Database abstraction, model definitions, relationships</td></tr>
+      <tr><td><strong>Database</strong></td><td>PostgreSQL / SQLite</td><td>Persistent storage with UUID primary keys</td></tr>
+      <tr><td><strong>Cache</strong></td><td>Redis</td><td>Response caching, cache invalidation pub/sub</td></tr>
+      <tr><td><strong>AI / LLM</strong></td><td>Anthropic Claude (claude-sonnet-4-20250514)</td><td>Document generation, quality analysis, compliance</td></tr>
+      <tr><td><strong>Vector DB</strong></td><td>FAISS (CPU)</td><td>RAG embeddings, similarity search</td></tr>
+      <tr><td><strong>Doc Processing</strong></td><td>Docling</td><td>PDF/document parsing and chunking</td></tr>
+      <tr><td><strong>Frontend</strong></td><td>React 18.3.1, TypeScript</td><td>SPA with component-based architecture</td></tr>
+      <tr><td><strong>Build Tool</strong></td><td>Vite</td><td>Fast HMR, ESBuild bundling</td></tr>
+      <tr><td><strong>Styling</strong></td><td>Tailwind CSS</td><td>Utility-first CSS framework</td></tr>
+      <tr><td><strong>UI Components</strong></td><td>shadcn/ui, Radix UI</td><td>Accessible, headless component primitives</td></tr>
+      <tr><td><strong>Rich Editor</strong></td><td>Tiptap</td><td>WYSIWYG document editing</td></tr>
+      <tr><td><strong>Auth</strong></td><td>JWT (python-jose), PBKDF2</td><td>Token-based auth, password hashing</td></tr>
+      <tr><td><strong>Rate Limiting</strong></td><td>SlowAPI</td><td>Request rate limiting per IP</td></tr>
+      <tr><td><strong>Real-time</strong></td><td>WebSocket</td><td>Live generation progress, collaboration updates</td></tr>
+      <tr><td><strong>Export</strong></td><td>PDF / DOCX / JSON</td><td>Multi-format document export</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============================================================ -->
+<!-- 4. THE 44 AGENTS -->
+<!-- ============================================================ -->
+<section id="agents">
+  <h2 class="section-title">The 44 Agents</h2>
+  <p class="lead">
+    Each agent inherits from <code>BaseAgent</code> and implements <code>generate()</code> and <code>refine()</code> methods.
+    The Agent Router dispatches documents to the correct agent based on pattern matching in <code>document_agent_mapping.yaml</code>.
+  </p>
+
+  <!-- Pre-Solicitation -->
+  <div class="agent-category">Pre-Solicitation Agents (7)</div>
+  <div class="agent-category-grid">
+    <div class="agent-grid">
+      <div class="agent-card">
+        <div class="agent-name">MarketResearchReportGeneratorAgent</div>
+        <div class="agent-desc">Generates comprehensive market research reports analyzing industry capabilities, pricing, and competition</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">AcquisitionPlanGeneratorAgent</div>
+        <div class="agent-desc">Creates acquisition strategy plans with contracting approach, milestones, and risk assessment</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">SourcesSoughtGeneratorAgent</div>
+        <div class="agent-desc">Drafts Sources Sought / RFI notices for market research and vendor identification</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">IGCEGeneratorAgent</div>
+        <div class="agent-desc">Produces Independent Government Cost Estimates with line-item pricing and methodology</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">IndustryDayGeneratorAgent</div>
+        <div class="agent-desc">Creates industry day presentations, agendas, and follow-up documentation</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">RFIGeneratorAgent</div>
+        <div class="agent-desc">Generates Request for Information documents for vendor capability assessment</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">PreSolicitationNoticeGeneratorAgent</div>
+        <div class="agent-desc">Creates pre-solicitation notice announcements for FedBizOpps / SAM.gov</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RFP Section Generators -->
+  <div class="agent-category">RFP Section Generators (6)</div>
+  <div class="agent-category-grid">
+    <div class="agent-grid">
+      <div class="agent-card">
+        <div class="agent-name">SectionBGeneratorAgent</div>
+        <div class="agent-desc">Section B &mdash; Supplies/Services & Prices: CLINs, pricing structure, option periods</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">SectionHGeneratorAgent</div>
+        <div class="agent-desc">Section H &mdash; Special Contract Requirements: unique project-specific clauses</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">SectionIGeneratorAgent</div>
+        <div class="agent-desc">Section I &mdash; Contract Clauses: FAR/DFARS clause incorporation by reference</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">SectionKGeneratorAgent</div>
+        <div class="agent-desc">Section K &mdash; Representations & Certifications: offeror attestation requirements</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">SectionLGeneratorAgent</div>
+        <div class="agent-desc">Section L &mdash; Instructions to Offerors: proposal submission requirements and format</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">SectionMGeneratorAgent</div>
+        <div class="agent-desc">Section M &mdash; Evaluation Factors: evaluation criteria, weights, and methodology</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Work Statement Agents -->
+  <div class="agent-category">Work Statement Agents (6)</div>
+  <div class="agent-category-grid">
+    <div class="agent-grid">
+      <div class="agent-card">
+        <div class="agent-name">PWSWriterAgent</div>
+        <div class="agent-desc">Writes Performance Work Statements with measurable performance standards</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">SOWWriterAgent</div>
+        <div class="agent-desc">Writes Statements of Work with detailed task descriptions and deliverables</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">SOOWriterAgent</div>
+        <div class="agent-desc">Writes Statements of Objectives with outcomes-based requirements</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">PWSOrchestratorAgent</div>
+        <div class="agent-desc">Orchestrates multi-section PWS generation with cross-reference validation</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">SOWOrchestratorAgent</div>
+        <div class="agent-desc">Orchestrates multi-section SOW generation with dependency coordination</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">SOOOrchestratorAgent</div>
+        <div class="agent-desc">Orchestrates multi-section SOO generation with objective alignment</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Post-Solicitation Agents -->
+  <div class="agent-category">Post-Solicitation Agents (6)</div>
+  <div class="agent-category-grid">
+    <div class="agent-grid">
+      <div class="agent-card">
+        <div class="agent-name">SourceSelectionPlanGeneratorAgent</div>
+        <div class="agent-desc">Creates source selection plans with evaluation methodology and panel structure</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">EvaluationScorecardGeneratorAgent</div>
+        <div class="agent-desc">Generates evaluation scorecards with rating criteria and scoring rubrics</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">SSDDGeneratorAgent</div>
+        <div class="agent-desc">Source Selection Decision Document with comparative analysis and award rationale</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">AwardNotificationGeneratorAgent</div>
+        <div class="agent-desc">Creates award notification letters for successful and unsuccessful offerors</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">DebriefingGeneratorAgent</div>
+        <div class="agent-desc">Generates debriefing documents per FAR 15.506 requirements</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">AmendmentGeneratorAgent</div>
+        <div class="agent-desc">Creates solicitation amendments with change tracking and rationale</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quality & Orchestration -->
+  <div class="agent-category">Quality &amp; Orchestration Agents (10)</div>
+  <div class="agent-category-grid">
+    <div class="agent-grid">
+      <div class="agent-card">
+        <div class="agent-name">QualityAgent</div>
+        <div class="agent-desc">FAR/DFARS compliance checking, hallucination detection, vague language identification</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">RefinementAgent</div>
+        <div class="agent-desc">Iterative document improvement based on quality feedback</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">QAManagerAgent</div>
+        <div class="agent-desc">Quality assurance manager coordinating multi-agent quality checks</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">QASPGeneratorAgent</div>
+        <div class="agent-desc">Quality Assurance Surveillance Plans with performance metrics</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">RFPOrchestratorAgent</div>
+        <div class="agent-desc">Orchestrates full RFP package assembly across all sections</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">PreSolicitationOrchestrator</div>
+        <div class="agent-desc">Coordinates all pre-solicitation document generation</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">SolicitationPackageOrchestrator</div>
+        <div class="agent-desc">Manages the full solicitation package assembly workflow</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">PostSolicitationOrchestrator</div>
+        <div class="agent-desc">Coordinates post-solicitation evaluation and award documents</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">ResearchAgent</div>
+        <div class="agent-desc">Web-enabled research using Tavily for market data and regulation lookups</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">ReportWriterAgent</div>
+        <div class="agent-desc">General-purpose report writer for custom document formats</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Form Generators -->
+  <div class="agent-category">Standard Form Generators (4)</div>
+  <div class="agent-category-grid">
+    <div class="agent-grid">
+      <div class="agent-card">
+        <div class="agent-name">SF26GeneratorAgent</div>
+        <div class="agent-desc">SF-26 Award/Contract Form &mdash; official contract award documentation</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">SF33GeneratorAgent</div>
+        <div class="agent-desc">SF-33 Solicitation, Offer and Award &mdash; combined solicitation form</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">PPQGeneratorAgent</div>
+        <div class="agent-desc">Past Performance Questionnaire for reference evaluation</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">RFPWriterAgent</div>
+        <div class="agent-desc">Full RFP document writer for comprehensive solicitation drafts</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Orchestrator (main) -->
+  <div class="agent-category">Master Orchestrator (1)</div>
+  <div class="agent-category-grid">
+    <div class="agent-grid">
+      <div class="agent-card">
+        <div class="agent-name">Orchestrator</div>
+        <div class="agent-desc">Top-level orchestrator that coordinates multi-agent workflows and manages document generation pipelines across phases</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 5. DOCUMENT GENERATION FLOW -->
+<!-- ============================================================ -->
+<section id="generation-flow">
+  <h2 class="section-title">Document Generation Flow</h2>
+  <p class="lead">End-to-end workflow from user selection to generated, quality-checked document stored with full lineage.</p>
+
+  <div class="flow-steps">
+    <div class="flow-step">
+      <div class="flow-num">1</div>
+      <div class="flow-content">
+        <strong>User Selection</strong>
+        <p>User selects documents to generate from the project dashboard. Can select individual documents or batch-generate an entire phase.</p>
+      </div>
+    </div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step">
+      <div class="flow-num">2</div>
+      <div class="flow-content">
+        <strong>Phase Detection</strong>
+        <p>The <code>PhaseDetector</code> analyzes the document selection to determine the procurement phase with confidence scoring and validates phase requirements.</p>
+      </div>
+    </div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step">
+      <div class="flow-num">3</div>
+      <div class="flow-content">
+        <strong>Dependency Resolution</strong>
+        <p>The <code>DependencyGraph</code> service resolves document dependencies (e.g., IGCE requires Market Research) and determines optimal generation order.</p>
+      </div>
+    </div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step">
+      <div class="flow-num">4</div>
+      <div class="flow-content">
+        <strong>Agent Routing</strong>
+        <p>The <code>AgentRouter</code> dispatches each document to its specialized agent using pattern matching from <code>document_agent_mapping.yaml</code> (385+ lines).</p>
+      </div>
+    </div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step">
+      <div class="flow-num">5</div>
+      <div class="flow-content">
+        <strong>RAG Context Retrieval</strong>
+        <p>Agents query the FAISS vector store via <code>RAGService</code> for relevant context from uploaded knowledge documents. Chunk IDs are recorded for lineage.</p>
+      </div>
+    </div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step">
+      <div class="flow-num">6</div>
+      <div class="flow-content">
+        <strong>AI Generation</strong>
+        <p>Claude generates content via the agent's <code>generate()</code> method. Each agent includes domain-specific system prompts, FAR/DFARS references, and template structure.</p>
+      </div>
+    </div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step">
+      <div class="flow-num">7</div>
+      <div class="flow-content">
+        <strong>Quality Check</strong>
+        <p>The <code>QualityAgent</code> validates output for compliance, detects hallucinations, flags vague language, and scores overall quality (0&ndash;100).</p>
+      </div>
+    </div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step">
+      <div class="flow-num">8</div>
+      <div class="flow-content">
+        <strong>WebSocket Updates</strong>
+        <p>Progress updates broadcast to connected clients in real-time via the <code>WebSocketManager</code> throughout the generation pipeline.</p>
+      </div>
+    </div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step">
+      <div class="flow-num">9</div>
+      <div class="flow-content">
+        <strong>Storage &amp; Lineage</strong>
+        <p>Generated content saved to <code>ProjectDocument.generated_content</code>. Document lineage records created linking source documents with influence types and relevance scores.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 6. PROCUREMENT PHASES -->
+<!-- ============================================================ -->
+<section id="phases">
+  <h2 class="section-title">Procurement Phases</h2>
+  <p class="lead">The system models the DoD procurement lifecycle as three sequential phases with gate validation and approval workflows controlling transitions.</p>
+
+  <div class="phase-timeline">
+    <div class="phase-block phase-1">
+      <div class="phase-num">Phase 1</div>
+      <div class="phase-name">Pre-Solicitation</div>
+      <ul>
+        <li>Market Research Report</li>
+        <li>Acquisition Plan</li>
+        <li>IGCE</li>
+        <li>Sources Sought</li>
+        <li class="optional">Industry Day Materials</li>
+        <li class="optional">RFI</li>
+        <li class="optional">Pre-Solicitation Notice</li>
+      </ul>
+    </div>
+    <div class="phase-block phase-2">
+      <div class="phase-num">Phase 2</div>
+      <div class="phase-name">Solicitation</div>
+      <ul>
+        <li>PWS / SOW / SOO</li>
+        <li>Section B (Supplies/Prices)</li>
+        <li>Section H (Special Reqs)</li>
+        <li>Section I (Clauses)</li>
+        <li>Section L (Instructions)</li>
+        <li>Section M (Evaluation)</li>
+        <li>QASP</li>
+        <li class="optional">SF-33 Form</li>
+        <li class="optional">Section K</li>
+      </ul>
+    </div>
+    <div class="phase-block phase-3">
+      <div class="phase-num">Phase 3</div>
+      <div class="phase-name">Post-Solicitation</div>
+      <ul>
+        <li>Source Selection Plan</li>
+        <li>Evaluation Scorecards</li>
+        <li>SSDD</li>
+        <li>Award Notification</li>
+        <li class="optional">Debriefing</li>
+        <li class="optional">Amendments</li>
+        <li class="optional">SF-26 Form</li>
+        <li class="optional">PPQ</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Phase Transition Rules</h3>
+  <table>
+    <thead>
+      <tr><th>Rule</th><th>Description</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Gate Validation</strong></td><td>All required documents in the current phase must be approved before transition</td></tr>
+      <tr><td><strong>Transition Request</strong></td><td>A team member requests transition via <code>POST /api/phases/{id}/request-transition</code></td></tr>
+      <tr><td><strong>Gatekeeper Approval</strong></td><td>Contracting Officer or Source Selection Authority must approve the transition</td></tr>
+      <tr><td><strong>Validation Results</strong></td><td>JSON snapshot of validation checks stored with the transition request</td></tr>
+      <tr><td><strong>Sequential Only</strong></td><td>Phases must progress in order: Pre-Sol &rarr; Solicitation &rarr; Post-Sol</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Document Legend</h3>
+  <p class="text-sm">
+    <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#0ea5e9;margin-right:4px;vertical-align:middle;"></span> Required document &nbsp;&nbsp;
+    <span style="display:inline-block;width:8px;height:8px;border-radius:50%;border:1px solid #94a3b8;margin-right:4px;vertical-align:middle;"></span> Optional document
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<!-- 7. RAG KNOWLEDGE BASE -->
+<!-- ============================================================ -->
+<section id="rag">
+  <h2 class="section-title">RAG Knowledge Base</h2>
+  <p class="lead">The Retrieval-Augmented Generation system enables agents to ground their outputs in real project data, regulations, and prior contracts.</p>
+
+  <h3>Pipeline</h3>
+  <div class="flow-steps">
+    <div class="flow-step">
+      <div class="flow-num">1</div>
+      <div class="flow-content">
+        <strong>Document Upload</strong>
+        <p>Users upload PDFs, DOCX, or text files via the project knowledge base UI or <code>POST /api/projects/{id}/knowledge/upload</code>. Files tagged with phase and purpose.</p>
+      </div>
+    </div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step">
+      <div class="flow-num">2</div>
+      <div class="flow-content">
+        <strong>Docling Processing</strong>
+        <p>Docling extracts text from complex PDFs (tables, headers, multi-column). Output is clean plaintext with structural markers.</p>
+      </div>
+    </div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step">
+      <div class="flow-num">3</div>
+      <div class="flow-content">
+        <strong>Chunking &amp; Embedding</strong>
+        <p>Text is split into overlapping chunks. Each chunk receives an embedding vector and a unique chunk ID for lineage tracking.</p>
+      </div>
+    </div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step">
+      <div class="flow-num">4</div>
+      <div class="flow-content">
+        <strong>FAISS Indexing</strong>
+        <p>Vectors added to the CPU-based FAISS index for fast similarity search. Stats available via <code>GET /api/rag/stats</code>.</p>
+      </div>
+    </div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step">
+      <div class="flow-num">5</div>
+      <div class="flow-content">
+        <strong>Retrieval &amp; Context</strong>
+        <p>During generation, agents call <code>RAGService.search()</code> with the document context. Top-k similar chunks returned with relevance scores.</p>
+      </div>
+    </div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step">
+      <div class="flow-num">6</div>
+      <div class="flow-content">
+        <strong>Lineage Recording</strong>
+        <p>Used chunk IDs recorded in <code>DocumentLineage</code> table with influence type (context, template, regulation, data_source, reference) and relevance score.</p>
+      </div>
+    </div>
+  </div>
+
+  <h3>Knowledge Document Metadata</h3>
+  <table>
+    <thead><tr><th>Field</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>phase</code></td><td>pre_solicitation, solicitation, or post_solicitation</td></tr>
+      <tr><td><code>purpose</code></td><td>regulation, template, market_research, prior_award, strategy_memo</td></tr>
+      <tr><td><code>chunk_count</code></td><td>Number of chunks created from this document</td></tr>
+      <tr><td><code>chunk_ids</code></td><td>JSON array of chunk IDs in the FAISS vector store</td></tr>
+      <tr><td><code>rag_indexed</code></td><td>Whether the document has been successfully indexed</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============================================================ -->
+<!-- 8. ORGANIZATIONS & MULTI-TENANCY -->
+<!-- ============================================================ -->
+<section id="multi-tenancy">
+  <h2 class="section-title">Organizations &amp; Multi-Tenancy</h2>
+  <p class="lead">ACES supports hierarchical organizations with role-based membership, project-level permissions, and cross-organization project sharing.</p>
+
+  <h3>Organization Hierarchy</h3>
+  <p>Organizations use a <strong>materialized path</strong> pattern for efficient subtree queries:</p>
+  <pre><code><span class="comment"># Materialized Path Example</span>
+<span class="string">DoD</span>                         path: "org-1"              depth: 0
+  <span class="string">Army</span>                     path: "org-1/org-2"        depth: 1
+    <span class="string">Army Contracting Command</span>  path: "org-1/org-2/org-3"  depth: 2
+  <span class="string">Navy</span>                     path: "org-1/org-4"        depth: 1
+
+<span class="comment"># Query all Army children: WHERE path LIKE 'org-1/org-2%'</span></code></pre>
+
+  <h3>Organization Roles</h3>
+  <table>
+    <thead><tr><th>Role</th><th>Permissions</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge role">org_admin</span></td><td>Manage members, create projects, delete org, manage settings</td></tr>
+      <tr><td><span class="badge role">member</span></td><td>Create projects, view all org projects, collaborate</td></tr>
+      <tr><td><span class="badge role">viewer</span></td><td>Read-only access to org projects and documents</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Visibility Rules</h3>
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title">Project Scoping</div>
+      <div class="card-text">Projects belong to an organization via <code>organization_id</code>. Users only see projects from their org memberships.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Cross-Org Sharing</div>
+      <div class="card-text">Projects can be shared with other organizations via <code>CrossOrgShare</code> with viewer or editor permissions and optional expiration dates.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Project Team</div>
+      <div class="card-text">Individual users can be added to project teams with owner, editor, or viewer permissions via <code>ProjectPermission</code>.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Admin Override</div>
+      <div class="card-text">System admins (<code>UserRole.ADMIN</code>) have access to all projects regardless of organization membership.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 9. DATABASE MODELS -->
+<!-- ============================================================ -->
+<section id="database">
+  <h2 class="section-title">Database Models</h2>
+  <p class="lead">SQLAlchemy ORM models with UUID primary keys, timezone-aware timestamps, and cascading deletes. Supports both PostgreSQL and SQLite.</p>
+
+  <div class="er-diagram">
+    <div class="er-entity">
+      <div class="er-header">User</div>
+      <div class="er-fields">
+        <div class="er-field pk">id <span class="er-type">UUID PK</span></div>
+        <div class="er-field">email <span class="er-type">String UNIQUE</span></div>
+        <div class="er-field">name <span class="er-type">String</span></div>
+        <div class="er-field">hashed_password <span class="er-type">String</span></div>
+        <div class="er-field">role <span class="er-type">Enum (5 roles)</span></div>
+        <div class="er-field">department <span class="er-type">String?</span></div>
+        <div class="er-field">is_active <span class="er-type">Boolean</span></div>
+        <div class="er-field">failed_login_attempts <span class="er-type">Integer</span></div>
+        <div class="er-field">locked_until <span class="er-type">DateTime?</span></div>
+      </div>
+    </div>
+
+    <div class="er-entity">
+      <div class="er-header">ProcurementProject</div>
+      <div class="er-fields">
+        <div class="er-field pk">id <span class="er-type">UUID PK</span></div>
+        <div class="er-field">name <span class="er-type">String</span></div>
+        <div class="er-field">project_type <span class="er-type">Enum (RFP/RFQ/...)</span></div>
+        <div class="er-field">estimated_value <span class="er-type">Numeric(15,2)</span></div>
+        <div class="er-field">current_phase <span class="er-type">Enum (3 phases)</span></div>
+        <div class="er-field">overall_status <span class="er-type">Enum (5 statuses)</span></div>
+        <div class="er-field fk">contracting_officer_id <span class="er-type">FK &rarr; User</span></div>
+        <div class="er-field fk">organization_id <span class="er-type">FK &rarr; Org</span></div>
+        <div class="er-field fk">created_by <span class="er-type">FK &rarr; User</span></div>
+      </div>
+    </div>
+
+    <div class="er-entity">
+      <div class="er-header">ProjectDocument</div>
+      <div class="er-fields">
+        <div class="er-field pk">id <span class="er-type">UUID PK</span></div>
+        <div class="er-field fk">project_id <span class="er-type">FK &rarr; Project</span></div>
+        <div class="er-field">document_name <span class="er-type">String</span></div>
+        <div class="er-field">category <span class="er-type">String</span></div>
+        <div class="er-field">phase <span class="er-type">Enum</span></div>
+        <div class="er-field">status <span class="er-type">Enum (6 statuses)</span></div>
+        <div class="er-field">generation_status <span class="er-type">Enum (4 statuses)</span></div>
+        <div class="er-field">generated_content <span class="er-type">Text?</span></div>
+        <div class="er-field">ai_quality_score <span class="er-type">Integer?</span></div>
+        <div class="er-field">approval_routing <span class="er-type">Enum</span></div>
+      </div>
+    </div>
+
+    <div class="er-entity">
+      <div class="er-header">Organization</div>
+      <div class="er-fields">
+        <div class="er-field pk">id <span class="er-type">UUID PK</span></div>
+        <div class="er-field">name <span class="er-type">String</span></div>
+        <div class="er-field">slug <span class="er-type">String UNIQUE</span></div>
+        <div class="er-field fk">parent_id <span class="er-type">FK &rarr; Org (self)</span></div>
+        <div class="er-field">path <span class="er-type">String (materialized)</span></div>
+        <div class="er-field">depth <span class="er-type">Integer</span></div>
+        <div class="er-field">is_active <span class="er-type">Boolean</span></div>
+      </div>
+    </div>
+
+    <div class="er-entity">
+      <div class="er-header">ProcurementPhase</div>
+      <div class="er-fields">
+        <div class="er-field pk">id <span class="er-type">UUID PK</span></div>
+        <div class="er-field fk">project_id <span class="er-type">FK &rarr; Project</span></div>
+        <div class="er-field">phase_name <span class="er-type">Enum</span></div>
+        <div class="er-field">phase_order <span class="er-type">Integer</span></div>
+        <div class="er-field">status <span class="er-type">Enum</span></div>
+        <div class="er-field">estimated_duration_days <span class="er-type">Integer</span></div>
+      </div>
+    </div>
+
+    <div class="er-entity">
+      <div class="er-header">ProcurementStep</div>
+      <div class="er-fields">
+        <div class="er-field pk">id <span class="er-type">UUID PK</span></div>
+        <div class="er-field fk">phase_id <span class="er-type">FK &rarr; Phase</span></div>
+        <div class="er-field fk">project_id <span class="er-type">FK &rarr; Project</span></div>
+        <div class="er-field">step_name <span class="er-type">String</span></div>
+        <div class="er-field">step_order <span class="er-type">Integer</span></div>
+        <div class="er-field">status <span class="er-type">Enum (5 statuses)</span></div>
+        <div class="er-field">requires_approval <span class="er-type">Boolean</span></div>
+      </div>
+    </div>
+
+    <div class="er-entity">
+      <div class="er-header">DocumentApproval</div>
+      <div class="er-fields">
+        <div class="er-field pk">id <span class="er-type">UUID PK</span></div>
+        <div class="er-field fk">project_document_id <span class="er-type">FK &rarr; Doc</span></div>
+        <div class="er-field fk">approver_id <span class="er-type">FK &rarr; User</span></div>
+        <div class="er-field fk">delegated_from_id <span class="er-type">FK &rarr; User?</span></div>
+        <div class="er-field">approval_status <span class="er-type">Enum</span></div>
+        <div class="er-field">approval_round <span class="er-type">Integer</span></div>
+        <div class="er-field">comments <span class="er-type">Text?</span></div>
+      </div>
+    </div>
+
+    <div class="er-entity">
+      <div class="er-header">DocumentLineage</div>
+      <div class="er-fields">
+        <div class="er-field pk">id <span class="er-type">UUID PK</span></div>
+        <div class="er-field fk">source_document_id <span class="er-type">FK &rarr; Doc?</span></div>
+        <div class="er-field fk">derived_document_id <span class="er-type">FK &rarr; Doc</span></div>
+        <div class="er-field">source_filename <span class="er-type">String?</span></div>
+        <div class="er-field">influence_type <span class="er-type">Enum (5 types)</span></div>
+        <div class="er-field">relevance_score <span class="er-type">Float</span></div>
+        <div class="er-field">chunk_ids_used <span class="er-type">JSON</span></div>
+      </div>
+    </div>
+
+    <div class="er-entity">
+      <div class="er-header">AuditLog / Activity</div>
+      <div class="er-fields">
+        <div class="er-field pk">id <span class="er-type">UUID PK</span></div>
+        <div class="er-field fk">user_id <span class="er-type">FK &rarr; User</span></div>
+        <div class="er-field fk">project_id <span class="er-type">FK &rarr; Project?</span></div>
+        <div class="er-field">action / activity_type <span class="er-type">String</span></div>
+        <div class="er-field">entity_type <span class="er-type">String</span></div>
+        <div class="er-field">changes / metadata <span class="er-type">JSON</span></div>
+        <div class="er-field">timestamp <span class="er-type">DateTime</span></div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Additional Models</h3>
+  <table>
+    <thead><tr><th>Model</th><th>Table</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>OrganizationMember</code></td><td>organization_members</td><td>User &harr; Org association with org_role (admin/member/viewer)</td></tr>
+      <tr><td><code>CrossOrgShare</code></td><td>cross_org_shares</td><td>Project sharing between organizations with permission levels</td></tr>
+      <tr><td><code>ProjectPermission</code></td><td>project_permissions</td><td>Per-user project access (owner/editor/viewer)</td></tr>
+      <tr><td><code>PhaseTransitionRequest</code></td><td>phase_transition_requests</td><td>Phase gate approval workflow with gatekeeper assignment</td></tr>
+      <tr><td><code>DocumentUpload</code></td><td>document_uploads</td><td>File uploads with versioning and file metadata</td></tr>
+      <tr><td><code>KnowledgeDocument</code></td><td>knowledge_documents</td><td>RAG-indexed documents with chunk tracking</td></tr>
+      <tr><td><code>ApprovalAuditLog</code></td><td>approval_audit_logs</td><td>Detailed audit trail for approval actions</td></tr>
+      <tr><td><code>Notification</code></td><td>notifications</td><td>User notifications for approvals, deadlines, system events</td></tr>
+      <tr><td><code>AgentFeedback</code></td><td>agent_feedback</td><td>User feedback on AI agent performance for tuning</td></tr>
+      <tr><td><code>DocumentVersion</code></td><td>document_versions</td><td>Version history for generated document content</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============================================================ -->
+<!-- 10. API ENDPOINTS -->
+<!-- ============================================================ -->
+<section id="api">
+  <h2 class="section-title">API Endpoints</h2>
+  <p class="lead">115+ RESTful endpoints plus 2 WebSocket connections. All protected endpoints require JWT Bearer token. Auto-generated docs at <code>/docs</code> (Swagger UI).</p>
+
+  <!-- Auth -->
+  <details>
+    <summary>Authentication &amp; Users (8 endpoints)</summary>
+    <div class="details-content">
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/auth/register</span><span class="desc">Register new user</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/auth/login</span><span class="desc">Login, returns JWT</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/auth/me</span><span class="desc">Current user info</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/users/me/stats</span><span class="desc">Personal analytics</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/users</span><span class="desc">List users</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/feedback</span><span class="desc">Submit agent feedback</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/documents/{id}/feedback</span><span class="desc">Get document feedback</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/health</span><span class="desc">Health check</span></div>
+    </div>
+  </details>
+
+  <!-- Admin -->
+  <details>
+    <summary>Admin (10 endpoints)</summary>
+    <div class="details-content">
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/admin/users</span><span class="desc">List all users</span></div>
+      <div class="endpoint"><span class="method put">PUT</span><span class="path">/api/admin/users/{id}/role</span><span class="desc">Update user role</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/admin/bootstrap</span><span class="desc">Create first admin</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/admin/users</span><span class="desc">Create user (admin)</span></div>
+      <div class="endpoint"><span class="method delete">DELETE</span><span class="path">/api/admin/users/{id}</span><span class="desc">Delete user</span></div>
+      <div class="endpoint"><span class="method put">PUT</span><span class="path">/api/admin/users/{id}/activate</span><span class="desc">Activate/deactivate</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/admin/analytics</span><span class="desc">Org-wide analytics</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/admin/audit-logs</span><span class="desc">View audit logs</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/admin/audit-logs/export</span><span class="desc">Export audit CSV</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/admin/reset-database</span><span class="desc">Reset database</span></div>
+    </div>
+  </details>
+
+  <!-- Projects -->
+  <details>
+    <summary>Projects (9 endpoints)</summary>
+    <div class="details-content">
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/projects</span><span class="desc">List user's projects</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/projects</span><span class="desc">Create project</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/projects/{id}</span><span class="desc">Get project detail</span></div>
+      <div class="endpoint"><span class="method put">PUT</span><span class="path">/api/projects/{id}</span><span class="desc">Update project</span></div>
+      <div class="endpoint"><span class="method delete">DELETE</span><span class="path">/api/projects/{id}</span><span class="desc">Delete project</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/projects/{id}/initialize-documents</span><span class="desc">Init doc checklist</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/projects/{id}/phases</span><span class="desc">List project phases</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/projects/{id}/steps</span><span class="desc">List project steps</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/projects/{id}/cleanup-all-duplicate-steps</span><span class="desc">Cleanup duplicates</span></div>
+    </div>
+  </details>
+
+  <!-- Documents -->
+  <details>
+    <summary>Documents (10 endpoints)</summary>
+    <div class="details-content">
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/projects/{id}/documents</span><span class="desc">List documents</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/documents/{id}/uploads</span><span class="desc">List uploads</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/documents/{id}/upload</span><span class="desc">Upload file</span></div>
+      <div class="endpoint"><span class="method patch">PATCH</span><span class="path">/api/documents/{id}</span><span class="desc">Update document</span></div>
+      <div class="endpoint"><span class="method delete">DELETE</span><span class="path">/api/documents/{id}</span><span class="desc">Delete document</span></div>
+      <div class="endpoint"><span class="method delete">DELETE</span><span class="path">/api/uploads/{id}</span><span class="desc">Delete upload</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/documents/{id}/clear-generation</span><span class="desc">Clear generated content</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/documents/convert-to-html</span><span class="desc">Markdown to HTML</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/documents/{id}/versions</span><span class="desc">Save version</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/documents/{id}/versions</span><span class="desc">List versions</span></div>
+    </div>
+  </details>
+
+  <!-- Generation -->
+  <details>
+    <summary>Document Generation (9 endpoints)</summary>
+    <div class="details-content">
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/documents/{id}/generate</span><span class="desc">Generate single document</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/documents/{id}/generation-status</span><span class="desc">Check status</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/generation-tasks/{id}</span><span class="desc">Task status</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/documents/{id}/save-generated</span><span class="desc">Save generated content</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/projects/{id}/generate-batch</span><span class="desc">Batch generate</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/documents/{id}/check-dependencies</span><span class="desc">Check dependencies</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/analyze-generation-plan</span><span class="desc">Phase analysis</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/generate-documents</span><span class="desc">Generate selected docs</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/generation-status/{id}</span><span class="desc">Generation progress</span></div>
+    </div>
+  </details>
+
+  <!-- Approvals -->
+  <details>
+    <summary>Approvals (8 endpoints)</summary>
+    <div class="details-content">
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/documents/{id}/request-approval</span><span class="desc">Request approval</span></div>
+      <div class="endpoint"><span class="method patch">PATCH</span><span class="path">/api/documents/{id}/routing</span><span class="desc">Set approval routing</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/approvals/{id}/approve</span><span class="desc">Approve document</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/approvals/{id}/reject</span><span class="desc">Reject document</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/documents/{id}/approvals</span><span class="desc">Document approvals</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/approvals/pending</span><span class="desc">Pending approvals</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/approvals/{id}/delegate</span><span class="desc">Delegate approval</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/approvals/{id}/audit-trail</span><span class="desc">Approval audit trail</span></div>
+    </div>
+  </details>
+
+  <!-- Phases -->
+  <details>
+    <summary>Phase Transitions (8 endpoints)</summary>
+    <div class="details-content">
+      <div class="endpoint"><span class="method patch">PATCH</span><span class="path">/api/phases/{id}</span><span class="desc">Update phase</span></div>
+      <div class="endpoint"><span class="method patch">PATCH</span><span class="path">/api/steps/{id}</span><span class="desc">Update step</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/phases/{id}/create-default-steps</span><span class="desc">Create default steps</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/phases/{id}/validate-transition</span><span class="desc">Validate transition</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/phases/{id}/request-transition</span><span class="desc">Request transition</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/phase-transitions/pending</span><span class="desc">Pending transitions</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/phase-transitions/{id}/approve</span><span class="desc">Approve transition</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/phase-transitions/{id}/reject</span><span class="desc">Reject transition</span></div>
+    </div>
+  </details>
+
+  <!-- RAG -->
+  <details>
+    <summary>RAG &amp; Knowledge Base (10 endpoints)</summary>
+    <div class="details-content">
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/rag/upload</span><span class="desc">Upload to global RAG</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/rag/documents</span><span class="desc">List RAG documents</span></div>
+      <div class="endpoint"><span class="method delete">DELETE</span><span class="path">/api/rag/documents/{id}</span><span class="desc">Delete RAG document</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/rag/stats</span><span class="desc">Vector store stats</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/rag/search</span><span class="desc">Search vectors</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/projects/{id}/knowledge</span><span class="desc">Project knowledge docs</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/projects/{id}/knowledge/stats</span><span class="desc">Knowledge stats</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/projects/{id}/knowledge/upload</span><span class="desc">Upload to project KB</span></div>
+      <div class="endpoint"><span class="method delete">DELETE</span><span class="path">/api/projects/{id}/knowledge/{doc_id}</span><span class="desc">Remove from KB</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/extract-assumptions</span><span class="desc">Extract assumptions</span></div>
+    </div>
+  </details>
+
+  <!-- Lineage -->
+  <details>
+    <summary>Document Lineage (5 endpoints)</summary>
+    <div class="details-content">
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/documents/{id}/lineage</span><span class="desc">Get lineage records</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/documents/{id}/lineage</span><span class="desc">Create lineage</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/documents/{id}/lineage/batch</span><span class="desc">Batch create lineage</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/documents/{id}/timeline</span><span class="desc">Document timeline</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/documents/{id}/influence-graph</span><span class="desc">Influence graph</span></div>
+    </div>
+  </details>
+
+  <!-- Export -->
+  <details>
+    <summary>Export (7 endpoints)</summary>
+    <div class="details-content">
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/export/prepare</span><span class="desc">Prepare export</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/export/{id}/pdf</span><span class="desc">Download PDF</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/export/{id}/docx</span><span class="desc">Download DOCX</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/export/{id}/json</span><span class="desc">Download JSON</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/export/compliance-report</span><span class="desc">Compliance report</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/export/history</span><span class="desc">Export history</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/projects/{id}/export-generated-batch</span><span class="desc">Batch export</span></div>
+    </div>
+  </details>
+
+  <!-- Organizations -->
+  <details>
+    <summary>Organizations &amp; Teams (16 endpoints)</summary>
+    <div class="details-content">
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/organizations</span><span class="desc">Create organization</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/organizations</span><span class="desc">List orgs</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/organizations/{id}</span><span class="desc">Get org detail</span></div>
+      <div class="endpoint"><span class="method put">PUT</span><span class="path">/api/organizations/{id}</span><span class="desc">Update org</span></div>
+      <div class="endpoint"><span class="method delete">DELETE</span><span class="path">/api/organizations/{id}</span><span class="desc">Delete org</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/organizations/{id}/tree</span><span class="desc">Org subtree</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/organizations/{id}/members</span><span class="desc">List members</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/organizations/{id}/members</span><span class="desc">Add member</span></div>
+      <div class="endpoint"><span class="method put">PUT</span><span class="path">/api/organizations/{id}/members/{uid}</span><span class="desc">Update member role</span></div>
+      <div class="endpoint"><span class="method delete">DELETE</span><span class="path">/api/organizations/{id}/members/{uid}</span><span class="desc">Remove member</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/projects/{id}/team</span><span class="desc">Project team</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/projects/{id}/team</span><span class="desc">Add team member</span></div>
+      <div class="endpoint"><span class="method put">PUT</span><span class="path">/api/projects/{id}/team/{uid}</span><span class="desc">Update permission</span></div>
+      <div class="endpoint"><span class="method delete">DELETE</span><span class="path">/api/projects/{id}/team/{uid}</span><span class="desc">Remove from team</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/projects/{id}/share</span><span class="desc">Share cross-org</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/projects/{id}/shares</span><span class="desc">List shares</span></div>
+    </div>
+  </details>
+
+  <!-- Other -->
+  <details>
+    <summary>Comparison, Quality, Copilot, Guided Flow &amp; More (16 endpoints)</summary>
+    <div class="details-content">
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/comparison/start</span><span class="desc">Start A/B comparison</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/comparison/status/{id}</span><span class="desc">Comparison status</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/comparison/results/{id}</span><span class="desc">Comparison results</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/comparison/winner/{id}</span><span class="desc">Comparison winner</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/quality/analyze</span><span class="desc">Quality analysis</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/copilot/assist</span><span class="desc">AI copilot assist</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/guided-flow/document/{id}</span><span class="desc">Guided flow state</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/guided-flow/save</span><span class="desc">Save flow progress</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/guided-flow/suggest</span><span class="desc">AI suggestions</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/documents/{id}/reasoning</span><span class="desc">AI reasoning trace</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/documents/{id}/reasoning/history</span><span class="desc">Reasoning history</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/notifications</span><span class="desc">User notifications</span></div>
+      <div class="endpoint"><span class="method patch">PATCH</span><span class="path">/api/notifications/{id}/read</span><span class="desc">Mark as read</span></div>
+      <div class="endpoint"><span class="method patch">PATCH</span><span class="path">/api/notifications/read-all</span><span class="desc">Mark all read</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/cache/stats</span><span class="desc">Cache statistics</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/api/projects/{id}/activities</span><span class="desc">Activity feed</span></div>
+    </div>
+  </details>
+
+  <!-- WebSocket -->
+  <details>
+    <summary>WebSocket (2 connections)</summary>
+    <div class="details-content">
+      <div class="endpoint"><span class="method ws">WS</span><span class="path">/ws/{project_id}</span><span class="desc">Real-time project updates</span></div>
+      <div class="endpoint"><span class="method ws">WS</span><span class="path">/api/ws/guided-flow/{document_id}</span><span class="desc">Guided flow updates</span></div>
+    </div>
+  </details>
+</section>
+
+<!-- ============================================================ -->
+<!-- 11. FRONTEND ARCHITECTURE -->
+<!-- ============================================================ -->
+<section id="frontend">
+  <h2 class="section-title">Frontend Architecture</h2>
+  <p class="lead">React 18 SPA built with TypeScript, Vite, and Tailwind CSS. State management through React Query for server state and React Contexts for client state.</p>
+
+  <h3>Component Hierarchy</h3>
+  <pre><code><span class="string">App</span>
+<span class="comment">|</span>
+<span class="comment">+--</span> <span class="string">AuthContext</span>          <span class="comment"># JWT token, user state, login/logout</span>
+<span class="comment">+--</span> <span class="string">NavigationContext</span>    <span class="comment"># Current project, view routing</span>
+<span class="comment">|</span>
+<span class="comment">+--</span> <span class="string">Layout</span>
+<span class="comment">|   +--</span> <span class="string">Header</span>           <span class="comment"># Top bar with user menu, notifications</span>
+<span class="comment">|   +--</span> <span class="string">LeftNav</span>          <span class="comment"># Sidebar navigation with project list</span>
+<span class="comment">|   +--</span> <span class="string">OrgSwitcher</span>      <span class="comment"># Organization selector dropdown</span>
+<span class="comment">|</span>
+<span class="comment">+--</span> <span class="string">Views</span>
+    <span class="comment">+--</span> <span class="string">AIContractingUI</span>     <span class="comment"># Main overview / landing page</span>
+    <span class="comment">+--</span> <span class="string">ProcurementTracker</span>  <span class="comment"># Project list with status tracking</span>
+    <span class="comment">+--</span> <span class="string">ProjectDashboard</span>    <span class="comment"># Single project view with phases</span>
+    <span class="comment">+--</span> <span class="string">CreateProjectDialog</span> <span class="comment"># New project creation wizard</span>
+    <span class="comment">+--</span> <span class="string">ActivityFeed</span>        <span class="comment"># Project activity timeline</span>
+    <span class="comment">+--</span> <span class="string">ProjectTeamPanel</span>    <span class="comment"># Team management panel</span>
+    <span class="comment">+--</span> <span class="string">OrgManagement</span>       <span class="comment"># Admin org management UI</span>
+    <span class="comment">+--</span> <span class="string">AdminAnalytics</span>      <span class="comment"># Organization-wide analytics</span>
+    <span class="comment">+--</span> <span class="string">LiveEditor</span>          <span class="comment"># Tiptap-based document editor</span>
+    <span class="comment">+--</span> <span class="string">GroupedIssuesPanel</span>  <span class="comment"># Quality issues by category</span>
+    <span class="comment">+--</span> <span class="string">BatchFixPreviewModal</span><span class="comment"># AI fix preview for issues</span></code></pre>
+
+  <h3>Key React Hooks</h3>
+  <table>
+    <thead><tr><th>Hook</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>useProcurementProjects</code></td><td>CRUD operations for projects with optimistic updates</td></tr>
+      <tr><td><code>useOrganizations</code></td><td>Organization management, member operations, org switching</td></tr>
+      <tr><td><code>useProjectTeam</code></td><td>Project team member management and permissions</td></tr>
+      <tr><td><code>useProjectActivities</code></td><td>Activity feed data with pagination</td></tr>
+      <tr><td><code>useAdminAnalytics</code></td><td>Organization-wide analytics with configurable time periods</td></tr>
+      <tr><td><code>useUserStats</code></td><td>Personal statistics (documents generated, hours saved)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>API Client</h3>
+  <p class="text-sm">
+    All API calls are centralized in <code>apps/web/src/services/api.ts</code> with 55+ methods. The client automatically attaches JWT tokens, handles 401 redirects, and provides typed request/response interfaces.
+  </p>
+
+  <h3>State Management</h3>
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title">AuthContext</div>
+      <div class="card-text">JWT token storage, user object, login/logout actions, role-based conditional rendering</div>
+    </div>
+    <div class="card">
+      <div class="card-title">NavigationContext</div>
+      <div class="card-text">Current project selection, active view, sidebar state, breadcrumb tracking</div>
+    </div>
+    <div class="card">
+      <div class="card-title">React Query</div>
+      <div class="card-text">Server state caching, automatic refetching, optimistic updates for mutations, pagination</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 12. SECURITY & COMPLIANCE -->
+<!-- ============================================================ -->
+<section id="security">
+  <h2 class="section-title">Security &amp; Compliance</h2>
+  <p class="lead">Defense-in-depth security aligned with NIST 800-53 controls for DoD information systems.</p>
+
+  <h3>Authentication</h3>
+  <table>
+    <thead><tr><th>Mechanism</th><th>Implementation</th></tr></thead>
+    <tbody>
+      <tr><td><strong>JWT Tokens</strong></td><td>HS256-signed, 30-minute expiry (configurable), issued via <code>/api/auth/login</code></td></tr>
+      <tr><td><strong>Password Hashing</strong></td><td>PBKDF2-SHA256 with 100,000 iterations and random 16-byte salt</td></tr>
+      <tr><td><strong>Password Policy</strong></td><td>Min 12 chars, uppercase + lowercase + digit + special character required</td></tr>
+      <tr><td><strong>Account Lockout</strong></td><td>5 failed attempts triggers 15-minute lockout (AC-7 control)</td></tr>
+      <tr><td><strong>Bearer Token</strong></td><td>HTTP Bearer scheme via FastAPI's <code>HTTPBearer</code> dependency</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Authorization (RBAC)</h3>
+  <table>
+    <thead><tr><th>Role</th><th>Capabilities</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge role">admin</span></td><td>Full system access, user management, analytics, audit logs, database operations</td></tr>
+      <tr><td><span class="badge role">contracting_officer</span></td><td>Create/manage projects, generate documents, approve transitions, manage teams</td></tr>
+      <tr><td><span class="badge role">program_manager</span></td><td>View projects, review documents, request approvals, collaborate</td></tr>
+      <tr><td><span class="badge role">approver</span></td><td>Review and approve/reject documents, delegate approval authority</td></tr>
+      <tr><td><span class="badge role">viewer</span></td><td>Read-only access to assigned projects and documents</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Security Headers (NIST 800-53)</h3>
+  <table>
+    <thead><tr><th>Header</th><th>Value</th><th>Control</th></tr></thead>
+    <tbody>
+      <tr><td><code>X-Content-Type-Options</code></td><td>nosniff</td><td>Prevents MIME-type sniffing</td></tr>
+      <tr><td><code>X-Frame-Options</code></td><td>DENY</td><td>Prevents clickjacking</td></tr>
+      <tr><td><code>X-XSS-Protection</code></td><td>1; mode=block</td><td>XSS filter enforcement</td></tr>
+      <tr><td><code>Referrer-Policy</code></td><td>strict-origin-when-cross-origin</td><td>Limits referrer information</td></tr>
+      <tr><td><code>Permissions-Policy</code></td><td>geolocation=(), microphone=(), camera=()</td><td>Disables unnecessary APIs</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Additional Security</h3>
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title">Rate Limiting</div>
+      <div class="card-text">SlowAPI rate limiter with per-IP tracking. Prevents brute force and API abuse.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Audit Logging</div>
+      <div class="card-text">All security events logged: logins, failed attempts, role changes, document access, approval actions. Exportable to CSV.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">CORS Policy</div>
+      <div class="card-text">Configurable allowed origins via <code>CORS_ORIGINS</code> env var. Credentials enabled, methods whitelist.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Project Access Control</div>
+      <div class="card-text"><code>require_project_access()</code> dependency returns 404 (not 403) for hidden projects to prevent enumeration attacks.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 13. QUICK START -->
+<!-- ============================================================ -->
+<section id="quickstart">
+  <h2 class="section-title">Quick Start</h2>
+
+  <h3>Prerequisites</h3>
+  <p class="text-sm">Python 3.9+, Node.js 18+, Anthropic API key</p>
+
+  <h3>Start Everything</h3>
+  <pre><code><span class="comment"># Start all services with one command</span>
+<span class="cmd">./start_all.sh</span>
+
+<span class="comment"># Or start separately:</span>
+<span class="cmd">./start_backend.sh</span>   <span class="comment"># Backend at http://localhost:8000</span>
+<span class="cmd">./start_frontend.sh</span>  <span class="comment"># Frontend at http://localhost:5173</span></code></pre>
+
+  <h3>Manual Start</h3>
+  <pre><code><span class="comment"># Backend</span>
+<span class="cmd">cd apps/api</span>
+<span class="cmd">pip install -r requirements.txt</span>
+<span class="cmd">uvicorn main:app --reload --port 8000</span>
+
+<span class="comment"># Frontend</span>
+<span class="cmd">cd apps/web</span>
+<span class="cmd">npm install</span>
+<span class="cmd">npm run dev</span></code></pre>
+
+  <h3>Environment Variables</h3>
+  <table>
+    <thead><tr><th>Variable</th><th>Required</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>ANTHROPIC_API_KEY</code></td><td><span class="badge required">Required</span></td><td>Claude API key for document generation</td></tr>
+      <tr><td><code>TAVILY_API_KEY</code></td><td><span class="badge optional">Optional</span></td><td>Tavily API for web-based research</td></tr>
+      <tr><td><code>DATABASE_URL</code></td><td><span class="badge optional">Optional</span></td><td>Database connection string (defaults to SQLite)</td></tr>
+      <tr><td><code>SECRET_KEY</code></td><td><span class="badge optional">Optional</span></td><td>JWT signing key (default provided for dev)</td></tr>
+      <tr><td><code>ACCESS_TOKEN_EXPIRE_MINUTES</code></td><td><span class="badge optional">Optional</span></td><td>JWT token expiry in minutes (default: 30)</td></tr>
+      <tr><td><code>CORS_ORIGINS</code></td><td><span class="badge optional">Optional</span></td><td>Comma-separated allowed origins</td></tr>
+      <tr><td><code>REDIS_URL</code></td><td><span class="badge optional">Optional</span></td><td>Redis connection URL for caching</td></tr>
+      <tr><td><code>REDIS_CACHE_ENABLED</code></td><td><span class="badge optional">Optional</span></td><td>Enable/disable Redis cache (default: true)</td></tr>
+      <tr><td><code>UPLOAD_DIR</code></td><td><span class="badge optional">Optional</span></td><td>File upload directory (default: ./uploads)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>First-Time Setup</h3>
+  <pre><code><span class="comment"># 1. Bootstrap the first admin user</span>
+<span class="cmd">curl -X POST http://localhost:8000/api/admin/bootstrap \</span>
+<span class="cmd">  -H "Content-Type: application/json" \</span>
+<span class="cmd">  -d '{"email":"admin@example.com","name":"Admin","password":"SecurePass123!"}'</span>
+
+<span class="comment"># 2. Seed the database (optional)</span>
+<span class="cmd">python tools/setup/seed_database.py</span>
+
+<span class="comment"># 3. Set up RAG system (optional)</span>
+<span class="cmd">python tools/setup/setup_rag.py</span></code></pre>
+
+  <h3>Running Tests</h3>
+  <pre><code><span class="comment"># Run all tests</span>
+<span class="cmd">cd tools/testing && python run_all_tests.py</span>
+
+<span class="comment"># Specific test suites</span>
+<span class="cmd">python -m pytest tools/testing/test_all_agents.py -v</span>
+<span class="cmd">python -m pytest tools/testing/test_api_endpoints.py -v</span>
+<span class="cmd">python -m pytest tools/testing/test_integration.py -v</span></code></pre>
+
+  <h3>API Documentation</h3>
+  <p class="text-sm">
+    Swagger UI: <code>http://localhost:8000/docs</code><br>
+    ReDoc: <code>http://localhost:8000/redoc</code>
+  </p>
+</section>
+
+<!-- Footer -->
+<div style="text-align:center; padding:2rem 0 1rem; color:#94a3b8; font-size:0.78rem; border-top:1px solid #e2e8f0; margin-top:2rem;">
+  ACES: AI Contracting &amp; Evaluation System &mdash; System Documentation<br>
+  Generated from codebase analysis &mdash; 44 agents, 115+ endpoints, 12+ models
+</div>
+
+</div><!-- /main-content -->
+
+<!-- Sidebar active link highlighting -->
+<script>
+(function() {
+  var links = document.querySelectorAll('.sidebar a[href^="#"]');
+  var sections = [];
+  links.forEach(function(link) {
+    var id = link.getAttribute('href').slice(1);
+    var el = document.getElementById(id);
+    if (el) sections.push({ el: el, link: link });
+  });
+
+  function updateActive() {
+    var scrollY = window.scrollY + 120;
+    var current = null;
+    for (var i = sections.length - 1; i >= 0; i--) {
+      if (sections[i].el.offsetTop <= scrollY) {
+        current = sections[i];
+        break;
+      }
+    }
+    links.forEach(function(l) { l.classList.remove('active'); });
+    if (current) current.link.classList.add('active');
+  }
+
+  window.addEventListener('scroll', updateActive, { passive: true });
+  updateActive();
+})();
+</script>
+
+</body>
+</html>

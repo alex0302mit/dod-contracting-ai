@@ -1,0 +1,116 @@
+{
+  "document_id": "DOC-012",
+  "title": "Price Negotiation Memorandum (PNM) / Business Clearance Memorandum (BCM)",
+  "regulatory_references": [
+    "FAR 15.406-3",
+    "DFARS 215.406-3",
+    "PGI 215.406-3"
+  ],
+  "required_when": "all_negotiated_contracts",
+  "fields": {
+    "header": {
+      "contract_number": {
+        "type": "string",
+        "required": true
+      },
+      "contractor": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "cage": {
+            "type": "string"
+          },
+          "uei": {
+            "type": "string"
+          }
+        }
+      },
+      "description": {
+        "type": "string",
+        "required": true
+      },
+      "contract_type": {
+        "type": "string",
+        "required": true
+      },
+      "negotiated_price": {
+        "type": "currency",
+        "required": true
+      }
+    },
+    "price_comparison": {
+      "type": "array",
+      "required": true,
+      "item_type": "object",
+      "properties": {
+        "element": {
+          "type": "string"
+        },
+        "igce_amount": {
+          "type": "currency",
+          "source": "DOC-003"
+        },
+        "proposed_amount": {
+          "type": "currency"
+        },
+        "negotiated_amount": {
+          "type": "currency"
+        },
+        "variance_percent": {
+          "type": "number",
+          "computed": true
+        }
+      }
+    },
+    "negotiation_summary": {
+      "pre_negotiation_objective": {
+        "type": "currency",
+        "required": true
+      },
+      "initial_proposal": {
+        "type": "currency",
+        "required": true
+      },
+      "final_negotiated": {
+        "type": "currency",
+        "required": true
+      },
+      "highlights": {
+        "type": "text",
+        "required": true
+      },
+      "fair_reasonable_determination": {
+        "type": "text",
+        "required": true
+      }
+    },
+    "approval": {
+      "contracting_officer": {
+        "type": "signature_block",
+        "required": true
+      },
+      "clearance_authority": {
+        "type": "signature_block",
+        "required": false,
+        "note": "Required if above service-specific threshold"
+      }
+    }
+  },
+  "validation_rules": [
+    {
+      "rule": "IGCE amounts must match DOC-003",
+      "severity": "error"
+    },
+    {
+      "rule": "Must document basis for fair and reasonable determination",
+      "severity": "error"
+    },
+    {
+      "rule": "If negotiated price exceeds IGCE by > 10%, additional justification required",
+      "severity": "warning"
+    }
+  ]
+}

@@ -1,0 +1,217 @@
+{
+  "document_id": "DOC-004",
+  "title": "Justification & Approval (J&A)",
+  "regulatory_references": [
+    "FAR 6.302",
+    "FAR 6.303",
+    "FAR 6.304",
+    "DFARS 206.3",
+    "10 U.S.C. 3204"
+  ],
+  "required_when": "competition_strategy != 'Full and Open'",
+  "fields": {
+    "header": {
+      "contracting_activity": {
+        "type": "string",
+        "required": true
+      },
+      "description_of_action": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "New Contract",
+          "Task Order",
+          "Delivery Order",
+          "Contract Modification",
+          "Bridge Contract"
+        ]
+      },
+      "proposed_contractor": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "cage_code": {
+            "type": "string",
+            "pattern": "^[A-Z0-9]{5}$"
+          },
+          "uei": {
+            "type": "string",
+            "pattern": "^[A-Z0-9]{12}$"
+          }
+        }
+      },
+      "estimated_value": {
+        "type": "currency",
+        "required": true,
+        "description": "Total value including all options",
+        "cross_reference": "Must match DOC-003.total_estimated_cost"
+      }
+    },
+    "statutory_authority": {
+      "authority_cited": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          {
+            "value": "FAR 6.302-1",
+            "label": "Only One Responsible Source",
+            "statute": "10 U.S.C. 3204(a)(1)"
+          },
+          {
+            "value": "FAR 6.302-2",
+            "label": "Unusual and Compelling Urgency",
+            "statute": "10 U.S.C. 3204(a)(2)"
+          },
+          {
+            "value": "FAR 6.302-3",
+            "label": "Industrial Mobilization / Engineering, Developmental, or Research Capability",
+            "statute": "10 U.S.C. 3204(a)(3)"
+          },
+          {
+            "value": "FAR 6.302-4",
+            "label": "International Agreement",
+            "statute": "10 U.S.C. 3204(a)(4)"
+          },
+          {
+            "value": "FAR 6.302-5",
+            "label": "Authorized or Required by Statute",
+            "statute": "10 U.S.C. 3204(a)(5)"
+          },
+          {
+            "value": "FAR 6.302-6",
+            "label": "National Security",
+            "statute": "10 U.S.C. 3204(a)(6)"
+          },
+          {
+            "value": "FAR 6.302-7",
+            "label": "Public Interest",
+            "statute": "10 U.S.C. 3204(a)(7)"
+          }
+        ]
+      }
+    },
+    "justification": {
+      "requirement_description": {
+        "type": "text",
+        "required": true,
+        "min_length": 100,
+        "cross_reference": "Should align with DOC-006 scope"
+      },
+      "rationale": {
+        "type": "text",
+        "required": true,
+        "min_length": 200,
+        "description": "Explain why full and open competition is not feasible"
+      },
+      "unique_capabilities": {
+        "type": "text",
+        "required": true,
+        "description": "Contractor's unique qualifications, proprietary rights, or exclusive capabilities"
+      },
+      "efforts_to_obtain_competition": {
+        "type": "text",
+        "required": true,
+        "description": "Actions taken to identify alternative sources"
+      },
+      "market_research_summary": {
+        "type": "text",
+        "required": true,
+        "cross_reference": "Summarize findings from DOC-002"
+      }
+    },
+    "future_competition": {
+      "strategy": {
+        "type": "text",
+        "required": true,
+        "description": "Steps planned to enable competition for follow-on"
+      },
+      "target_date": {
+        "type": "date",
+        "required": true
+      }
+    },
+    "price_determination": {
+      "analysis_method": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "Comparison to Previous Prices",
+          "Catalog/Market Pricing",
+          "Independent Estimate Comparison",
+          "Value Analysis",
+          "Other"
+        ]
+      },
+      "reasonableness_statement": {
+        "type": "text",
+        "required": true
+      }
+    },
+    "approval_chain": {
+      "contracting_officer": {
+        "type": "signature_block",
+        "required": true
+      },
+      "competition_advocate": {
+        "type": "signature_block",
+        "required": true
+      },
+      "approving_authority": {
+        "type": "signature_block",
+        "required": true,
+        "note": "Approval level determined by estimated_value per FAR 6.304"
+      },
+      "legal_review": {
+        "type": "signature_block",
+        "required": true
+      }
+    }
+  },
+  "approval_threshold_rules": [
+    {
+      "condition": "estimated_value <= 750000",
+      "approver": "Contracting Officer",
+      "reference": "FAR 6.304(a)(1)"
+    },
+    {
+      "condition": "estimated_value > 750000 AND estimated_value <= 15000000",
+      "approver": "Head of Contracting Activity (HCA) or Designee",
+      "reference": "FAR 6.304(a)(2)"
+    },
+    {
+      "condition": "estimated_value > 15000000 AND estimated_value <= 100000000",
+      "approver": "Senior Procurement Executive (SPE)",
+      "reference": "FAR 6.304(a)(3)"
+    },
+    {
+      "condition": "estimated_value > 100000000",
+      "approver": "Agency Head or Designee, with Congressional notification",
+      "reference": "FAR 6.304(a)(4)"
+    }
+  ],
+  "validation_rules": [
+    {
+      "rule": "estimated_value must include ALL options and modifications",
+      "severity": "error"
+    },
+    {
+      "rule": "If authority_cited is FAR 6.302-2 (Urgency), period cannot exceed 1 year including options",
+      "severity": "error"
+    },
+    {
+      "rule": "market_research_summary must reference DOC-002 findings",
+      "severity": "warning"
+    },
+    {
+      "rule": "future_competition.target_date must be within 3 years",
+      "severity": "warning"
+    },
+    {
+      "rule": "Approval authority must match estimated_value per threshold rules",
+      "severity": "error"
+    }
+  ]
+}

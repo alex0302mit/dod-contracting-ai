@@ -16,7 +16,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, FileText, Loader2, ArrowRight, Shield, Sparkles, FolderOpen, Database } from 'lucide-react';
+import { ArrowLeft, FileText, Loader2, ArrowRight, Shield, Sparkles, FolderOpen, Database, Users, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +30,8 @@ import { GeneratedDocumentsGallery } from './GeneratedDocumentsGallery';
 // KnowledgeTab - Project-scoped document library for RAG-indexed reference materials
 import { KnowledgeTab } from './KnowledgeTab';
 import { PhaseTransitionDialog } from './PhaseTransitionDialog';
+import { ProjectTeamPanel } from './ProjectTeamPanel';
+import { ActivityFeed } from './ActivityFeed';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface ProcurementTrackerProps {
@@ -246,7 +248,7 @@ export function ProcurementTracker({ projectId, onBack }: ProcurementTrackerProp
           )}
 
           <Tabs defaultValue="phases" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 mb-6">
+            <TabsList className="grid w-full grid-cols-6 mb-6">
               <TabsTrigger value="phases">Phase Steps</TabsTrigger>
               <TabsTrigger value="documents" className="gap-2">
                 <FileText className="h-4 w-4" />
@@ -278,6 +280,14 @@ export function ProcurementTracker({ projectId, onBack }: ProcurementTrackerProp
                     )}
                   </Badge>
                 )}
+              </TabsTrigger>
+              <TabsTrigger value="team" className="gap-2">
+                <Users className="h-4 w-4" />
+                Team
+              </TabsTrigger>
+              <TabsTrigger value="activity" className="gap-2">
+                <Activity className="h-4 w-4" />
+                Activity
               </TabsTrigger>
             </TabsList>
 
@@ -316,6 +326,16 @@ export function ProcurementTracker({ projectId, onBack }: ProcurementTrackerProp
                 projectId={projectId}
                 currentPhase={selectedPhase?.phase_name?.toLowerCase().replace(' ', '_')}
               />
+            </TabsContent>
+
+            {/* Team Tab - Project team management */}
+            <TabsContent value="team">
+              <ProjectTeamPanel projectId={projectId} />
+            </TabsContent>
+
+            {/* Activity Tab - Project activity feed */}
+            <TabsContent value="activity">
+              <ActivityFeed projectId={projectId} />
             </TabsContent>
           </Tabs>
         </div>

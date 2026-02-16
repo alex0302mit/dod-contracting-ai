@@ -1,0 +1,96 @@
+{
+  "document_id": "DOC-009",
+  "title": "Evaluation Criteria",
+  "regulatory_references": [
+    "FAR 15.304",
+    "FAR 15.305",
+    "DFARS 215.304"
+  ],
+  "required_when": "competitive_acquisition",
+  "fields": {
+    "factors": {
+      "type": "array",
+      "required": true,
+      "item_type": "object",
+      "properties": {
+        "factor_name": {
+          "type": "string"
+        },
+        "subfactors": {
+          "type": "array",
+          "item_type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "criteria": {
+              "type": "text"
+            },
+            "basis_of_assessment": {
+              "type": "text"
+            },
+            "proposal_reference": {
+              "type": "string"
+            }
+          }
+        },
+        "relative_importance": {
+          "type": "string"
+        }
+      }
+    },
+    "rating_definitions": {
+      "type": "array",
+      "required": true,
+      "item_type": "object",
+      "properties": {
+        "rating": {
+          "type": "string"
+        },
+        "definition": {
+          "type": "text"
+        },
+        "color_code": {
+          "type": "string",
+          "required": false
+        }
+      },
+      "default_scales": {
+        "technical": [
+          "Outstanding",
+          "Good",
+          "Acceptable",
+          "Marginal",
+          "Unacceptable"
+        ],
+        "past_performance": [
+          "Substantial Confidence",
+          "Satisfactory Confidence",
+          "Limited Confidence",
+          "No Confidence",
+          "Neutral"
+        ],
+        "risk": [
+          "Low",
+          "Moderate",
+          "High",
+          "Unacceptable"
+        ]
+      }
+    }
+  },
+  "validation_rules": [
+    {
+      "rule": "Evaluation factors must be listed in Section M of DOC-008 verbatim",
+      "severity": "error"
+    },
+    {
+      "rule": "Cost/Price is always evaluated but not rated with adjectives",
+      "severity": "info"
+    },
+    {
+      "rule": "Past Performance must be included as a factor per FAR 15.304(c)(3)",
+      "severity": "error"
+    }
+  ]
+}

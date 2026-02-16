@@ -1,0 +1,225 @@
+{
+  "document_id": "DOC-007",
+  "title": "Source Selection Plan (SSP)",
+  "regulatory_references": [
+    "FAR 15.3",
+    "FAR 15.303",
+    "DFARS 215.3",
+    "DoD Source Selection Procedures (2016)"
+  ],
+  "required_when": "competitive negotiated acquisition",
+  "fields": {
+    "header": {
+      "program_name": {
+        "type": "string",
+        "required": true
+      },
+      "solicitation_number": {
+        "type": "string",
+        "required": true
+      },
+      "source_selection_authority": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "ssac_chair": {
+        "type": "object",
+        "required": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "classification": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "UNCLASSIFIED",
+          "CUI"
+        ]
+      }
+    },
+    "organization": {
+      "ssa": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "responsibilities": {
+            "type": "text"
+          }
+        }
+      },
+      "ssac_members": {
+        "type": "array",
+        "required": false,
+        "item_type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        }
+      },
+      "sseb_chair": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        }
+      },
+      "technical_team": {
+        "type": "array",
+        "required": true,
+        "item_type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "expertise": {
+            "type": "string"
+          }
+        }
+      },
+      "cost_team": {
+        "type": "array",
+        "required": true,
+        "item_type": "object"
+      },
+      "past_performance_team": {
+        "type": "array",
+        "required": true,
+        "item_type": "object"
+      },
+      "legal_advisor": {
+        "type": "string",
+        "required": true
+      },
+      "contracting_officer": {
+        "type": "string",
+        "required": true
+      }
+    },
+    "evaluation_factors": {
+      "type": "array",
+      "required": true,
+      "item_type": "object",
+      "properties": {
+        "factor_name": {
+          "type": "string"
+        },
+        "subfactors": {
+          "type": "array",
+          "item_type": "object",
+          "properties": {
+            "subfactor_name": {
+              "type": "string"
+            },
+            "weight_or_importance": {
+              "type": "string"
+            },
+            "rating_scale": {
+              "type": "string"
+            }
+          }
+        },
+        "relative_importance": {
+          "type": "string"
+        }
+      },
+      "cross_reference": "Must align with DOC-009 (Evaluation Criteria) and DOC-008 Section M"
+    },
+    "procedures": {
+      "methodology": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "Best Value Tradeoff",
+          "LPTA",
+          "VATEP",
+          "Highest Technically Rated"
+        ]
+      },
+      "proposal_receipt_control": {
+        "type": "text",
+        "required": true
+      },
+      "individual_evaluation_process": {
+        "type": "text",
+        "required": true
+      },
+      "consensus_process": {
+        "type": "text",
+        "required": true
+      },
+      "exchanges_with_offerors": {
+        "type": "text",
+        "required": true
+      },
+      "competitive_range_determination": {
+        "type": "text",
+        "required": true
+      }
+    },
+    "documentation_reporting": {
+      "sseb_report_requirements": {
+        "type": "text",
+        "required": true
+      },
+      "ssac_analysis_requirements": {
+        "type": "text",
+        "required": false
+      },
+      "ssdd_requirements": {
+        "type": "text",
+        "required": true
+      },
+      "debriefing_procedures": {
+        "type": "text",
+        "required": true
+      }
+    }
+  },
+  "validation_rules": [
+    {
+      "rule": "Evaluation factors must be listed in descending order of importance",
+      "severity": "error"
+    },
+    {
+      "rule": "Cost/Price must always be an evaluation factor",
+      "severity": "error"
+    },
+    {
+      "rule": "If methodology is LPTA, technical factors must be pass/fail",
+      "severity": "error"
+    },
+    {
+      "rule": "SSA cannot serve on SSEB or SSAC",
+      "severity": "error"
+    }
+  ]
+}

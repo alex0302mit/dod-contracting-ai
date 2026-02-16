@@ -1,0 +1,247 @@
+{
+  "document_id": "DOC-002",
+  "title": "Market Research Report",
+  "regulatory_references": [
+    "FAR Part 10",
+    "FAR 10.001",
+    "FAR 10.002",
+    "DFARS 210",
+    "DoD Market Research Guide"
+  ],
+  "required_when": "always",
+  "fields": {
+    "header": {
+      "program_title": {
+        "type": "string",
+        "required": true
+      },
+      "prepared_by": {
+        "type": "string",
+        "required": true
+      },
+      "date": {
+        "type": "date",
+        "required": true,
+        "format": "DD MMM YYYY"
+      },
+      "estimated_dollar_value": {
+        "type": "currency",
+        "required": true,
+        "format": "USD"
+      }
+    },
+    "description_of_need": {
+      "requirement_summary": {
+        "type": "text",
+        "required": true,
+        "min_length": 50
+      },
+      "key_performance_parameters": {
+        "type": "array",
+        "required": true,
+        "item_type": "string"
+      },
+      "quantity_required": {
+        "type": "string",
+        "required": true
+      },
+      "delivery_timeline": {
+        "type": "string",
+        "required": true
+      }
+    },
+    "research_methods": {
+      "sources_reviewed": {
+        "type": "array",
+        "required": true,
+        "item_type": "string",
+        "suggested_values": [
+          "SAM.gov",
+          "GSA Advantage",
+          "FedBizOpps Archive",
+          "FPDS-NG",
+          "Industry Days",
+          "RFI",
+          "Prior Contracts",
+          "Trade Publications"
+        ]
+      },
+      "industry_events": {
+        "type": "array",
+        "required": false,
+        "item_type": "object",
+        "properties": {
+          "event_name": {
+            "type": "string"
+          },
+          "date": {
+            "type": "date"
+          },
+          "findings": {
+            "type": "text"
+          }
+        }
+      },
+      "rfi_responses": {
+        "type": "object",
+        "required": false,
+        "properties": {
+          "number_received": {
+            "type": "integer"
+          },
+          "summary": {
+            "type": "text"
+          }
+        }
+      },
+      "government_sources_checked": {
+        "type": "array",
+        "required": true,
+        "item_type": "string"
+      },
+      "industry_meetings": {
+        "type": "array",
+        "required": false,
+        "item_type": "object",
+        "properties": {
+          "company": {
+            "type": "string"
+          },
+          "date": {
+            "type": "date"
+          },
+          "summary": {
+            "type": "text"
+          }
+        }
+      }
+    },
+    "findings": {
+      "commercial_availability": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "COTS Available",
+          "COTS with Modification",
+          "GOTS Available",
+          "NDI Available",
+          "New Development Required"
+        ]
+      },
+      "number_of_capable_sources": {
+        "type": "integer",
+        "required": true,
+        "minimum": 0,
+        "cross_reference": "If 0-1, supports DOC-004 J&A for sole source"
+      },
+      "small_business_capability": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "can_perform": {
+            "type": "boolean"
+          },
+          "justification": {
+            "type": "text"
+          }
+        },
+        "cross_reference": "Feeds DOC-013 (DD 2579)"
+      },
+      "price_range": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "low": {
+            "type": "currency"
+          },
+          "high": {
+            "type": "currency"
+          },
+          "basis": {
+            "type": "text"
+          }
+        },
+        "cross_reference": "Feeds DOC-003 (IGCE)"
+      },
+      "technology_readiness_level": {
+        "type": "enum",
+        "required": false,
+        "options": [
+          "TRL 1",
+          "TRL 2",
+          "TRL 3",
+          "TRL 4",
+          "TRL 5",
+          "TRL 6",
+          "TRL 7",
+          "TRL 8",
+          "TRL 9"
+        ]
+      }
+    },
+    "recommendations": {
+      "recommended_approach": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "Commercial Item (FAR 12)",
+          "Non-Developmental Item",
+          "Full Development",
+          "Hybrid"
+        ]
+      },
+      "recommended_contract_type": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "FFP",
+          "CPFF",
+          "CPAF",
+          "T&M",
+          "LH",
+          "IDIQ",
+          "BPA"
+        ]
+      },
+      "recommended_competition_strategy": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "Full and Open",
+          "Other Than Full and Open",
+          "Sole Source"
+        ]
+      },
+      "recommended_set_aside": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "Unrestricted",
+          "Total Small Business",
+          "8(a)",
+          "HUBZone",
+          "SDVOSB",
+          "WOSB"
+        ]
+      }
+    }
+  },
+  "validation_rules": [
+    {
+      "rule": "If number_of_capable_sources <= 1 AND recommended_competition_strategy == 'Full and Open', generate warning",
+      "severity": "warning"
+    },
+    {
+      "rule": "If small_business_capability.can_perform == True, recommended_set_aside should not be 'Unrestricted' without justification",
+      "severity": "warning"
+    },
+    {
+      "rule": "At least 3 sources must be reviewed in sources_reviewed",
+      "severity": "error"
+    },
+    {
+      "rule": "If estimated_dollar_value > 250000, small business analysis is mandatory",
+      "severity": "error"
+    }
+  ]
+}

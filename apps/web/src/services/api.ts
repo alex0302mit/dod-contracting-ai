@@ -153,12 +153,20 @@ export const authApi = {
     return response;
   },
 
-  register: async (email: string, password: string, name: string, role: string): Promise<{ message: string; user: User }> => {
+  register: async (email: string, password: string, name: string, role: string, organizationId: string): Promise<{ message: string; user: User }> => {
     // Backend expects query parameters, not JSON body
-    const params = new URLSearchParams({ email, password, name, role });
+    const params = new URLSearchParams({ email, password, name, role, organization_id: organizationId });
     return apiRequest(`/api/auth/register?${params}`, {
       method: 'POST',
     });
+  },
+
+  getPublicOrganizations: async (): Promise<{ id: string; name: string }[]> => {
+    const response = await fetch(`${API_BASE_URL}/api/organizations/public`);
+    if (!response.ok) {
+      throw new ApiError(response.status, 'Failed to fetch organizations');
+    }
+    return response.json();
   },
 
   me: async (): Promise<User> => {
@@ -543,6 +551,69 @@ export const auditLogsApi = {
 // Projects API
 // ============================================================================
 
+// ============================================================================
+// Organization Types
+// ============================================================================
+
+export interface Organization {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  parent_id?: string;
+  path: string;
+  depth: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface OrganizationMember {
+  id: string;
+  user_id: string;
+  organization_id: string;
+  org_role: 'org_admin' | 'member' | 'viewer';
+  is_primary: boolean;
+  joined_at: string;
+  user?: { id: string; name: string; email: string; role: string };
+  organization?: { id: string; name: string; slug: string };
+}
+
+export interface ProjectTeamMember {
+  id: string;
+  user_id: string;
+  project_id: string;
+  permission_level: 'owner' | 'editor' | 'viewer';
+  granted_by?: string;
+  created_at: string;
+  user?: { id: string; name: string; email: string; role: string };
+}
+
+export interface ProjectActivity {
+  id: string;
+  project_id: string;
+  user_id?: string;
+  activity_type: string;
+  title: string;
+  description?: string;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+  user?: { id: string; name: string };
+}
+
+export interface CrossOrgShare {
+  id: string;
+  project_id: string;
+  source_org_id: string;
+  target_org_id: string;
+  permission_level: 'viewer' | 'editor';
+  shared_by: string;
+  created_at: string;
+  expires_at?: string;
+  source_org?: { id: string; name: string };
+  target_org?: { id: string; name: string };
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -555,6 +626,8 @@ export interface Project {
   program_manager_id?: string;
   // Nested object with program manager details for display
   program_manager?: { id: string; name: string };
+  organization_id?: string;
+  organization?: { id: string; name: string; slug: string };
   current_phase: string;
   overall_status: string;
   start_date?: string;
@@ -614,8 +687,9 @@ export interface Step {
 }
 
 export const projectsApi = {
-  list: async (): Promise<{ projects: Project[] }> => {
-    return apiRequest('/api/projects');
+  list: async (orgId?: string): Promise<{ projects: Project[] }> => {
+    const params = orgId ? `?org_id=${orgId}` : '';
+    return apiRequest(`/api/projects${params}`);
   },
 
   get: async (id: string): Promise<Project> => {
@@ -627,6 +701,9 @@ export const projectsApi = {
     description: string;
     project_type: string;
     estimated_value: number;
+    contracting_officer_id?: string;
+    program_manager_id?: string;
+    organization_id?: string;
   }): Promise<{ message: string; project: Project }> => {
     // Backend expects query parameters, not JSON body
     const params = new URLSearchParams({
@@ -634,6 +711,9 @@ export const projectsApi = {
       description: data.description,
       project_type: data.project_type,
       ...(data.estimated_value && { estimated_value: data.estimated_value.toString() }),
+      ...(data.contracting_officer_id && { contracting_officer_id: data.contracting_officer_id }),
+      ...(data.program_manager_id && { program_manager_id: data.program_manager_id }),
+      ...(data.organization_id && { organization_id: data.organization_id }),
     });
     return apiRequest(`/api/projects?${params}`, {
       method: 'POST',
@@ -745,6 +825,49 @@ export const projectsApi = {
         assumptions,
       }),
     });
+  },
+
+  // Team management
+  getTeam: async (projectId: string): Promise<{ team: ProjectTeamMember[] }> => {
+    return apiRequest(`/api/projects/${projectId}/team`);
+  },
+
+  addTeamMember: async (projectId: string, userId: string, permissionLevel: string): Promise<{ permission: ProjectTeamMember }> => {
+    const params = new URLSearchParams({ user_id: userId, permission_level: permissionLevel });
+    return apiRequest(`/api/projects/${projectId}/team?${params}`, { method: 'POST' });
+  },
+
+  updateTeamMember: async (projectId: string, userId: string, permissionLevel: string): Promise<{ permission: ProjectTeamMember }> => {
+    const params = new URLSearchParams({ permission_level: permissionLevel });
+    return apiRequest(`/api/projects/${projectId}/team/${userId}?${params}`, { method: 'PUT' });
+  },
+
+  removeTeamMember: async (projectId: string, userId: string): Promise<{ message: string }> => {
+    return apiRequest(`/api/projects/${projectId}/team/${userId}`, { method: 'DELETE' });
+  },
+
+  // Activity feed
+  getActivities: async (projectId: string, limit: number = 20, offset: number = 0): Promise<{
+    activities: ProjectActivity[];
+    total: number;
+    limit: number;
+    offset: number;
+  }> => {
+    return apiRequest(`/api/projects/${projectId}/activities?limit=${limit}&offset=${offset}`);
+  },
+
+  // Cross-org sharing
+  shareProject: async (projectId: string, targetOrgId: string, permissionLevel: string = 'viewer'): Promise<{ share: CrossOrgShare }> => {
+    const params = new URLSearchParams({ target_org_id: targetOrgId, permission_level: permissionLevel });
+    return apiRequest(`/api/projects/${projectId}/share?${params}`, { method: 'POST' });
+  },
+
+  getShares: async (projectId: string): Promise<{ shares: CrossOrgShare[] }> => {
+    return apiRequest(`/api/projects/${projectId}/shares`);
+  },
+
+  revokeShare: async (projectId: string, shareId: string): Promise<{ message: string }> => {
+    return apiRequest(`/api/projects/${projectId}/shares/${shareId}`, { method: 'DELETE' });
   },
 };
 
@@ -2352,6 +2475,126 @@ export const reasoningApi = {
 };
 
 // ============================================================================
+// Organizations API
+// ============================================================================
+
+export const organizationsApi = {
+  list: async (): Promise<{ organizations: Organization[] }> => {
+    return apiRequest('/api/organizations');
+  },
+
+  get: async (id: string): Promise<{ organization: Organization }> => {
+    return apiRequest(`/api/organizations/${id}`);
+  },
+
+  create: async (data: { name: string; slug: string; description?: string; parent_id?: string }): Promise<{ organization: Organization }> => {
+    const params = new URLSearchParams({ name: data.name, slug: data.slug });
+    if (data.description) params.append('description', data.description);
+    if (data.parent_id) params.append('parent_id', data.parent_id);
+    return apiRequest(`/api/organizations?${params}`, { method: 'POST' });
+  },
+
+  update: async (id: string, data: { name?: string; description?: string; parent_id?: string }): Promise<{ organization: Organization }> => {
+    const params = new URLSearchParams();
+    if (data.name) params.append('name', data.name);
+    if (data.description) params.append('description', data.description);
+    if (data.parent_id) params.append('parent_id', data.parent_id);
+    return apiRequest(`/api/organizations/${id}?${params}`, { method: 'PUT' });
+  },
+
+  deactivate: async (id: string): Promise<{ message: string }> => {
+    return apiRequest(`/api/organizations/${id}`, { method: 'DELETE' });
+  },
+
+  getTree: async (id: string): Promise<{ organizations: Organization[] }> => {
+    return apiRequest(`/api/organizations/${id}/tree`);
+  },
+
+  getMembers: async (id: string): Promise<{ members: OrganizationMember[] }> => {
+    return apiRequest(`/api/organizations/${id}/members`);
+  },
+
+  addMember: async (orgId: string, userId: string, orgRole: string = 'member', isPrimary: boolean = false): Promise<{ member: OrganizationMember }> => {
+    const params = new URLSearchParams({ user_id: userId, org_role: orgRole, is_primary: isPrimary.toString() });
+    return apiRequest(`/api/organizations/${orgId}/members?${params}`, { method: 'POST' });
+  },
+
+  updateMember: async (orgId: string, userId: string, orgRole?: string, isPrimary?: boolean): Promise<{ member: OrganizationMember }> => {
+    const params = new URLSearchParams();
+    if (orgRole) params.append('org_role', orgRole);
+    if (isPrimary !== undefined) params.append('is_primary', isPrimary.toString());
+    return apiRequest(`/api/organizations/${orgId}/members/${userId}?${params}`, { method: 'PUT' });
+  },
+
+  removeMember: async (orgId: string, userId: string): Promise<{ message: string }> => {
+    return apiRequest(`/api/organizations/${orgId}/members/${userId}`, { method: 'DELETE' });
+  },
+};
+
+// ============================================================================
+// Standalone Generation API
+// ============================================================================
+
+export interface StandaloneDocument {
+  id: string;
+  document_name: string;
+  description: string | null;
+  category: string;
+  is_standalone: boolean;
+  owner_id: string;
+  project_id: string | null;
+  generation_status: string;
+  generated_content: string | null;
+  generated_at: string | null;
+  ai_quality_score: number | null;
+  generation_context: Record<string, string> | null;
+  created_at: string | null;
+  updated_at: string | null;
+  status: string;
+}
+
+export const standaloneApi = {
+  getFormSchemas: async (): Promise<{ schemas: Record<string, any> }> => {
+    return apiRequest('/api/document-types/form-schemas');
+  },
+
+  generate: async (documents: Array<{ doc_type: string; context: Record<string, string> }>): Promise<{
+    task_id: string;
+    document_ids: string[];
+    documents_requested: number;
+  }> => {
+    return apiRequest('/api/standalone/generate', {
+      method: 'POST',
+      body: JSON.stringify({ documents }),
+    });
+  },
+
+  getGenerationStatus: async (taskId: string): Promise<{
+    task_id: string;
+    status: 'pending' | 'in_progress' | 'completed' | 'failed';
+    progress: number;
+    message?: string;
+    document_ids?: string[];
+    result?: {
+      sections: Record<string, string>;
+      citations: Array<{ id: number; source: string; page: number; text: string }>;
+    };
+  }> => {
+    return apiRequest(`/api/generation-status/standalone/${taskId}`);
+  },
+
+  listDocuments: async (): Promise<{ documents: StandaloneDocument[]; total: number }> => {
+    return apiRequest('/api/standalone/documents');
+  },
+
+  deleteDocument: async (documentId: string): Promise<{ message: string }> => {
+    return apiRequest(`/api/standalone/documents/${documentId}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+// ============================================================================
 // Export all APIs
 // ============================================================================
 
@@ -2371,5 +2614,7 @@ export default {
   quality: qualityApi,
   version: versionApi,
   reasoning: reasoningApi,
+  organizations: organizationsApi,
+  standalone: standaloneApi,
   createWebSocket,
 };

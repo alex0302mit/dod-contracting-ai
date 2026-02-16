@@ -1,0 +1,565 @@
+{
+  "manifest_version": "2.0",
+  "system_name": "DoD Acquisition Contract Package Automation",
+  "description": "Master manifest for 28 required acquisition documents supporting USMC and Space Force contract award packages. Designed for multi-agent orchestration with cross-referencing, dependency resolution, and threshold-based routing.",
+  "applicable_services": ["USMC", "USSF", "USN", "USAF", "DoD-Wide"],
+  "regulatory_framework": {
+    "primary": ["FAR", "DFARS"],
+    "service_supplements": {
+      "USMC": "NMCARS (Navy Marine Corps Acquisition Regulation Supplement)",
+      "USSF": "AFFARS (Air Force Federal Acquisition Regulation Supplement)",
+      "USN": "NMCARS",
+      "USAF": "AFFARS"
+    }
+  },
+  "thresholds": {
+    "micro_purchase": 10000,
+    "simplified_acquisition": 250000,
+    "sealed_bidding": 250000,
+    "certified_cost_data": 2000000,
+    "acquisition_plan_required": 50000000,
+    "congressional_notification": 25000000,
+    "subcontracting_plan_required": 750000,
+    "subcontracting_plan_construction": 1500000,
+    "synopsis_required": 25000,
+    "j_and_a_approval_tiers": {
+      "contracting_officer": 750000,
+      "head_of_contracting_activity": 15000000,
+      "senior_procurement_executive": 100000000,
+      "agency_head_or_designee": "above_100000000"
+    }
+  },
+  "execution_phases": [
+    {
+      "phase": 1,
+      "name": "Requirements Definition",
+      "description": "Define the capability need and develop the requirements documentation",
+      "documents": ["DOC-006", "DOC-017"]
+    },
+    {
+      "phase": 2,
+      "name": "Market Research & Planning",
+      "description": "Investigate market, estimate costs, develop acquisition strategy",
+      "documents": ["DOC-002", "DOC-003", "DOC-001"]
+    },
+    {
+      "phase": 3,
+      "name": "Pre-Solicitation Approvals",
+      "description": "Obtain required approvals based on competition strategy and contract type",
+      "documents": ["DOC-004", "DOC-005", "DOC-013", "DOC-014", "DOC-023", "DOC-016"]
+    },
+    {
+      "phase": 4,
+      "name": "Solicitation Development",
+      "description": "Build the solicitation package including evaluation criteria and source selection plan",
+      "documents": ["DOC-007", "DOC-009", "DOC-008", "DOC-019"]
+    },
+    {
+      "phase": 5,
+      "name": "Evaluation & Award",
+      "description": "Evaluate proposals, negotiate, and make award determination",
+      "documents": ["DOC-010", "DOC-011", "DOC-012", "DOC-015", "DOC-022"]
+    },
+    {
+      "phase": 6,
+      "name": "Award & Post-Award",
+      "description": "Execute contract, distribute, notify, and establish administration",
+      "documents": ["DOC-018", "DOC-020", "DOC-024", "DOC-025", "DOC-026", "DOC-027", "DOC-028"]
+    },
+    {
+      "phase": 7,
+      "name": "Contract Administration (Ongoing)",
+      "description": "Ongoing performance monitoring and evaluation",
+      "documents": ["DOC-021"]
+    }
+  ],
+  "documents": [
+    {
+      "document_id": "DOC-001",
+      "title": "Acquisition Strategy / Acquisition Plan",
+      "short_name": "acq_strategy",
+      "schema_file": "schemas/DOC-001_acquisition_strategy.json",
+      "prompt_file": "prompts/DOC-001_acquisition_strategy.md",
+      "phase": 2,
+      "required": true,
+      "conditional_requirement": "Always required; scope/depth varies by dollar threshold and ACAT level",
+      "depends_on": ["DOC-002", "DOC-003", "DOC-006"],
+      "feeds_into": ["DOC-004", "DOC-007", "DOC-008", "DOC-016"],
+      "data_sources": {
+        "from_DOC-002": ["commercial_availability", "capable_sources_count", "recommended_approach", "recommended_contract_type"],
+        "from_DOC-003": ["total_estimated_cost", "cost_by_period"],
+        "from_DOC-006": ["requirement_summary", "period_of_performance", "security_level"]
+      }
+    },
+    {
+      "document_id": "DOC-002",
+      "title": "Market Research Report",
+      "short_name": "market_research",
+      "schema_file": "schemas/DOC-002_market_research.json",
+      "prompt_file": "prompts/DOC-002_market_research.md",
+      "phase": 2,
+      "required": true,
+      "conditional_requirement": "Always required per FAR Part 10",
+      "depends_on": ["DOC-006"],
+      "feeds_into": ["DOC-001", "DOC-003", "DOC-004", "DOC-013"],
+      "data_sources": {
+        "from_DOC-006": ["requirement_description", "key_performance_parameters"]
+      }
+    },
+    {
+      "document_id": "DOC-003",
+      "title": "Independent Government Cost Estimate (IGCE)",
+      "short_name": "igce",
+      "schema_file": "schemas/DOC-003_igce.json",
+      "prompt_file": "prompts/DOC-003_igce.md",
+      "phase": 2,
+      "required": true,
+      "conditional_requirement": "Always required; depth varies by contract type",
+      "depends_on": ["DOC-002", "DOC-006"],
+      "feeds_into": ["DOC-001", "DOC-004", "DOC-008", "DOC-012", "DOC-017"],
+      "data_sources": {
+        "from_DOC-002": ["price_range", "labor_rate_data", "commercial_pricing"],
+        "from_DOC-006": ["tasks", "deliverables", "period_of_performance", "labor_categories"]
+      }
+    },
+    {
+      "document_id": "DOC-004",
+      "title": "Justification & Approval (J&A)",
+      "short_name": "j_and_a",
+      "schema_file": "schemas/DOC-004_justification_approval.json",
+      "prompt_file": "prompts/DOC-004_justification_approval.md",
+      "phase": 3,
+      "required": false,
+      "conditional_requirement": "Required ONLY when using other-than-full-and-open competition (FAR 6.3)",
+      "trigger_condition": "competition_strategy != 'full_and_open'",
+      "depends_on": ["DOC-001", "DOC-002", "DOC-003", "DOC-006"],
+      "feeds_into": ["DOC-008", "DOC-016"],
+      "data_sources": {
+        "from_DOC-001": ["competition_strategy", "contract_type"],
+        "from_DOC-002": ["capable_sources_count", "market_research_summary"],
+        "from_DOC-003": ["total_estimated_cost"],
+        "from_DOC-006": ["requirement_description"]
+      }
+    },
+    {
+      "document_id": "DOC-005",
+      "title": "Determination & Findings (D&F)",
+      "short_name": "d_and_f",
+      "schema_file": "schemas/DOC-005_determination_findings.json",
+      "prompt_file": "prompts/DOC-005_determination_findings.md",
+      "phase": 3,
+      "required": false,
+      "conditional_requirement": "Required for specific contract actions: T&M/LH contracts, use of other than sealed bidding, consent to subcontract, progress payments, etc.",
+      "trigger_conditions": [
+        "contract_type in ['T&M', 'LH']",
+        "procurement_method != 'sealed_bidding' AND value > simplified_acquisition_threshold",
+        "progress_payments_required == true",
+        "contract_financing_required == true"
+      ],
+      "depends_on": ["DOC-001", "DOC-006"],
+      "feeds_into": ["DOC-008", "DOC-016"],
+      "data_sources": {
+        "from_DOC-001": ["contract_type", "acquisition_approach"],
+        "from_DOC-006": ["requirement_complexity", "performance_uncertainty"]
+      }
+    },
+    {
+      "document_id": "DOC-006",
+      "title": "Performance Work Statement / Statement of Work / Statement of Objectives",
+      "short_name": "pws_sow_soo",
+      "schema_file": "schemas/DOC-006_pws_sow_soo.json",
+      "prompt_file": "prompts/DOC-006_pws_sow_soo.md",
+      "phase": 1,
+      "required": true,
+      "conditional_requirement": "Always required; document type (PWS vs SOW vs SOO) depends on acquisition approach",
+      "depends_on": [],
+      "feeds_into": ["DOC-001", "DOC-002", "DOC-003", "DOC-007", "DOC-008", "DOC-009", "DOC-019"],
+      "data_sources": {}
+    },
+    {
+      "document_id": "DOC-007",
+      "title": "Source Selection Plan (SSP)",
+      "short_name": "source_selection_plan",
+      "schema_file": "schemas/DOC-007_source_selection_plan.json",
+      "prompt_file": "prompts/DOC-007_source_selection_plan.md",
+      "phase": 4,
+      "required": false,
+      "conditional_requirement": "Required for competitive negotiated acquisitions (FAR Part 15). Not required for SAP, sole source, or sealed bidding.",
+      "trigger_condition": "competition_strategy == 'full_and_open' AND procurement_method == 'negotiated'",
+      "depends_on": ["DOC-001", "DOC-006"],
+      "feeds_into": ["DOC-008", "DOC-009", "DOC-010", "DOC-011"],
+      "data_sources": {
+        "from_DOC-001": ["source_selection_methodology", "evaluation_factors_summary"],
+        "from_DOC-006": ["requirement_complexity", "tasks", "performance_standards"]
+      }
+    },
+    {
+      "document_id": "DOC-008",
+      "title": "Solicitation (RFP / RFQ / IFB)",
+      "short_name": "solicitation",
+      "schema_file": "schemas/DOC-008_solicitation.json",
+      "prompt_file": "prompts/DOC-008_solicitation.md",
+      "phase": 4,
+      "required": true,
+      "conditional_requirement": "Always required for competitive acquisitions; form varies (RFP for negotiated, IFB for sealed bid, RFQ for SAP/commercial)",
+      "depends_on": ["DOC-001", "DOC-003", "DOC-004", "DOC-005", "DOC-006", "DOC-007", "DOC-009", "DOC-013", "DOC-014"],
+      "feeds_into": ["DOC-010", "DOC-011", "DOC-018"],
+      "data_sources": {
+        "from_DOC-001": ["contract_type", "set_aside_determination", "competition_strategy"],
+        "from_DOC-003": ["clin_structure", "estimated_amounts_by_clin"],
+        "from_DOC-006": ["full_pws_text", "deliverables", "period_of_performance", "place_of_performance"],
+        "from_DOC-007": ["evaluation_factors", "evaluation_methodology"],
+        "from_DOC-009": ["detailed_evaluation_criteria", "rating_definitions"],
+        "from_DOC-013": ["set_aside_recommendation", "naics_code", "size_standard"],
+        "from_DOC-014": ["security_classification", "dd254_required"]
+      }
+    },
+    {
+      "document_id": "DOC-009",
+      "title": "Evaluation Criteria",
+      "short_name": "evaluation_criteria",
+      "schema_file": "schemas/DOC-009_evaluation_criteria.json",
+      "prompt_file": "prompts/DOC-009_evaluation_criteria.md",
+      "phase": 4,
+      "required": true,
+      "conditional_requirement": "Required for all competitive acquisitions; complexity varies by methodology",
+      "depends_on": ["DOC-006", "DOC-007"],
+      "feeds_into": ["DOC-008", "DOC-010", "DOC-011", "DOC-026"],
+      "data_sources": {
+        "from_DOC-006": ["tasks", "performance_standards", "deliverables"],
+        "from_DOC-007": ["evaluation_factors", "subfactors", "relative_importance"]
+      }
+    },
+    {
+      "document_id": "DOC-010",
+      "title": "Source Selection Evaluation Board (SSEB) Report",
+      "short_name": "sseb_report",
+      "schema_file": "schemas/DOC-010_sseb_report.json",
+      "prompt_file": "prompts/DOC-010_sseb_report.md",
+      "phase": 5,
+      "required": true,
+      "conditional_requirement": "Required for competitive negotiated acquisitions",
+      "depends_on": ["DOC-007", "DOC-008", "DOC-009"],
+      "feeds_into": ["DOC-011", "DOC-026"],
+      "data_sources": {
+        "from_DOC-007": ["evaluation_organization", "evaluation_procedures"],
+        "from_DOC-008": ["proposals_received"],
+        "from_DOC-009": ["evaluation_criteria", "rating_definitions", "subfactors"]
+      },
+      "note": "This document requires HUMAN INPUT: actual proposal evaluation data from evaluators. Agent generates structure and compiles evaluator inputs."
+    },
+    {
+      "document_id": "DOC-011",
+      "title": "Source Selection Decision Document (SSDD)",
+      "short_name": "ssdd",
+      "schema_file": "schemas/DOC-011_ssdd.json",
+      "prompt_file": "prompts/DOC-011_ssdd.md",
+      "phase": 5,
+      "required": true,
+      "conditional_requirement": "Required for competitive negotiated acquisitions",
+      "depends_on": ["DOC-007", "DOC-009", "DOC-010"],
+      "feeds_into": ["DOC-018", "DOC-026"],
+      "data_sources": {
+        "from_DOC-007": ["source_selection_authority"],
+        "from_DOC-009": ["evaluation_factors_and_weights"],
+        "from_DOC-010": ["ratings_summary", "strengths_weaknesses_per_offeror", "comparative_analysis"]
+      },
+      "note": "Requires SSA decision input. Agent drafts based on SSEB findings; SSA provides final determination."
+    },
+    {
+      "document_id": "DOC-012",
+      "title": "Price Negotiation Memorandum (PNM) / Business Clearance Memorandum (BCM)",
+      "short_name": "pnm_bcm",
+      "schema_file": "schemas/DOC-012_pnm_bcm.json",
+      "prompt_file": "prompts/DOC-012_pnm_bcm.md",
+      "phase": 5,
+      "required": true,
+      "conditional_requirement": "Required for all negotiated contracts; BCM is Navy/USMC term for same document",
+      "depends_on": ["DOC-003", "DOC-010", "DOC-015"],
+      "feeds_into": ["DOC-016", "DOC-018"],
+      "data_sources": {
+        "from_DOC-003": ["igce_total", "igce_by_element"],
+        "from_DOC-010": ["evaluated_prices"],
+        "from_DOC-015": ["profit_objective", "weighted_guidelines_results"]
+      }
+    },
+    {
+      "document_id": "DOC-013",
+      "title": "Small Business Coordination Record (DD Form 2579)",
+      "short_name": "dd2579",
+      "schema_file": "schemas/DOC-013_dd2579.json",
+      "prompt_file": "prompts/DOC-013_dd2579.md",
+      "phase": 3,
+      "required": true,
+      "conditional_requirement": "Required for acquisitions exceeding the simplified acquisition threshold ($250K)",
+      "trigger_condition": "estimated_value > 250000",
+      "depends_on": ["DOC-002", "DOC-006"],
+      "feeds_into": ["DOC-001", "DOC-008"],
+      "data_sources": {
+        "from_DOC-002": ["small_business_capability", "capable_sources_count", "naics_code"],
+        "from_DOC-006": ["requirement_description"]
+      }
+    },
+    {
+      "document_id": "DOC-014",
+      "title": "DD Form 254 - Contract Security Classification Specification",
+      "short_name": "dd254",
+      "schema_file": "schemas/DOC-014_dd254.json",
+      "prompt_file": "prompts/DOC-014_dd254.md",
+      "phase": 3,
+      "required": false,
+      "conditional_requirement": "Required ONLY when contract involves access to or generation of classified information",
+      "trigger_condition": "security_level in ['CONFIDENTIAL', 'SECRET', 'TOP_SECRET', 'TS_SCI', 'SAP']",
+      "depends_on": ["DOC-006"],
+      "feeds_into": ["DOC-008", "DOC-018", "DOC-028"],
+      "data_sources": {
+        "from_DOC-006": ["security_requirements", "clearance_level", "classified_access_needed"]
+      }
+    },
+    {
+      "document_id": "DOC-015",
+      "title": "DD Form 1547 - Record of Weighted Guidelines",
+      "short_name": "dd1547",
+      "schema_file": "schemas/DOC-015_dd1547.json",
+      "prompt_file": "prompts/DOC-015_dd1547.md",
+      "phase": 5,
+      "required": false,
+      "conditional_requirement": "Required for negotiated contract actions where profit/fee is negotiated and certified cost or pricing data is obtained. Not required for FFP based on adequate price competition.",
+      "trigger_condition": "contract_type in ['CPFF','CPAF','CPIF','FPI'] OR (contract_type == 'FFP' AND certified_cost_data_required == true)",
+      "depends_on": ["DOC-003"],
+      "feeds_into": ["DOC-012"],
+      "data_sources": {
+        "from_DOC-003": ["total_cost_excluding_profit", "cost_elements_breakdown"]
+      }
+    },
+    {
+      "document_id": "DOC-016",
+      "title": "Legal Review Request",
+      "short_name": "legal_review",
+      "schema_file": "schemas/DOC-016_legal_review.json",
+      "prompt_file": "prompts/DOC-016_legal_review.md",
+      "phase": 3,
+      "required": true,
+      "conditional_requirement": "Required at various dollar thresholds per service regulations; always required for sole source, protests, and unusual contract actions",
+      "depends_on": ["DOC-001", "DOC-004", "DOC-005", "DOC-006", "DOC-008", "DOC-012"],
+      "feeds_into": [],
+      "data_sources": {
+        "note": "Compiles references to all other documents for legal review; does not consume specific field data"
+      }
+    },
+    {
+      "document_id": "DOC-017",
+      "title": "Purchase Request (PR) / Funding Document",
+      "short_name": "purchase_request",
+      "schema_file": "schemas/DOC-017_purchase_request.json",
+      "prompt_file": "prompts/DOC-017_purchase_request.md",
+      "phase": 1,
+      "required": true,
+      "conditional_requirement": "Always required; initiates the procurement action and certifies funds availability",
+      "depends_on": ["DOC-003", "DOC-006"],
+      "feeds_into": ["DOC-008", "DOC-018"],
+      "data_sources": {
+        "from_DOC-003": ["total_estimated_cost", "cost_by_period"],
+        "from_DOC-006": ["requirement_description", "delivery_timeline"]
+      }
+    },
+    {
+      "document_id": "DOC-018",
+      "title": "Contract Document (Uniform Contract Format)",
+      "short_name": "contract_ucf",
+      "schema_file": "schemas/DOC-018_contract_ucf.json",
+      "prompt_file": "prompts/DOC-018_contract_ucf.md",
+      "phase": 6,
+      "required": true,
+      "conditional_requirement": "Always required; this is the actual awarded contract",
+      "depends_on": ["DOC-001", "DOC-006", "DOC-008", "DOC-011", "DOC-012", "DOC-014", "DOC-017"],
+      "feeds_into": ["DOC-020", "DOC-025", "DOC-027", "DOC-028"],
+      "data_sources": {
+        "from_DOC-001": ["contract_type"],
+        "from_DOC-006": ["full_pws_text"],
+        "from_DOC-008": ["clin_structure", "clauses", "special_requirements"],
+        "from_DOC-011": ["selected_offeror", "contract_value"],
+        "from_DOC-012": ["negotiated_price", "price_by_element"],
+        "from_DOC-014": ["dd254_content"],
+        "from_DOC-017": ["fund_cite", "appropriation"]
+      }
+    },
+    {
+      "document_id": "DOC-019",
+      "title": "Quality Assurance Surveillance Plan (QASP)",
+      "short_name": "qasp",
+      "schema_file": "schemas/DOC-019_qasp.json",
+      "prompt_file": "prompts/DOC-019_qasp.md",
+      "phase": 4,
+      "required": true,
+      "conditional_requirement": "Required for all service contracts; recommended for supply contracts with significant quality requirements",
+      "depends_on": ["DOC-006"],
+      "feeds_into": ["DOC-008", "DOC-020", "DOC-028"],
+      "data_sources": {
+        "from_DOC-006": ["tasks", "performance_standards", "acceptable_quality_levels", "deliverables"]
+      }
+    },
+    {
+      "document_id": "DOC-020",
+      "title": "COR Appointment Letter",
+      "short_name": "cor_appointment",
+      "schema_file": "schemas/DOC-020_cor_appointment.json",
+      "prompt_file": "prompts/DOC-020_cor_appointment.md",
+      "phase": 6,
+      "required": true,
+      "conditional_requirement": "Required whenever a COR is designated; nearly always required for service contracts",
+      "depends_on": ["DOC-018", "DOC-019"],
+      "feeds_into": ["DOC-028"],
+      "data_sources": {
+        "from_DOC-018": ["contract_number", "contractor_name", "contract_value", "period_of_performance"],
+        "from_DOC-019": ["surveillance_methods", "reporting_requirements"]
+      }
+    },
+    {
+      "document_id": "DOC-021",
+      "title": "Past Performance Evaluation (CPARS Input)",
+      "short_name": "cpars_evaluation",
+      "schema_file": "schemas/DOC-021_cpars_evaluation.json",
+      "prompt_file": "prompts/DOC-021_cpars_evaluation.md",
+      "phase": 7,
+      "required": true,
+      "conditional_requirement": "Required annually for contracts > SAT and at contract completion",
+      "depends_on": ["DOC-018", "DOC-019"],
+      "feeds_into": [],
+      "data_sources": {
+        "from_DOC-018": ["contract_number", "contractor_name", "contract_type", "contract_value"],
+        "from_DOC-019": ["performance_standards", "surveillance_results"]
+      },
+      "note": "Requires HUMAN INPUT: actual performance observations from COR and program manager"
+    },
+    {
+      "document_id": "DOC-022",
+      "title": "Responsibility Determination",
+      "short_name": "responsibility_determination",
+      "schema_file": "schemas/DOC-022_responsibility_determination.json",
+      "prompt_file": "prompts/DOC-022_responsibility_determination.md",
+      "phase": 5,
+      "required": true,
+      "conditional_requirement": "Required before every contract award",
+      "depends_on": ["DOC-010"],
+      "feeds_into": ["DOC-018"],
+      "data_sources": {
+        "from_DOC-010": ["selected_offeror_name", "selected_offeror_cage", "selected_offeror_uei"]
+      },
+      "note": "Requires KO to perform SAM.gov, FAPIIS, and CPARS checks. Agent generates template and populates from system queries."
+    },
+    {
+      "document_id": "DOC-023",
+      "title": "Organizational Conflict of Interest (OCI) Determination",
+      "short_name": "oci_determination",
+      "schema_file": "schemas/DOC-023_oci_determination.json",
+      "prompt_file": "prompts/DOC-023_oci_determination.md",
+      "phase": 3,
+      "required": true,
+      "conditional_requirement": "Analysis always required; formal determination document required when potential OCI is identified",
+      "depends_on": ["DOC-001", "DOC-006"],
+      "feeds_into": ["DOC-008", "DOC-016"],
+      "data_sources": {
+        "from_DOC-001": ["acquisition_approach", "competition_strategy"],
+        "from_DOC-006": ["requirement_description", "advisory_and_assistance_services"]
+      }
+    },
+    {
+      "document_id": "DOC-024",
+      "title": "Small Business Subcontracting Plan",
+      "short_name": "sb_subcontracting_plan",
+      "schema_file": "schemas/DOC-024_sb_subcontracting_plan.json",
+      "prompt_file": "prompts/DOC-024_sb_subcontracting_plan.md",
+      "phase": 6,
+      "required": false,
+      "conditional_requirement": "Required for contracts > $750K ($1.5M construction) when prime is other than small business",
+      "trigger_condition": "estimated_value > 750000 AND prime_business_size != 'small'",
+      "depends_on": ["DOC-013", "DOC-018"],
+      "feeds_into": ["DOC-021"],
+      "data_sources": {
+        "from_DOC-013": ["small_business_goals", "naics_code"],
+        "from_DOC-018": ["contract_value", "contractor_name"]
+      },
+      "note": "Primarily contractor-authored; agent generates template and validates compliance with FAR 19.704 requirements"
+    },
+    {
+      "document_id": "DOC-025",
+      "title": "Contract Distribution List",
+      "short_name": "distribution_list",
+      "schema_file": "schemas/DOC-025_distribution_list.json",
+      "prompt_file": "prompts/DOC-025_distribution_list.md",
+      "phase": 6,
+      "required": true,
+      "conditional_requirement": "Always required at contract award",
+      "depends_on": ["DOC-018", "DOC-020"],
+      "feeds_into": [],
+      "data_sources": {
+        "from_DOC-018": ["contract_number", "contractor_name", "contracting_office", "dcma_assignment"],
+        "from_DOC-020": ["cor_name", "cor_office"]
+      }
+    },
+    {
+      "document_id": "DOC-026",
+      "title": "Debriefing Document",
+      "short_name": "debriefing",
+      "schema_file": "schemas/DOC-026_debriefing.json",
+      "prompt_file": "prompts/DOC-026_debriefing.md",
+      "phase": 6,
+      "required": false,
+      "conditional_requirement": "Required when an unsuccessful offeror requests a debriefing (within 3 days of notification per FAR 15.506)",
+      "trigger_condition": "debriefing_requested == true",
+      "depends_on": ["DOC-009", "DOC-010", "DOC-011"],
+      "feeds_into": [],
+      "data_sources": {
+        "from_DOC-009": ["evaluation_criteria", "rating_definitions"],
+        "from_DOC-010": ["offeror_ratings", "strengths", "weaknesses", "deficiencies"],
+        "from_DOC-011": ["award_rationale", "selected_offeror_ratings"]
+      }
+    },
+    {
+      "document_id": "DOC-027",
+      "title": "Post-Award Synopsis / SAM.gov Notice",
+      "short_name": "award_notice",
+      "schema_file": "schemas/DOC-027_award_notice.json",
+      "prompt_file": "prompts/DOC-027_award_notice.md",
+      "phase": 6,
+      "required": true,
+      "conditional_requirement": "Required for awards > $25,000 unless exception applies (FAR 5.301)",
+      "trigger_condition": "contract_value > 25000",
+      "depends_on": ["DOC-018"],
+      "feeds_into": [],
+      "data_sources": {
+        "from_DOC-018": ["contract_number", "award_date", "contractor_name", "contractor_address", "contractor_uei", "contract_value", "contract_type", "naics_code", "set_aside_status", "number_of_offers", "contracting_office"]
+      }
+    },
+    {
+      "document_id": "DOC-028",
+      "title": "Contract Administration Plan",
+      "short_name": "admin_plan",
+      "schema_file": "schemas/DOC-028_admin_plan.json",
+      "prompt_file": "prompts/DOC-028_admin_plan.md",
+      "phase": 6,
+      "required": true,
+      "conditional_requirement": "Required for all contracts; complexity scales with contract value and type",
+      "depends_on": ["DOC-014", "DOC-018", "DOC-019", "DOC-020"],
+      "feeds_into": ["DOC-021"],
+      "data_sources": {
+        "from_DOC-014": ["security_requirements", "dd254_updates_process"],
+        "from_DOC-018": ["contract_number", "contractor_name", "contract_type", "contract_value", "period_of_performance", "dcma_assignment"],
+        "from_DOC-019": ["surveillance_schedule", "performance_standards", "remedies"],
+        "from_DOC-020": ["cor_name", "cor_responsibilities"]
+      }
+    }
+  ],
+  "cross_reference_index": {
+    "description": "Quick lookup: which documents reference each shared data element",
+    "estimated_value": ["DOC-001", "DOC-003", "DOC-004", "DOC-008", "DOC-013", "DOC-017"],
+    "contract_type": ["DOC-001", "DOC-005", "DOC-008", "DOC-012", "DOC-015", "DOC-018", "DOC-028"],
+    "competition_strategy": ["DOC-001", "DOC-004", "DOC-007", "DOC-008", "DOC-013", "DOC-023"],
+    "contractor_name": ["DOC-004", "DOC-011", "DOC-012", "DOC-018", "DOC-020", "DOC-021", "DOC-022", "DOC-024", "DOC-025", "DOC-027"],
+    "contract_number": ["DOC-012", "DOC-018", "DOC-019", "DOC-020", "DOC-021", "DOC-024", "DOC-025", "DOC-027", "DOC-028"],
+    "naics_code": ["DOC-001", "DOC-008", "DOC-013", "DOC-024", "DOC-027"],
+    "period_of_performance": ["DOC-001", "DOC-006", "DOC-008", "DOC-018", "DOC-020", "DOC-028"],
+    "security_level": ["DOC-001", "DOC-006", "DOC-008", "DOC-014", "DOC-028"]
+  }
+}

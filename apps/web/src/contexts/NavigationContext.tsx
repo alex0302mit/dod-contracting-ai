@@ -28,6 +28,9 @@ export type RouteType =
   | 'SETTINGS'         // Admin settings
   | 'ADMIN_ANALYTICS'  // Admin analytics dashboard
   | 'ADMIN_AUDIT_LOGS' // Admin audit logs view
+  | 'ADMIN_ORGS'       // Organization management
+  | 'GENERATE_DOCUMENT' // Standalone generation wizard
+  | 'MY_DOCUMENTS'     // Standalone documents list
   | 'GENERATING';      // Generation progress view
 
 // Context type definition

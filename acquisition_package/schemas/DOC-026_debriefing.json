@@ -1,0 +1,118 @@
+{
+  "document_id": "DOC-026",
+  "title": "Debriefing Document",
+  "regulatory_references": [
+    "FAR 15.505",
+    "FAR 15.506",
+    "DFARS 215.506",
+    "10 U.S.C. 3304"
+  ],
+  "required_when": "unsuccessful_offeror_requests_debriefing",
+  "fields": {
+    "header": {
+      "solicitation_number": {
+        "type": "string",
+        "required": true
+      },
+      "program_name": {
+        "type": "string",
+        "required": true
+      },
+      "debriefing_type": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "Pre-award",
+          "Post-award",
+          "Enhanced (10 U.S.C. 3304)"
+        ]
+      },
+      "debriefing_date": {
+        "type": "date",
+        "required": true
+      },
+      "offeror_debriefed": {
+        "type": "string",
+        "required": true
+      },
+      "method": {
+        "type": "enum",
+        "options": [
+          "In-person",
+          "Virtual",
+          "Written"
+        ]
+      }
+    },
+    "content": {
+      "evaluation_criteria_used": {
+        "type": "text",
+        "required": true,
+        "source": "DOC-009"
+      },
+      "offeror_ratings": {
+        "type": "text",
+        "required": true,
+        "source": "DOC-010"
+      },
+      "strengths": {
+        "type": "text",
+        "required": true
+      },
+      "weaknesses": {
+        "type": "text",
+        "required": true
+      },
+      "deficiencies": {
+        "type": "text"
+      },
+      "awardee_ratings": {
+        "type": "text",
+        "required": true,
+        "note": "Post-award only; no proprietary details"
+      },
+      "award_rationale": {
+        "type": "text",
+        "required": true,
+        "source": "DOC-011"
+      },
+      "methodology_used": {
+        "type": "string",
+        "required": true
+      }
+    },
+    "limitations": {
+      "not_disclosed": {
+        "type": "text",
+        "required": true
+      }
+    },
+    "record": {
+      "government_attendees": {
+        "type": "array",
+        "item_type": "string"
+      },
+      "offeror_attendees": {
+        "type": "array",
+        "item_type": "string"
+      },
+      "questions_responses": {
+        "type": "text"
+      },
+      "ko_signature": {
+        "type": "signature_block",
+        "required": true
+      }
+    }
+  },
+  "validation_rules": [
+    {
+      "rule": "Must not disclose proprietary information of other offerors",
+      "severity": "error"
+    },
+    {
+      "rule": "Post-award debriefings must be offered within 3 days of notification",
+      "severity": "info"
+    }
+  ]
+}

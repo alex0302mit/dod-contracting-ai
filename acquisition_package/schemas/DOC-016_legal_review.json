@@ -1,0 +1,84 @@
+{
+  "document_id": "DOC-016",
+  "title": "Legal Review Request",
+  "regulatory_references": [
+    "FAR 1.602-2(c)",
+    "DFARS 201.602"
+  ],
+  "required_when": "various_thresholds_and_action_types",
+  "fields": {
+    "routing": {
+      "to": {
+        "type": "string",
+        "required": true,
+        "default": "Office of Counsel / Staff Judge Advocate"
+      },
+      "from": {
+        "type": "string",
+        "required": true
+      },
+      "date": {
+        "type": "date",
+        "required": true
+      },
+      "subject": {
+        "type": "string",
+        "required": true
+      }
+    },
+    "acquisition_summary": {
+      "contract_solicitation_number": {
+        "type": "string",
+        "required": true
+      },
+      "estimated_value": {
+        "type": "currency",
+        "required": true
+      },
+      "contract_type": {
+        "type": "string",
+        "required": true
+      },
+      "competition_status": {
+        "type": "string",
+        "required": true
+      },
+      "review_type": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "Pre-Solicitation",
+          "Pre-Award",
+          "Sole Source J&A",
+          "Protest Response",
+          "Claims",
+          "Termination"
+        ]
+      }
+    },
+    "enclosures": {
+      "type": "array",
+      "required": true,
+      "item_type": "string",
+      "description": "List all documents enclosed for review"
+    },
+    "specific_issues": {
+      "type": "text",
+      "required": false
+    },
+    "requested_completion_date": {
+      "type": "date",
+      "required": true
+    },
+    "ko_signature": {
+      "type": "signature_block",
+      "required": true
+    }
+  },
+  "validation_rules": [
+    {
+      "rule": "All referenced documents must exist in the package",
+      "severity": "error"
+    }
+  ]
+}

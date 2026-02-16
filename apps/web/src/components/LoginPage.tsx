@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Lock, Clock, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AcesLogo } from '@/components/shared/AcesLogo';
-import { ApiError } from '@/services/api';
+import { ApiError, authApi } from '@/services/api';
 import { PasswordRequirements, validatePassword } from '@/components/shared/PasswordRequirements';
 
 type ErrorType = 'credentials' | 'locked' | 'rate_limit' | 'password' | 'pending_approval' | null;
@@ -21,6 +21,8 @@ export function LoginPage() {
   const [lockoutMinutes, setLockoutMinutes] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  const [organizationId, setOrganizationId] = useState('');
+  const [organizations, setOrganizations] = useState<{ id: string; name: string }[]>([]);
 
   const resetState = () => {
     setErrorType(null);
@@ -33,8 +35,17 @@ export function LoginPage() {
     setEmail('');
     setPassword('');
     setName('');
+    setOrganizationId('');
     resetState();
   };
+
+  useEffect(() => {
+    if (mode === 'register') {
+      authApi.getPublicOrganizations()
+        .then(setOrganizations)
+        .catch(() => setOrganizations([]));
+    }
+  }, [mode]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,7 +106,7 @@ export function LoginPage() {
     setIsLoading(true);
 
     try {
-      await signUp(email, password, name);
+      await signUp(email, password, name, organizationId);
       setRegistrationSuccess(true);
     } catch (err) {
       console.error('Registration error:', err);
@@ -340,6 +351,25 @@ export function LoginPage() {
                     placeholder="John Smith"
                     required
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Command / Organization
+                  </label>
+                  <select
+                    value={organizationId}
+                    onChange={(e) => setOrganizationId(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  >
+                    <option value="">Select an organization</option>
+                    {organizations.map((org) => (
+                      <option key={org.id} value={org.id}>
+                        {org.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>

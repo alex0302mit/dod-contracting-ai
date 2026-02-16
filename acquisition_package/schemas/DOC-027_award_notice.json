@@ -1,0 +1,100 @@
+{
+  "document_id": "DOC-027",
+  "title": "Post-Award Synopsis / SAM.gov Notice",
+  "regulatory_references": [
+    "FAR 5.301",
+    "FAR 5.303",
+    "DFARS 205.3"
+  ],
+  "required_when": "contract_value > 25000",
+  "fields": {
+    "award_notice": {
+      "award_date": {
+        "type": "date",
+        "required": true,
+        "source": "DOC-018.award_date"
+      },
+      "contract_number": {
+        "type": "string",
+        "required": true,
+        "source": "DOC-018.contract_number"
+      },
+      "solicitation_number": {
+        "type": "string",
+        "required": true,
+        "source": "DOC-008.solicitation_number"
+      },
+      "contractor_name": {
+        "type": "string",
+        "required": true,
+        "source": "DOC-018.contractor.name"
+      },
+      "contractor_address": {
+        "type": "string",
+        "required": true
+      },
+      "contractor_uei": {
+        "type": "string",
+        "required": true
+      },
+      "award_amount": {
+        "type": "currency",
+        "required": true
+      },
+      "total_value_with_options": {
+        "type": "currency",
+        "required": true
+      },
+      "contract_type": {
+        "type": "string",
+        "required": true
+      },
+      "description": {
+        "type": "text",
+        "required": true
+      },
+      "place_of_performance": {
+        "type": "string",
+        "required": true
+      },
+      "naics_code": {
+        "type": "string",
+        "required": true
+      },
+      "set_aside_status": {
+        "type": "string",
+        "required": true
+      },
+      "offers_received": {
+        "type": "integer",
+        "required": true
+      },
+      "contracting_office": {
+        "type": "string",
+        "required": true
+      },
+      "contracting_officer": {
+        "type": "object",
+        "required": true
+      },
+      "solicitation_procedures": {
+        "type": "string",
+        "required": true
+      },
+      "extent_competed": {
+        "type": "string",
+        "required": true
+      }
+    }
+  },
+  "validation_rules": [
+    {
+      "rule": "Must be posted within 14 days of award for actions > $25K",
+      "severity": "error"
+    },
+    {
+      "rule": "All fields auto-populated from DOC-018 and DOC-008",
+      "severity": "info"
+    }
+  ]
+}

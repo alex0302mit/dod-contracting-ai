@@ -18,11 +18,15 @@ interface CreateProjectDialogProps {
 
 export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogProps) {
   const { createProject } = useProcurementProjects();
-  const { user } = useAuth();
+  const { user, activeOrgId, userOrganizations } = useAuth();
   const [loading, setLoading] = useState(false);
   const [loadingOfficers, setLoadingOfficers] = useState(false);
+  const [loadingPMs, setLoadingPMs] = useState(false);
   const [contractingOfficers, setContractingOfficers] = useState<User[]>([]);
+  const [programManagers, setProgramManagers] = useState<User[]>([]);
   const [selectedOfficerId, setSelectedOfficerId] = useState<string>('');
+  const [selectedPMId, setSelectedPMId] = useState<string>('');
+  const [selectedOrgId, setSelectedOrgId] = useState<string>(activeOrgId ?? '');
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -31,12 +35,14 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
     target_completion_date: '',
   });
 
-  // Fetch contracting officers when dialog opens
+  // Fetch contracting officers and PMs when dialog opens
   useEffect(() => {
     if (open) {
       fetchContractingOfficers();
+      fetchProgramManagers();
+      if (activeOrgId) setSelectedOrgId(activeOrgId);
     }
-  }, [open]);
+  }, [open, activeOrgId]);
 
   // Default to current user if they are a contracting officer
   useEffect(() => {
@@ -58,6 +64,18 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
       toast.error('Failed to load contracting officers');
     } finally {
       setLoadingOfficers(false);
+    }
+  };
+
+  const fetchProgramManagers = async () => {
+    setLoadingPMs(true);
+    try {
+      const response = await authApi.getUsers('program_manager');
+      setProgramManagers(response.users);
+    } catch (error) {
+      console.error('Error fetching program managers:', error);
+    } finally {
+      setLoadingPMs(false);
     }
   };
 
@@ -92,6 +110,8 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
         project_type: formData.project_type,
         estimated_value: formData.estimated_value ? parseFloat(formData.estimated_value) : 0,
         contracting_officer_id: selectedOfficerId,
+        program_manager_id: selectedPMId || undefined,
+        organization_id: selectedOrgId || undefined,
       });
 
       toast.success('Project created successfully');
@@ -105,6 +125,7 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
         target_completion_date: '',
       });
       setSelectedOfficerId('');
+      setSelectedPMId('');
     } catch (error) {
       console.error('Error creating project:', error);
       toast.error('Failed to create project');
@@ -225,6 +246,52 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
                 The contracting officer responsible for this procurement
               </p>
             </div>
+
+            {/* Program Manager Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="program_manager">Program Manager</Label>
+              {loadingPMs ? (
+                <div className="flex items-center gap-2 h-10 px-3 border rounded-md bg-slate-50">
+                  <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                  <span className="text-sm text-slate-500">Loading PMs...</span>
+                </div>
+              ) : (
+                <Select value={selectedPMId} onValueChange={setSelectedPMId}>
+                  <SelectTrigger id="program_manager">
+                    <SelectValue placeholder="Select program manager (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {programManagers.map((pm) => (
+                      <SelectItem key={pm.id} value={pm.id}>
+                        {pm.name} ({pm.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {/* Organization Selection */}
+            {userOrganizations.length > 1 && (
+              <div className="space-y-2">
+                <Label htmlFor="organization">Organization</Label>
+                <Select value={selectedOrgId} onValueChange={setSelectedOrgId}>
+                  <SelectTrigger id="organization">
+                    <SelectValue placeholder="Select organization" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {userOrganizations.map((membership) => (
+                      <SelectItem key={membership.organization_id} value={membership.organization_id}>
+                        {membership.organization?.name ?? membership.organization_id}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-500">
+                  The organization this project belongs to
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="target_completion_date">Target Completion Date</Label>

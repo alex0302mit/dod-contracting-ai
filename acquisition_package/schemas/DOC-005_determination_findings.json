@@ -1,0 +1,102 @@
+{
+  "document_id": "DOC-005",
+  "title": "Determination & Findings (D&F)",
+  "regulatory_references": [
+    "FAR 1.7",
+    "FAR 1.701",
+    "FAR 1.702",
+    "FAR 1.703",
+    "DFARS 201.7"
+  ],
+  "required_when": "contract_type in ['T&M', 'LH'] OR other specific conditions per FAR",
+  "fields": {
+    "header": {
+      "d_and_f_type": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "Time-and-Materials / Labor-Hour Contract (FAR 16.601(d))",
+          "Use of Other Than Sealed Bidding (FAR 6.401)",
+          "Consent to Subcontract (FAR 44.2)",
+          "Progress Payments (FAR 32.1)",
+          "Contract Financing (FAR 32.2)",
+          "Undefinitized Contract Action (DFARS 217.7404)",
+          "Individual Deviation from FAR (FAR 1.403)",
+          "Class Deviation from FAR (FAR 1.404)",
+          "Other"
+        ]
+      },
+      "contracting_activity": {
+        "type": "string",
+        "required": true
+      },
+      "program_requirement": {
+        "type": "string",
+        "required": true
+      },
+      "estimated_value": {
+        "type": "currency",
+        "required": true
+      }
+    },
+    "findings": {
+      "type": "array",
+      "required": true,
+      "min_items": 2,
+      "item_type": "object",
+      "properties": {
+        "finding_number": {
+          "type": "integer"
+        },
+        "finding_text": {
+          "type": "text",
+          "required": true,
+          "description": "State the factual basis supporting the determination"
+        }
+      },
+      "guidance": {
+        "T&M_LH_required_findings": [
+          "No other contract type is suitable (explain why FFP is not feasible)",
+          "The government will provide adequate surveillance to ensure efficient performance",
+          "The contractor's accounting system is adequate for T&M/LH contract administration"
+        ]
+      }
+    },
+    "determination": {
+      "determination_statement": {
+        "type": "text",
+        "required": true,
+        "template": "Based on the above findings, I hereby determine that {specific_determination} is in the best interest of the Government."
+      }
+    },
+    "approval": {
+      "approving_official": {
+        "type": "signature_block",
+        "required": true,
+        "note": "Must be at or above the level specified in FAR for the type of D&F"
+      },
+      "legal_review": {
+        "type": "signature_block",
+        "required": true
+      }
+    }
+  },
+  "validation_rules": [
+    {
+      "rule": "At least 2 findings must be documented",
+      "severity": "error"
+    },
+    {
+      "rule": "If d_and_f_type is T&M/LH, all three required findings must be addressed",
+      "severity": "error"
+    },
+    {
+      "rule": "Determination statement must specifically reference the authorized action",
+      "severity": "error"
+    },
+    {
+      "rule": "For T&M contracts, must describe surveillance plan for cost control",
+      "severity": "error"
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Search, Filter, Clock, CheckCircle2, AlertCircle, Pause, Trash2 } from 'lucide-react';
+import { Plus, Search, Filter, Clock, CheckCircle2, AlertCircle, Pause, Trash2, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -225,6 +225,7 @@ interface ProjectCardProps {
     contracting_officer_id?: string;
     program_manager_id?: string;
     contracting_officer?: { name: string };
+    organization?: { name: string; slug: string } | null;
   };
   onSelect: (id: string) => void;
   onDelete: (id: string) => Promise<void>;
@@ -276,6 +277,12 @@ function ProjectCard({ project, onSelect, onDelete, onRefresh, canDelete, canAss
           <Badge className={getStatusColor(project.overall_status)} variant="outline">
             {project.overall_status.replace('_', ' ')}
           </Badge>
+            {project.organization && (
+              <Badge variant="outline" className="gap-1 text-xs bg-slate-50">
+                <Building2 className="h-3 w-3" />
+                {project.organization.name}
+              </Badge>
+            )}
             {/* Assign Officer button */}
             {canAssign && (
               <AssignOfficerDialog

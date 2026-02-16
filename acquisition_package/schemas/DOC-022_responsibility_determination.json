@@ -1,0 +1,149 @@
+{
+  "document_id": "DOC-022",
+  "title": "Responsibility Determination",
+  "regulatory_references": [
+    "FAR 9.1",
+    "FAR 9.104-1",
+    "DFARS 209.1"
+  ],
+  "required_when": "before_every_contract_award",
+  "fields": {
+    "contractor_info": {
+      "name": {
+        "type": "string",
+        "required": true
+      },
+      "cage_code": {
+        "type": "string",
+        "required": true
+      },
+      "uei": {
+        "type": "string",
+        "required": true
+      },
+      "address": {
+        "type": "string",
+        "required": true
+      },
+      "business_size": {
+        "type": "string",
+        "required": true
+      }
+    },
+    "responsibility_standards": {
+      "financial_resources": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "adequate": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "type": "text"
+          }
+        }
+      },
+      "delivery_performance": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "adequate": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "type": "text"
+          }
+        }
+      },
+      "performance_record": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "satisfactory": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "type": "text"
+          },
+          "cpars_check": {
+            "type": "text"
+          }
+        }
+      },
+      "integrity_ethics": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "satisfactory": {
+            "type": "boolean"
+          },
+          "sam_exclusions_check": {
+            "type": "text"
+          },
+          "fapiis_check": {
+            "type": "text"
+          }
+        }
+      },
+      "organization_controls": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "adequate": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "type": "text"
+          }
+        }
+      },
+      "technical_skills": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "adequate": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "type": "text"
+          }
+        }
+      },
+      "otherwise_qualified": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "qualified": {
+            "type": "boolean"
+          },
+          "sam_registration": {
+            "type": "boolean"
+          },
+          "tax_compliant": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "determination": {
+      "statement": {
+        "type": "text",
+        "required": true
+      },
+      "contracting_officer": {
+        "type": "signature_block",
+        "required": true
+      }
+    }
+  },
+  "validation_rules": [
+    {
+      "rule": "All 7 responsibility standards must be evaluated",
+      "severity": "error"
+    },
+    {
+      "rule": "SAM.gov and FAPIIS checks must be current (within 3 days of award)",
+      "severity": "error"
+    }
+  ]
+}

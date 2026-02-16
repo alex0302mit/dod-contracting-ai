@@ -1,0 +1,361 @@
+# Document Form Schemas
+# Defines dynamic form fields per document type for standalone generation.
+# Each document type has: description, phase, estimated_minutes, complexity, and fields.
+# Field types: text, textarea, number, select, date
+
+market_research:
+  name: "Market Research Report"
+  description: "Comprehensive market analysis to identify potential sources and assess industry capabilities."
+  phase: "pre_solicitation"
+  estimated_minutes: 5
+  complexity: "medium"
+  fields:
+    - key: program_name
+      label: "Program Name"
+      type: text
+      required: true
+      placeholder: "e.g., Next-Gen Radar System"
+    - key: industry_sector
+      label: "Industry Sector"
+      type: select
+      required: true
+      options:
+        - { value: "it", label: "Information Technology" }
+        - { value: "defense", label: "Defense Systems" }
+        - { value: "aerospace", label: "Aerospace" }
+        - { value: "cybersecurity", label: "Cybersecurity" }
+        - { value: "logistics", label: "Logistics & Supply Chain" }
+        - { value: "professional_services", label: "Professional Services" }
+        - { value: "construction", label: "Construction & Facilities" }
+        - { value: "medical", label: "Medical & Health" }
+        - { value: "other", label: "Other" }
+    - key: estimated_value
+      label: "Estimated Contract Value ($)"
+      type: number
+      required: false
+      placeholder: "e.g., 5000000"
+    - key: set_aside_type
+      label: "Set-Aside Consideration"
+      type: select
+      required: false
+      options:
+        - { value: "full_open", label: "Full & Open Competition" }
+        - { value: "small_business", label: "Small Business Set-Aside" }
+        - { value: "8a", label: "8(a) Program" }
+        - { value: "hubzone", label: "HUBZone" }
+        - { value: "sdvosb", label: "Service-Disabled Veteran-Owned" }
+        - { value: "wosb", label: "Women-Owned Small Business" }
+    - key: requirement_description
+      label: "Requirement Description"
+      type: textarea
+      required: true
+      placeholder: "Describe the goods or services being procured..."
+    - key: additional_context
+      label: "Additional Context"
+      type: textarea
+      required: false
+      placeholder: "Any additional information, constraints, or special considerations..."
+
+igce:
+  name: "Independent Government Cost Estimate (IGCE)"
+  description: "Detailed cost estimate developed independently by the government to evaluate proposals."
+  phase: "pre_solicitation"
+  estimated_minutes: 7
+  complexity: "high"
+  fields:
+    - key: program_name
+      label: "Program Name"
+      type: text
+      required: true
+      placeholder: "e.g., Cloud Migration Services"
+    - key: contract_type
+      label: "Contract Type"
+      type: select
+      required: true
+      options:
+        - { value: "ffp", label: "Firm Fixed Price (FFP)" }
+        - { value: "cpff", label: "Cost Plus Fixed Fee (CPFF)" }
+        - { value: "cpaf", label: "Cost Plus Award Fee (CPAF)" }
+        - { value: "t_and_m", label: "Time & Materials (T&M)" }
+        - { value: "idiq", label: "IDIQ" }
+    - key: period_of_performance
+      label: "Period of Performance"
+      type: text
+      required: true
+      placeholder: "e.g., 12 months base + 2 option years"
+    - key: estimated_value
+      label: "Estimated Total Value ($)"
+      type: number
+      required: true
+      placeholder: "e.g., 2500000"
+    - key: labor_categories
+      label: "Key Labor Categories"
+      type: textarea
+      required: false
+      placeholder: "List labor categories, e.g., Project Manager, Senior Developer, Junior Analyst..."
+    - key: requirement_description
+      label: "Scope of Work"
+      type: textarea
+      required: true
+      placeholder: "Describe the work to be performed..."
+    - key: additional_context
+      label: "Additional Cost Factors"
+      type: textarea
+      required: false
+      placeholder: "Travel, materials, ODCs, or other cost considerations..."
+
+pws:
+  name: "Performance Work Statement (PWS)"
+  description: "Defines required performance outcomes and standards for service contracts."
+  phase: "solicitation"
+  estimated_minutes: 8
+  complexity: "high"
+  fields:
+    - key: program_name
+      label: "Program Name"
+      type: text
+      required: true
+      placeholder: "e.g., IT Help Desk Support Services"
+    - key: requirement_description
+      label: "Performance Requirements"
+      type: textarea
+      required: true
+      placeholder: "Describe the required services and performance outcomes..."
+    - key: performance_standards
+      label: "Performance Standards"
+      type: textarea
+      required: false
+      placeholder: "Key metrics, SLAs, or performance thresholds..."
+    - key: period_of_performance
+      label: "Period of Performance"
+      type: text
+      required: true
+      placeholder: "e.g., 1 base year + 4 option years"
+    - key: place_of_performance
+      label: "Place of Performance"
+      type: text
+      required: false
+      placeholder: "e.g., Pentagon, Arlington, VA"
+    - key: government_furnished
+      label: "Government-Furnished Property/Information"
+      type: textarea
+      required: false
+      placeholder: "List any GFP, GFI, or GFE to be provided..."
+    - key: additional_context
+      label: "Additional Requirements"
+      type: textarea
+      required: false
+      placeholder: "Security clearances, special qualifications, transition requirements..."
+
+sources_sought:
+  name: "Sources Sought Notice"
+  description: "Market survey notice to identify interested and qualified sources before solicitation."
+  phase: "pre_solicitation"
+  estimated_minutes: 4
+  complexity: "low"
+  fields:
+    - key: program_name
+      label: "Program Name"
+      type: text
+      required: true
+      placeholder: "e.g., Drone Maintenance Support"
+    - key: naics_code
+      label: "NAICS Code"
+      type: text
+      required: false
+      placeholder: "e.g., 541512"
+    - key: requirement_description
+      label: "Requirement Description"
+      type: textarea
+      required: true
+      placeholder: "Describe the goods or services the government is seeking..."
+    - key: response_date
+      label: "Response Deadline"
+      type: date
+      required: false
+    - key: set_aside_type
+      label: "Anticipated Set-Aside"
+      type: select
+      required: false
+      options:
+        - { value: "tbd", label: "To Be Determined" }
+        - { value: "full_open", label: "Full & Open Competition" }
+        - { value: "small_business", label: "Small Business Set-Aside" }
+        - { value: "8a", label: "8(a) Program" }
+        - { value: "hubzone", label: "HUBZone" }
+        - { value: "sdvosb", label: "Service-Disabled Veteran-Owned" }
+    - key: additional_context
+      label: "Capability Questions"
+      type: textarea
+      required: false
+      placeholder: "Specific questions for industry respondents..."
+
+acquisition_plan:
+  name: "Acquisition Plan"
+  description: "Strategic plan outlining the approach for fulfilling an agency's acquisition need."
+  phase: "pre_solicitation"
+  estimated_minutes: 8
+  complexity: "high"
+  fields:
+    - key: program_name
+      label: "Program Name"
+      type: text
+      required: true
+      placeholder: "e.g., Enterprise Resource Planning System"
+    - key: requirement_description
+      label: "Acquisition Need"
+      type: textarea
+      required: true
+      placeholder: "Describe the requirement and mission need..."
+    - key: estimated_value
+      label: "Estimated Value ($)"
+      type: number
+      required: true
+      placeholder: "e.g., 10000000"
+    - key: contract_type
+      label: "Planned Contract Type"
+      type: select
+      required: true
+      options:
+        - { value: "ffp", label: "Firm Fixed Price (FFP)" }
+        - { value: "cpff", label: "Cost Plus Fixed Fee (CPFF)" }
+        - { value: "cpaf", label: "Cost Plus Award Fee (CPAF)" }
+        - { value: "t_and_m", label: "Time & Materials (T&M)" }
+        - { value: "idiq", label: "IDIQ" }
+    - key: competition_strategy
+      label: "Competition Strategy"
+      type: select
+      required: true
+      options:
+        - { value: "full_open", label: "Full & Open Competition" }
+        - { value: "small_business", label: "Small Business Set-Aside" }
+        - { value: "sole_source", label: "Sole Source" }
+        - { value: "limited", label: "Limited Competition" }
+    - key: milestones
+      label: "Key Milestones"
+      type: textarea
+      required: false
+      placeholder: "List key dates: solicitation release, proposal due, award target..."
+    - key: additional_context
+      label: "Additional Considerations"
+      type: textarea
+      required: false
+      placeholder: "Risks, constraints, stakeholder concerns..."
+
+sow:
+  name: "Statement of Work (SOW)"
+  description: "Prescriptive work statement defining specific tasks and deliverables for a contract."
+  phase: "solicitation"
+  estimated_minutes: 7
+  complexity: "high"
+  fields:
+    - key: program_name
+      label: "Program Name"
+      type: text
+      required: true
+      placeholder: "e.g., Facility Renovation Project"
+    - key: requirement_description
+      label: "Work Description"
+      type: textarea
+      required: true
+      placeholder: "Describe the specific tasks and deliverables required..."
+    - key: period_of_performance
+      label: "Period of Performance"
+      type: text
+      required: true
+      placeholder: "e.g., 18 months from date of award"
+    - key: place_of_performance
+      label: "Place of Performance"
+      type: text
+      required: false
+      placeholder: "e.g., Fort Liberty, NC"
+    - key: deliverables
+      label: "Key Deliverables"
+      type: textarea
+      required: false
+      placeholder: "List major deliverables and due dates..."
+    - key: government_furnished
+      label: "Government-Furnished Items"
+      type: textarea
+      required: false
+      placeholder: "List any GFP, GFI, or GFE..."
+    - key: additional_context
+      label: "Additional Requirements"
+      type: textarea
+      required: false
+      placeholder: "Special qualifications, security requirements, standards..."
+
+rfi:
+  name: "Request for Information (RFI)"
+  description: "Information-gathering tool to help the government plan its acquisition strategy."
+  phase: "pre_solicitation"
+  estimated_minutes: 3
+  complexity: "low"
+  fields:
+    - key: program_name
+      label: "Program Name"
+      type: text
+      required: true
+      placeholder: "e.g., Cybersecurity Assessment Services"
+    - key: requirement_description
+      label: "Information Sought"
+      type: textarea
+      required: true
+      placeholder: "Describe what information you are seeking from industry..."
+    - key: naics_code
+      label: "NAICS Code"
+      type: text
+      required: false
+      placeholder: "e.g., 541519"
+    - key: response_date
+      label: "Response Deadline"
+      type: date
+      required: false
+    - key: questions
+      label: "Questions for Industry"
+      type: textarea
+      required: false
+      placeholder: "List specific questions for potential vendors..."
+    - key: additional_context
+      label: "Background Information"
+      type: textarea
+      required: false
+      placeholder: "Context to help industry provide better responses..."
+
+qasp:
+  name: "Quality Assurance Surveillance Plan (QASP)"
+  description: "Defines how the government will monitor and evaluate contractor performance."
+  phase: "solicitation"
+  estimated_minutes: 5
+  complexity: "medium"
+  fields:
+    - key: program_name
+      label: "Program Name"
+      type: text
+      required: true
+      placeholder: "e.g., Base Operations Support"
+    - key: requirement_description
+      label: "Services Being Monitored"
+      type: textarea
+      required: true
+      placeholder: "Describe the services subject to quality surveillance..."
+    - key: performance_standards
+      label: "Performance Standards & Metrics"
+      type: textarea
+      required: true
+      placeholder: "Key metrics, acceptable quality levels (AQLs), thresholds..."
+    - key: surveillance_methods
+      label: "Surveillance Methods"
+      type: select
+      required: false
+      options:
+        - { value: "periodic", label: "Periodic Inspection" }
+        - { value: "random", label: "Random Sampling" }
+        - { value: "100_percent", label: "100% Inspection" }
+        - { value: "customer_feedback", label: "Customer Feedback" }
+        - { value: "mixed", label: "Mixed Methods" }
+    - key: additional_context
+      label: "Additional Surveillance Details"
+      type: textarea
+      required: false
+      placeholder: "Reporting frequency, remedies for poor performance, incentives..."

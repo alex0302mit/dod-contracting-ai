@@ -131,6 +131,30 @@ def require_roles(*allowed_roles: UserRole):
     return role_checker
 
 
+def require_project_access(min_permission=None):
+    """
+    Dependency factory to require project access.
+    Returns 404 (not 403) for hidden projects to prevent enumeration.
+
+    Usage: user: User = Depends(require_project_access(PermissionLevel.EDITOR))
+    """
+    async def project_access_checker(
+        project_id: str,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+    ) -> User:
+        from backend.services.organization_service import OrganizationService
+        has_access = OrganizationService.check_project_access(db, current_user, project_id, min_permission)
+        if not has_access:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Project not found",
+            )
+        return current_user
+
+    return project_access_checker
+
+
 def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
     """Authenticate a user by email and password"""
     user = db.query(User).filter(User.email == email).first()

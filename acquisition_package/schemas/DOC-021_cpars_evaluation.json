@@ -1,0 +1,103 @@
+{
+  "document_id": "DOC-021",
+  "title": "Past Performance Evaluation (CPARS Input)",
+  "regulatory_references": [
+    "FAR 42.15",
+    "DFARS 242.15",
+    "CPARS Policy Guide"
+  ],
+  "required_when": "annually_and_at_completion",
+  "requires_human_input": true,
+  "fields": {
+    "contract_info": {
+      "contract_number": {
+        "type": "string",
+        "required": true
+      },
+      "contractor": {
+        "type": "object",
+        "required": true
+      },
+      "evaluation_period": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "start": {
+            "type": "date"
+          },
+          "end": {
+            "type": "date"
+          }
+        }
+      },
+      "contract_type": {
+        "type": "string",
+        "required": true
+      },
+      "contract_value_evaluated": {
+        "type": "currency",
+        "required": true
+      },
+      "description": {
+        "type": "text",
+        "required": true
+      }
+    },
+    "ratings": {
+      "type": "array",
+      "required": true,
+      "item_type": "object",
+      "properties": {
+        "area": {
+          "type": "enum",
+          "options": [
+            "Quality",
+            "Schedule",
+            "Cost Control",
+            "Management",
+            "Small Business Subcontracting",
+            "Regulatory Compliance"
+          ]
+        },
+        "rating": {
+          "type": "enum",
+          "options": [
+            "Exceptional",
+            "Very Good",
+            "Satisfactory",
+            "Marginal",
+            "Unsatisfactory"
+          ]
+        },
+        "narrative": {
+          "type": "text",
+          "required": true,
+          "description": "Must include specific examples"
+        }
+      }
+    },
+    "signatures": {
+      "assessing_official": {
+        "type": "signature_block",
+        "required": true
+      },
+      "assessing_official_rep": {
+        "type": "signature_block"
+      },
+      "reviewing_official_ko": {
+        "type": "signature_block",
+        "required": true
+      }
+    }
+  },
+  "validation_rules": [
+    {
+      "rule": "Each rating must have supporting narrative with specific examples",
+      "severity": "error"
+    },
+    {
+      "rule": "All six evaluation areas must be rated",
+      "severity": "error"
+    }
+  ]
+}

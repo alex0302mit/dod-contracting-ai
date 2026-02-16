@@ -1,0 +1,197 @@
+{
+  "document_id": "DOC-008",
+  "title": "Solicitation (RFP / RFQ / IFB)",
+  "regulatory_references": [
+    "FAR Part 12",
+    "FAR Part 14",
+    "FAR Part 15",
+    "FAR 15.204",
+    "DFARS 212",
+    "DFARS 215"
+  ],
+  "required_when": "always_for_competitive",
+  "fields": {
+    "section_a": {
+      "solicitation_number": {
+        "type": "string",
+        "required": true
+      },
+      "issue_date": {
+        "type": "date",
+        "required": true
+      },
+      "closing_date_time": {
+        "type": "datetime",
+        "required": true
+      },
+      "set_aside_status": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "Unrestricted",
+          "Total Small Business",
+          "Partial SB",
+          "8(a)",
+          "HUBZone",
+          "SDVOSB",
+          "WOSB"
+        ]
+      },
+      "naics_code": {
+        "type": "string",
+        "required": true
+      },
+      "size_standard": {
+        "type": "string",
+        "required": true
+      },
+      "contracting_office": {
+        "type": "string",
+        "required": true
+      },
+      "contracting_officer": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "email"
+          },
+          "phone": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "section_b_clins": {
+      "type": "array",
+      "required": true,
+      "item_type": "object",
+      "properties": {
+        "clin_number": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "period": {
+          "type": "string"
+        },
+        "quantity": {
+          "type": "number"
+        },
+        "unit": {
+          "type": "string"
+        },
+        "unit_price": {
+          "type": "currency"
+        },
+        "total": {
+          "type": "currency",
+          "computed": true
+        }
+      }
+    },
+    "section_c_reference": {
+      "type": "string",
+      "required": true,
+      "cross_reference": "DOC-006 PWS/SOW incorporated by reference or full text"
+    },
+    "sections_d_through_h": {
+      "section_d_packaging": {
+        "type": "text",
+        "required": true
+      },
+      "section_e_inspection": {
+        "type": "text",
+        "required": true
+      },
+      "section_f_deliveries": {
+        "type": "text",
+        "required": true
+      },
+      "section_g_admin": {
+        "type": "text",
+        "required": true
+      },
+      "section_h_special": {
+        "type": "text",
+        "required": true
+      }
+    },
+    "section_i_clauses": {
+      "type": "array",
+      "required": true,
+      "item_type": "object",
+      "properties": {
+        "clause_number": {
+          "type": "string"
+        },
+        "clause_title": {
+          "type": "string"
+        },
+        "inclusion": {
+          "type": "enum",
+          "options": [
+            "By Reference",
+            "Full Text"
+          ]
+        }
+      }
+    },
+    "section_l_instructions": {
+      "proposal_format": {
+        "type": "text",
+        "required": true
+      },
+      "page_limits": {
+        "type": "object",
+        "required": true
+      },
+      "submission_method": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "Electronic",
+          "Hard Copy",
+          "Both"
+        ]
+      },
+      "questions_due_date": {
+        "type": "date",
+        "required": true
+      }
+    },
+    "section_m_evaluation": {
+      "factors": {
+        "type": "array",
+        "required": true,
+        "cross_reference": "Must match DOC-007 and DOC-009"
+      },
+      "relative_importance": {
+        "type": "text",
+        "required": true
+      }
+    }
+  },
+  "validation_rules": [
+    {
+      "rule": "CLIN structure must align with DOC-003 IGCE cost elements",
+      "severity": "warning"
+    },
+    {
+      "rule": "Section M evaluation factors must match DOC-007 SSP exactly",
+      "severity": "error"
+    },
+    {
+      "rule": "DFARS 252.204-7012 (CMMC/Cybersecurity) must be included for CUI",
+      "severity": "error"
+    },
+    {
+      "rule": "Closing date must be at least 30 days from issue for acquisitions > SAT",
+      "severity": "warning"
+    }
+  ]
+}

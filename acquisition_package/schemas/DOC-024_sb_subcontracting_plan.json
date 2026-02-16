@@ -1,0 +1,102 @@
+{
+  "document_id": "DOC-024",
+  "title": "Small Business Subcontracting Plan",
+  "regulatory_references": [
+    "FAR 19.7",
+    "FAR 52.219-9",
+    "DFARS 219.7",
+    "15 U.S.C. 637(d)"
+  ],
+  "required_when": "value > 750000 AND prime is not small business",
+  "note": "Primarily contractor-authored; agent validates compliance",
+  "fields": {
+    "contract_info": {
+      "contract_number": {
+        "type": "string",
+        "required": true
+      },
+      "contractor": {
+        "type": "string",
+        "required": true
+      },
+      "total_value": {
+        "type": "currency",
+        "required": true
+      },
+      "total_subcontracting_dollars": {
+        "type": "currency",
+        "required": true
+      }
+    },
+    "goals": {
+      "type": "array",
+      "required": true,
+      "item_type": "object",
+      "properties": {
+        "category": {
+          "type": "enum",
+          "options": [
+            "SB",
+            "SDB",
+            "WOSB",
+            "HUBZone",
+            "SDVOSB"
+          ]
+        },
+        "goal_pct": {
+          "type": "number"
+        },
+        "goal_dollars": {
+          "type": "currency"
+        },
+        "base_dollars": {
+          "type": "currency"
+        }
+      }
+    },
+    "plan_elements": {
+      "sb_administrator": {
+        "type": "object",
+        "required": true
+      },
+      "good_faith_efforts": {
+        "type": "text",
+        "required": true
+      },
+      "source_identification": {
+        "type": "text",
+        "required": true
+      },
+      "reporting": {
+        "type": "text",
+        "required": true,
+        "default": "ISR/SSR filing in eSRS per FAR 19.704"
+      },
+      "flow_down": {
+        "type": "text",
+        "required": true,
+        "default": "FAR 52.219-8 in all subcontracts > $750K"
+      }
+    },
+    "approval": {
+      "contractor_signature": {
+        "type": "signature_block",
+        "required": true
+      },
+      "ko_review": {
+        "type": "signature_block",
+        "required": true
+      },
+      "sb_specialist": {
+        "type": "signature_block",
+        "required": true
+      }
+    }
+  },
+  "validation_rules": [
+    {
+      "rule": "Goals must meet or exceed DoD-wide small business targets",
+      "severity": "warning"
+    }
+  ]
+}

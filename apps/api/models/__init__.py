@@ -27,6 +27,16 @@ from backend.models.lineage import (
 )
 # Generation reasoning for Chain-of-Thought display
 from backend.models.reasoning import GenerationReasoning
+# Organization and team management models
+from backend.models.organization import (
+    Organization,
+    OrganizationMember,
+    CrossOrgShare,
+    OrgRole,
+    SharePermission
+)
+# Activity feed model
+from backend.models.activity import ProjectActivity
 
 __all__ = [
     "User",
@@ -48,5 +58,13 @@ __all__ = [
     "InfluenceType",
     "DocumentSource",
     # Reasoning model for Chain-of-Thought
-    "GenerationReasoning"
+    "GenerationReasoning",
+    # Organization models
+    "Organization",
+    "OrganizationMember",
+    "CrossOrgShare",
+    "OrgRole",
+    "SharePermission",
+    # Activity model
+    "ProjectActivity",
 ]

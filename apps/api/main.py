@@ -20,11 +20,11 @@ import uvicorn
 from dotenv import load_dotenv
 
 from backend.database.base import get_db, init_db
-from backend.middleware.auth import get_current_user, authenticate_user, create_access_token, get_password_hash
+from backend.middleware.auth import get_current_user, authenticate_user, create_access_token, get_password_hash, require_roles
 from backend.models.user import User, UserRole
 from backend.models.procurement import ProcurementProject, ProcurementPhase, ProcurementStep
 # GenerationStatus enum needed for filtering generated documents in export
-from backend.models.document import ProjectDocument, DocumentUpload, GenerationStatus
+from backend.models.document import ProjectDocument, DocumentUpload, GenerationStatus, DocumentStatus
 from backend.models.notification import Notification
 from backend.models.audit import AuditLog
 from backend.models.agent_feedback import AgentFeedback
@@ -36,6 +36,11 @@ from backend.services.export_service import ExportService
 from backend.services.agent_comparison_service import get_comparison_service, AgentVariant
 from backend.services.document_initializer import get_document_initializer
 from backend.agents.quality_agent import QualityAgent
+from backend.models.organization import Organization, OrganizationMember, CrossOrgShare, OrgRole, SharePermission
+from backend.models.activity import ProjectActivity
+from backend.models.procurement import ProjectPermission, PermissionLevel
+from backend.services.organization_service import OrganizationService, log_project_activity
+from backend.middleware.auth import require_project_access
 
 load_dotenv()
 
@@ -303,6 +308,16 @@ def log_audit_event(
 # Authentication Endpoints
 # ============================================================================
 
+@app.get("/api/organizations/public", tags=["Organizations"])
+def list_public_organizations(db: Session = Depends(get_db)):
+    """List active organizations (public, no auth required).
+
+    Returns minimal org info (id + name) for use in registration forms.
+    """
+    orgs = db.query(Organization).filter(Organization.is_active == True).all()
+    return [{"id": str(o.id), "name": o.name} for o in orgs]
+
+
 @app.post("/api/auth/register", tags=["Authentication"])
 @limiter.limit("3/minute")
 def register(
@@ -310,6 +325,7 @@ def register(
     email: str,
     password: str,
     name: str,
+    organization_id: str = Query(..., description="Organization to join"),
     db: Session = Depends(get_db)
 ):
     """Register a new user.
@@ -328,6 +344,17 @@ def register(
     """
     # Validate password strength
     validate_password_strength(password)
+
+    # Validate organization exists and is active
+    org = db.query(Organization).filter(
+        Organization.id == organization_id,
+        Organization.is_active == True
+    ).first()
+    if not org:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or inactive organization"
+        )
 
     # Check if user already exists
     existing_user = db.query(User).filter(User.email == email).first()
@@ -350,6 +377,16 @@ def register(
     db.commit()
     db.refresh(new_user)
 
+    # Add user to the selected organization
+    membership = OrganizationMember(
+        user_id=new_user.id,
+        organization_id=org.id,
+        org_role=OrgRole.MEMBER,
+        is_primary=True
+    )
+    db.add(membership)
+    db.commit()
+
     # Log audit event for user registration
     log_audit_event(
         db=db,
@@ -357,7 +394,13 @@ def register(
         action="user_registered",
         entity_type="user",
         entity_id=str(new_user.id),
-        changes={"email": email, "role": UserRole.VIEWER.value, "ip": request.client.host if request.client else "unknown"}
+        changes={
+            "email": email,
+            "role": UserRole.VIEWER.value,
+            "organization_id": str(org.id),
+            "organization_name": org.name,
+            "ip": request.client.host if request.client else "unknown"
+        }
     )
 
     return {"message": "Registration submitted. Your account is pending admin approval.", "user": new_user.to_dict()}
@@ -458,9 +501,18 @@ def login(request: Request, email: str, password: str, db: Session = Depends(get
 
 
 @app.get("/api/auth/me", tags=["Authentication"])
-def get_current_user_info(current_user: User = Depends(get_current_user)):
-    """Get current user information"""
-    return current_user.to_dict()
+def get_current_user_info(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get current user information with organization memberships"""
+    user_dict = current_user.to_dict()
+    # Include organization memberships
+    memberships = db.query(OrganizationMember).filter(
+        OrganizationMember.user_id == current_user.id
+    ).all()
+    user_dict["organizations"] = [m.to_dict() for m in memberships]
+    return user_dict
 
 
 # ============================================================================
@@ -1434,12 +1486,26 @@ def get_agent_feedback_comments(
 
 @app.get("/api/projects", tags=["Projects"])
 def get_projects(
+    org_id: Optional[str] = Query(None, description="Filter by organization ID"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get all projects accessible to the current user"""
-    # TODO: Add proper permission filtering
-    projects = db.query(ProcurementProject).all()
+    """Get all projects accessible to the current user, scoped by organization"""
+    accessible_ids = OrganizationService.get_user_accessible_project_ids(db, current_user)
+
+    query = db.query(ProcurementProject)
+
+    # Apply org filter if specified
+    if org_id:
+        # Get subtree of the requested org for downward visibility
+        subtree_ids = OrganizationService.get_org_subtree_ids(db, org_id)
+        query = query.filter(ProcurementProject.organization_id.in_(subtree_ids))
+
+    # Apply access control (None means admin - no filter)
+    if accessible_ids is not None:
+        query = query.filter(ProcurementProject.id.in_(accessible_ids))
+
+    projects = query.order_by(ProcurementProject.created_at.desc()).all()
     return {"projects": [p.to_dict() for p in projects]}
 
 
@@ -1450,11 +1516,13 @@ def create_project(
     project_type: str,
     estimated_value: float = None,
     contracting_officer_id: str = None,
+    program_manager_id: str = None,
+    organization_id: str = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Create a new procurement project.
-    
+
     Args:
         contracting_officer_id: Optional ID of the contracting officer to assign.
                                Defaults to current user if they have the role.
@@ -1488,6 +1556,22 @@ def create_project(
                 detail="Specified user is not a contracting officer"
         )
 
+    # Determine organization - default to user's primary org
+    final_org_id = organization_id
+    if not final_org_id:
+        primary_membership = db.query(OrganizationMember).filter(
+            OrganizationMember.user_id == current_user.id,
+            OrganizationMember.is_primary == True
+        ).first()
+        if primary_membership:
+            final_org_id = str(primary_membership.organization_id)
+
+    # Validate PM if specified
+    if program_manager_id:
+        pm_user = db.query(User).filter(User.id == program_manager_id).first()
+        if not pm_user:
+            raise HTTPException(status_code=404, detail="Program manager not found")
+
     # Create project
     project = ProcurementProject(
         name=name,
@@ -1495,11 +1579,27 @@ def create_project(
         project_type=project_type,
         estimated_value=estimated_value,
         contracting_officer_id=final_co_id,
+        program_manager_id=program_manager_id,
+        organization_id=final_org_id,
         created_by=current_user.id
     )
     db.add(project)
     db.commit()
     db.refresh(project)
+
+    # Create OWNER permission for creator
+    owner_perm = ProjectPermission(
+        user_id=current_user.id,
+        project_id=project.id,
+        permission_level=PermissionLevel.OWNER,
+        granted_by=current_user.id
+    )
+    db.add(owner_perm)
+    db.commit()
+
+    # Log activity
+    log_project_activity(db, str(project.id), str(current_user.id), "project_created", f"Project '{name}' created")
+    db.commit()
 
     # Create default phases
     phases = [
@@ -1551,6 +1651,10 @@ def get_project(
     db: Session = Depends(get_db)
 ):
     """Get a specific project by ID"""
+    # Check access (returns 404 for hidden projects to prevent enumeration)
+    if not OrganizationService.check_project_access(db, current_user, project_id):
+        raise HTTPException(status_code=404, detail="Project not found")
+
     project = db.query(ProcurementProject).filter(ProcurementProject.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -1691,6 +1795,7 @@ class ProjectUpdateRequest(BaseModel):
     current_phase: Optional[str] = None
     contracting_officer_id: Optional[str] = None
     program_manager_id: Optional[str] = None
+    organization_id: Optional[str] = None
     start_date: Optional[str] = None
     target_completion_date: Optional[str] = None
 
@@ -1772,7 +1877,15 @@ def update_project(
                     detail="User must have program_manager role"
                 )
             project.program_manager_id = updates.program_manager_id
-    
+
+    # Handle organization reassignment
+    if updates.organization_id is not None:
+        from backend.models.organization import Organization
+        org = db.query(Organization).filter(Organization.id == updates.organization_id, Organization.is_active == True).first()
+        if not org:
+            raise HTTPException(status_code=404, detail="Organization not found")
+        project.organization_id = updates.organization_id
+
     db.commit()
     db.refresh(project)
     
@@ -2069,6 +2182,12 @@ async def generate_document_content(
             request.additional_context
         )
 
+    # Log activity
+    try:
+        log_project_activity(db, str(document.project_id), str(current_user.id), "document_generated", f"Generated document: {document.document_name}", metadata={"document_id": str(document_id)})
+    except Exception:
+        pass  # Don't fail the main operation if activity logging fails
+
     return {
         "message": "Generation started",
         "task_id": task_id,
@@ -2338,6 +2457,13 @@ async def generate_batch_documents(
             request.document_ids,
             request.assumptions
         )
+
+    # Log activity
+    try:
+        doc_names = ", ".join(d.document_name for d in documents)
+        log_project_activity(db, project_id, str(current_user.id), "document_generated", f"Batch generated {len(documents)} documents: {doc_names}", metadata={"document_ids": [str(d.id) for d in documents]})
+    except Exception:
+        pass  # Don't fail the main operation if activity logging fails
 
     return {
         "message": "Batch generation started",
@@ -2879,6 +3005,12 @@ def approve_document(
     db.commit()
     db.refresh(approval)
 
+    # Log activity
+    try:
+        log_project_activity(db, str(document.project_id), str(current_user.id), "document_approved", f"Document approved", metadata={"approval_id": str(approval_id)})
+    except Exception:
+        pass  # Don't fail the main operation if activity logging fails
+
     return {
         "message": "Document approved successfully",
         "approval": approval.to_dict(),
@@ -2931,6 +3063,12 @@ def reject_document(
 
     db.commit()
     db.refresh(approval)
+
+    # Log activity
+    try:
+        log_project_activity(db, str(document.project_id), str(current_user.id), "document_rejected", f"Document rejected", metadata={"approval_id": str(approval_id)})
+    except Exception:
+        pass  # Don't fail the main operation if activity logging fails
 
     return {
         "message": "Document rejected",
@@ -3957,7 +4095,13 @@ def approve_phase_transition(
         # Don't fail the transition if document initialization fails
         # Log warning for debugging purposes
         print(f"Warning: Failed to initialize documents for new phase: {e}")
-    
+
+    # Log activity
+    try:
+        log_project_activity(db, str(transition.project_id), str(current_user.id), "phase_changed", f"Phase transition approved", metadata={"transition_id": str(transition_id)})
+    except Exception:
+        pass  # Don't fail the main operation if activity logging fails
+
     return {
         "message": "Phase transition approved successfully",
         "transition_request": updated_transition.to_dict()
@@ -5919,6 +6063,299 @@ async def run_document_generation(task_id: str, request: GenerateDocumentsReques
 
 
 # ============================================================================
+# Standalone Document Generation Endpoints
+# ============================================================================
+
+# In-memory task storage for standalone generation
+standalone_generation_tasks: Dict[str, Dict] = {}
+
+
+class StandaloneGenerateRequest(BaseModel):
+    """Request model for standalone document generation"""
+    documents: List[Dict[str, Any]]  # [{doc_type: str, context: {field: value}}]
+
+
+@app.get("/api/document-types/form-schemas", tags=["Standalone Generation"])
+async def get_document_form_schemas(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Returns the document type catalog with dynamic form field definitions.
+    Used by the Generate Document wizard to render per-type context forms.
+    """
+    import yaml
+
+    schema_path = os.path.join(os.path.dirname(__file__), "config", "document_form_schemas.yaml")
+    if not os.path.exists(schema_path):
+        raise HTTPException(status_code=500, detail="Form schemas configuration not found")
+
+    with open(schema_path, "r") as f:
+        schemas = yaml.safe_load(f)
+
+    return {"schemas": schemas}
+
+
+@app.post("/api/standalone/generate", tags=["Standalone Generation"])
+async def standalone_generate(
+    request: StandaloneGenerateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Generate standalone documents (not tied to a project).
+
+    Creates ProjectDocument records with is_standalone=True and project_id=None,
+    then kicks off agent-based generation for each document.
+    """
+    import yaml
+
+    if not request.documents:
+        raise HTTPException(status_code=400, detail="No documents specified")
+
+    # Load form schemas for validation
+    schema_path = os.path.join(os.path.dirname(__file__), "config", "document_form_schemas.yaml")
+    with open(schema_path, "r") as f:
+        schemas = yaml.safe_load(f)
+
+    # Validate each document's required fields
+    for doc_req in request.documents:
+        doc_type = doc_req.get("doc_type")
+        context = doc_req.get("context", {})
+
+        if not doc_type:
+            raise HTTPException(status_code=400, detail="Each document must have a doc_type")
+
+        schema = schemas.get(doc_type)
+        if not schema:
+            raise HTTPException(status_code=400, detail=f"Unknown document type: {doc_type}")
+
+        for field in schema.get("fields", []):
+            if field.get("required") and not context.get(field["key"]):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Required field '{field['label']}' missing for {schema['name']}"
+                )
+
+    # Create task ID for tracking
+    task_id = str(uuid.uuid4())
+    document_ids = []
+
+    # Create ProjectDocument records
+    for doc_req in request.documents:
+        doc_type = doc_req["doc_type"]
+        context = doc_req.get("context", {})
+        schema = schemas[doc_type]
+
+        doc = ProjectDocument(
+            id=uuid.uuid4(),
+            project_id=None,
+            owner_id=current_user.id,
+            is_standalone=True,
+            generation_context=context,
+            document_name=schema["name"],
+            category=schema.get("phase", "General"),
+            phase=None,
+            is_required=False,
+            status=DocumentStatus.PENDING,
+            generation_status=GenerationStatus.GENERATING,
+            generation_task_id=task_id,
+        )
+        db.add(doc)
+        document_ids.append(str(doc.id))
+
+    db.commit()
+
+    # Initialize task tracking
+    standalone_generation_tasks[task_id] = {
+        "task_id": task_id,
+        "status": "pending",
+        "progress": 0,
+        "message": "Initializing standalone generation...",
+        "document_ids": document_ids,
+        "documents_requested": len(request.documents),
+        "result": None,
+        "created_at": datetime.now().isoformat(),
+    }
+
+    # Start generation in background
+    asyncio.create_task(
+        run_standalone_generation(task_id, request.documents, document_ids, schemas)
+    )
+
+    return {
+        "message": "Standalone generation started",
+        "task_id": task_id,
+        "document_ids": document_ids,
+        "documents_requested": len(request.documents),
+    }
+
+
+async def run_standalone_generation(
+    task_id: str,
+    doc_requests: List[Dict[str, Any]],
+    document_ids: List[str],
+    schemas: Dict,
+):
+    """Background task to generate standalone documents using agents."""
+    from backend.database.base import SessionLocal
+    from backend.models.document import ProjectDocument, GenerationStatus, DocumentStatus
+
+    db = SessionLocal()
+    try:
+        total_docs = len(doc_requests)
+        sections = {}
+        completed_count = 0
+
+        for i, (doc_req, doc_id) in enumerate(zip(doc_requests, document_ids)):
+            doc_type = doc_req["doc_type"]
+            context = doc_req.get("context", {})
+            schema = schemas[doc_type]
+            doc_name = schema["name"]
+
+            standalone_generation_tasks[task_id]["status"] = "in_progress"
+            standalone_generation_tasks[task_id]["message"] = f"Generating {doc_name} ({i+1}/{total_docs})..."
+            standalone_generation_tasks[task_id]["progress"] = int((i / total_docs) * 90)
+
+            document = db.query(ProjectDocument).filter(ProjectDocument.id == doc_id).first()
+            if not document:
+                continue
+
+            try:
+                # Build assumptions from context fields
+                assumptions = []
+                for key, value in context.items():
+                    if value:
+                        assumptions.append({"id": key, "text": f"{key}: {value}", "source": "user_input"})
+
+                # Use generation coordinator for agent-based generation
+                use_specialized = os.getenv("USE_AGENT_BASED_GENERATION", "true").lower() == "true"
+                coordinator = get_generation_coordinator(use_specialized_agents=use_specialized)
+
+                gen_task = GenerationTask(
+                    task_id=f"{task_id}_{i}",
+                    document_names=[doc_name],
+                    assumptions=assumptions,
+                    linked_assumptions={doc_name: [a["text"] for a in assumptions]},
+                )
+
+                completed_task = await coordinator.generate_documents(task=gen_task)
+
+                if completed_task.status == "completed" and completed_task.sections:
+                    # Get content from first section
+                    content = list(completed_task.sections.values())[0] if completed_task.sections else ""
+
+                    document.generated_content = content
+                    document.generated_at = datetime.utcnow()
+                    document.generation_status = GenerationStatus.GENERATED
+                    document.status = DocumentStatus.UPLOADED
+
+                    # Save quality score if available
+                    if completed_task.quality_analysis:
+                        qa = completed_task.quality_analysis.get(doc_name, {})
+                        score = qa.get("score", qa.get("overall_score"))
+                        if score:
+                            document.ai_quality_score = int(score)
+
+                    sections[doc_name] = content
+                    completed_count += 1
+                else:
+                    document.generation_status = GenerationStatus.FAILED
+                    sections[doc_name] = f"Generation failed: {completed_task.message}"
+
+            except Exception as doc_error:
+                document.generation_status = GenerationStatus.FAILED
+                sections[doc_name] = f"Generation error: {str(doc_error)}"
+
+            db.commit()
+
+        # Finalize task
+        standalone_generation_tasks[task_id]["status"] = "completed"
+        standalone_generation_tasks[task_id]["progress"] = 100
+        standalone_generation_tasks[task_id]["message"] = f"Generated {completed_count}/{total_docs} documents"
+        standalone_generation_tasks[task_id]["result"] = {
+            "sections": sections,
+            "citations": [],
+        }
+
+    except Exception as e:
+        import traceback
+        print(f"Standalone generation error: {str(e)}")
+        print(traceback.format_exc())
+        standalone_generation_tasks[task_id]["status"] = "failed"
+        standalone_generation_tasks[task_id]["message"] = f"Generation failed: {str(e)}"
+    finally:
+        db.close()
+
+
+@app.get("/api/generation-status/standalone/{task_id}", tags=["Standalone Generation"])
+async def get_standalone_generation_status(
+    task_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get the status of a standalone generation task."""
+    if task_id not in standalone_generation_tasks:
+        # Also check in regular generation_tasks for compatibility
+        if task_id in generation_tasks:
+            return generation_tasks[task_id]
+        raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+
+    return standalone_generation_tasks[task_id]
+
+
+@app.get("/api/standalone/documents", tags=["Standalone Generation"])
+async def list_standalone_documents(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    List standalone documents owned by the current user.
+    Each user only sees their own standalone documents.
+    """
+    documents = (
+        db.query(ProjectDocument)
+        .filter(
+            ProjectDocument.owner_id == current_user.id,
+            ProjectDocument.is_standalone == True,
+        )
+        .order_by(ProjectDocument.created_at.desc())
+        .all()
+    )
+
+    return {
+        "documents": [doc.to_dict() for doc in documents],
+        "total": len(documents),
+    }
+
+
+@app.delete("/api/standalone/documents/{document_id}", tags=["Standalone Generation"])
+async def delete_standalone_document(
+    document_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete a standalone document. Only the owner can delete their documents.
+    """
+    document = (
+        db.query(ProjectDocument)
+        .filter(
+            ProjectDocument.id == document_id,
+            ProjectDocument.owner_id == current_user.id,
+            ProjectDocument.is_standalone == True,
+        )
+        .first()
+    )
+
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    db.delete(document)
+    db.commit()
+
+    return {"message": "Document deleted successfully"}
+
+
+# ============================================================================
 # Agent Comparison Endpoints (Phase 6)
 # ============================================================================
 
@@ -7257,6 +7694,484 @@ def root():
         "version": "1.0.0",
         "docs": "/docs"
     }
+
+
+# ============================================================================
+# Organization Management Endpoints
+# ============================================================================
+
+@app.post("/api/organizations", tags=["Organizations"])
+def create_organization(
+    name: str,
+    slug: str,
+    description: str = None,
+    parent_id: str = None,
+    current_user: User = Depends(require_roles(UserRole.ADMIN)),
+    db: Session = Depends(get_db)
+):
+    """Create a new organization. System admins or org admins of parent can create."""
+    # Validate slug uniqueness
+    existing = db.query(Organization).filter(Organization.slug == slug).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Organization slug already exists")
+
+    # If parent specified, validate it and check org admin access
+    if parent_id:
+        parent = db.query(Organization).filter(Organization.id == parent_id).first()
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent organization not found")
+
+    org = Organization(
+        name=name,
+        slug=slug,
+        description=description,
+        parent_id=parent_id,
+    )
+    db.add(org)
+    db.flush()  # Get the ID
+
+    # Calculate materialized path
+    OrganizationService.update_materialized_path(db, org)
+    db.commit()
+    db.refresh(org)
+
+    return {"organization": org.to_dict()}
+
+
+@app.get("/api/organizations", tags=["Organizations"])
+def list_organizations(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """List organizations visible to the current user."""
+    if current_user.role == UserRole.ADMIN:
+        orgs = db.query(Organization).filter(Organization.is_active == True).all()
+    else:
+        visible_ids = OrganizationService.get_user_visible_org_ids(db, str(current_user.id))
+        orgs = db.query(Organization).filter(
+            Organization.id.in_(visible_ids),
+            Organization.is_active == True
+        ).all()
+    return {"organizations": [o.to_dict() for o in orgs]}
+
+
+@app.get("/api/organizations/{org_id}", tags=["Organizations"])
+def get_organization(
+    org_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get organization details."""
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    return {"organization": org.to_dict()}
+
+
+@app.put("/api/organizations/{org_id}", tags=["Organizations"])
+def update_organization(
+    org_id: str,
+    name: str = None,
+    description: str = None,
+    parent_id: str = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update an organization. Requires system admin or org admin of parent."""
+    if not OrganizationService.check_org_admin(db, current_user, org_id):
+        raise HTTPException(status_code=403, detail="Not authorized to manage this organization")
+
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    if name is not None:
+        org.name = name
+    if description is not None:
+        org.description = description
+    if parent_id is not None:
+        org.parent_id = parent_id
+        OrganizationService.update_materialized_path(db, org)
+
+    db.commit()
+    db.refresh(org)
+    return {"organization": org.to_dict()}
+
+
+@app.delete("/api/organizations/{org_id}", tags=["Organizations"])
+def deactivate_organization(
+    org_id: str,
+    current_user: User = Depends(require_roles(UserRole.ADMIN)),
+    db: Session = Depends(get_db)
+):
+    """Soft-delete (deactivate) an organization."""
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    org.is_active = False
+    db.commit()
+    return {"message": f"Organization '{org.name}' deactivated"}
+
+
+@app.get("/api/organizations/{org_id}/tree", tags=["Organizations"])
+def get_org_tree(
+    org_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get the subtree of an organization."""
+    subtree_ids = OrganizationService.get_org_subtree_ids(db, org_id)
+    orgs = db.query(Organization).filter(
+        Organization.id.in_(subtree_ids),
+        Organization.is_active == True
+    ).order_by(Organization.depth, Organization.name).all()
+    return {"organizations": [o.to_dict() for o in orgs]}
+
+
+@app.get("/api/organizations/{org_id}/members", tags=["Organizations"])
+def list_org_members(
+    org_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """List members of an organization."""
+    members = db.query(OrganizationMember).filter(
+        OrganizationMember.organization_id == org_id
+    ).all()
+    return {"members": [m.to_dict() for m in members]}
+
+
+@app.post("/api/organizations/{org_id}/members", tags=["Organizations"])
+def add_org_member(
+    org_id: str,
+    user_id: str,
+    org_role: str = "member",
+    is_primary: bool = False,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Add a member to an organization."""
+    if not OrganizationService.check_org_admin(db, current_user, org_id):
+        raise HTTPException(status_code=403, detail="Not authorized to manage this organization")
+
+    # Check org exists
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    # Check user exists
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Check for existing membership
+    existing = db.query(OrganizationMember).filter(
+        OrganizationMember.user_id == user_id,
+        OrganizationMember.organization_id == org_id
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="User is already a member of this organization")
+
+    # If setting as primary, unset other primaries for this user
+    if is_primary:
+        db.query(OrganizationMember).filter(
+            OrganizationMember.user_id == user_id,
+            OrganizationMember.is_primary == True
+        ).update({"is_primary": False})
+
+    member = OrganizationMember(
+        user_id=user_id,
+        organization_id=org_id,
+        org_role=OrgRole(org_role),
+        is_primary=is_primary,
+    )
+    db.add(member)
+    db.commit()
+    db.refresh(member)
+    return {"member": member.to_dict()}
+
+
+@app.put("/api/organizations/{org_id}/members/{user_id}", tags=["Organizations"])
+def update_org_member(
+    org_id: str,
+    user_id: str,
+    org_role: str = None,
+    is_primary: bool = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update a member's role in an organization."""
+    if not OrganizationService.check_org_admin(db, current_user, org_id):
+        raise HTTPException(status_code=403, detail="Not authorized to manage this organization")
+
+    member = db.query(OrganizationMember).filter(
+        OrganizationMember.user_id == user_id,
+        OrganizationMember.organization_id == org_id
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Membership not found")
+
+    if org_role is not None:
+        member.org_role = OrgRole(org_role)
+    if is_primary is not None:
+        if is_primary:
+            db.query(OrganizationMember).filter(
+                OrganizationMember.user_id == user_id,
+                OrganizationMember.is_primary == True
+            ).update({"is_primary": False})
+        member.is_primary = is_primary
+
+    db.commit()
+    db.refresh(member)
+    return {"member": member.to_dict()}
+
+
+@app.delete("/api/organizations/{org_id}/members/{user_id}", tags=["Organizations"])
+def remove_org_member(
+    org_id: str,
+    user_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Remove a member from an organization."""
+    if not OrganizationService.check_org_admin(db, current_user, org_id):
+        raise HTTPException(status_code=403, detail="Not authorized to manage this organization")
+
+    member = db.query(OrganizationMember).filter(
+        OrganizationMember.user_id == user_id,
+        OrganizationMember.organization_id == org_id
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Membership not found")
+
+    db.delete(member)
+    db.commit()
+    return {"message": "Member removed from organization"}
+
+
+# ============================================================================
+# Project Team Management Endpoints
+# ============================================================================
+
+@app.get("/api/projects/{project_id}/team", tags=["Project Team"])
+def get_project_team(
+    project_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """List team members for a project (from ProjectPermission)."""
+    if not OrganizationService.check_project_access(db, current_user, project_id):
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    permissions = db.query(ProjectPermission).filter(
+        ProjectPermission.project_id == project_id
+    ).all()
+    return {"team": [p.to_dict() for p in permissions]}
+
+
+@app.post("/api/projects/{project_id}/team", tags=["Project Team"])
+def add_team_member(
+    project_id: str,
+    user_id: str,
+    permission_level: str = "viewer",
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Add a team member to a project."""
+    if not OrganizationService.check_project_access(db, current_user, project_id, PermissionLevel.EDITOR):
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Check user exists
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Check for existing permission
+    existing = db.query(ProjectPermission).filter(
+        ProjectPermission.user_id == user_id,
+        ProjectPermission.project_id == project_id
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="User already has access to this project")
+
+    perm = ProjectPermission(
+        user_id=user_id,
+        project_id=project_id,
+        permission_level=PermissionLevel(permission_level),
+        granted_by=current_user.id
+    )
+    db.add(perm)
+
+    log_project_activity(db, project_id, str(current_user.id), "member_added",
+                         f"{target_user.name} added to team as {permission_level}")
+    db.commit()
+    db.refresh(perm)
+    return {"permission": perm.to_dict()}
+
+
+@app.put("/api/projects/{project_id}/team/{user_id}", tags=["Project Team"])
+def update_team_member(
+    project_id: str,
+    user_id: str,
+    permission_level: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update a team member's permission level."""
+    if not OrganizationService.check_project_access(db, current_user, project_id, PermissionLevel.EDITOR):
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    perm = db.query(ProjectPermission).filter(
+        ProjectPermission.user_id == user_id,
+        ProjectPermission.project_id == project_id
+    ).first()
+    if not perm:
+        raise HTTPException(status_code=404, detail="Team member not found")
+
+    perm.permission_level = PermissionLevel(permission_level)
+    log_project_activity(db, project_id, str(current_user.id), "member_updated",
+                         f"Team member role updated to {permission_level}")
+    db.commit()
+    return {"permission": perm.to_dict()}
+
+
+@app.delete("/api/projects/{project_id}/team/{user_id}", tags=["Project Team"])
+def remove_team_member(
+    project_id: str,
+    user_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Remove a team member from a project."""
+    if not OrganizationService.check_project_access(db, current_user, project_id, PermissionLevel.OWNER):
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    perm = db.query(ProjectPermission).filter(
+        ProjectPermission.user_id == user_id,
+        ProjectPermission.project_id == project_id
+    ).first()
+    if not perm:
+        raise HTTPException(status_code=404, detail="Team member not found")
+
+    target_user = db.query(User).filter(User.id == user_id).first()
+    log_project_activity(db, project_id, str(current_user.id), "member_removed",
+                         f"{target_user.name if target_user else 'User'} removed from team")
+    db.delete(perm)
+    db.commit()
+    return {"message": "Team member removed"}
+
+
+# ============================================================================
+# Project Activity Feed Endpoints
+# ============================================================================
+
+@app.get("/api/projects/{project_id}/activities", tags=["Project Activities"])
+def get_project_activities(
+    project_id: str,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get paginated activity feed for a project."""
+    if not OrganizationService.check_project_access(db, current_user, project_id):
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    total = db.query(ProjectActivity).filter(
+        ProjectActivity.project_id == project_id
+    ).count()
+
+    activities = db.query(ProjectActivity).filter(
+        ProjectActivity.project_id == project_id
+    ).order_by(ProjectActivity.created_at.desc()).offset(offset).limit(limit).all()
+
+    return {
+        "activities": [a.to_dict() for a in activities],
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+# ============================================================================
+# Cross-Organization Sharing Endpoints
+# ============================================================================
+
+@app.post("/api/projects/{project_id}/share", tags=["Cross-Org Sharing"])
+def share_project(
+    project_id: str,
+    target_org_id: str,
+    permission_level: str = "viewer",
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Share a project with another organization."""
+    if not OrganizationService.check_project_access(db, current_user, project_id, PermissionLevel.OWNER):
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    project = db.query(ProcurementProject).filter(ProcurementProject.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    target_org = db.query(Organization).filter(Organization.id == target_org_id).first()
+    if not target_org:
+        raise HTTPException(status_code=404, detail="Target organization not found")
+
+    share = CrossOrgShare(
+        project_id=project_id,
+        source_org_id=project.organization_id,
+        target_org_id=target_org_id,
+        permission_level=SharePermission(permission_level),
+        shared_by=current_user.id,
+    )
+    db.add(share)
+
+    log_project_activity(db, project_id, str(current_user.id), "project_shared",
+                         f"Project shared with {target_org.name}")
+    db.commit()
+    db.refresh(share)
+    return {"share": share.to_dict()}
+
+
+@app.get("/api/projects/{project_id}/shares", tags=["Cross-Org Sharing"])
+def list_project_shares(
+    project_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """List active shares for a project."""
+    if not OrganizationService.check_project_access(db, current_user, project_id):
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    shares = db.query(CrossOrgShare).filter(
+        CrossOrgShare.project_id == project_id
+    ).all()
+    return {"shares": [s.to_dict() for s in shares]}
+
+
+@app.delete("/api/projects/{project_id}/shares/{share_id}", tags=["Cross-Org Sharing"])
+def revoke_share(
+    project_id: str,
+    share_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Revoke a cross-org share."""
+    if not OrganizationService.check_project_access(db, current_user, project_id, PermissionLevel.OWNER):
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    share = db.query(CrossOrgShare).filter(
+        CrossOrgShare.id == share_id,
+        CrossOrgShare.project_id == project_id
+    ).first()
+    if not share:
+        raise HTTPException(status_code=404, detail="Share not found")
+
+    db.delete(share)
+    log_project_activity(db, project_id, str(current_user.id), "share_revoked", "Cross-org share revoked")
+    db.commit()
+    return {"message": "Share revoked"}
 
 
 # ============================================================================

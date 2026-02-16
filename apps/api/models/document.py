@@ -1,7 +1,7 @@
 """
 Document management models for checklist and file uploads
 """
-from sqlalchemy import Column, String, DateTime, Date, Enum, Integer, BigInteger, ForeignKey, Boolean, Text
+from sqlalchemy import Column, String, DateTime, Date, Enum, Integer, BigInteger, ForeignKey, Boolean, Text, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -91,7 +91,10 @@ class ProjectDocument(Base):
     __tablename__ = "project_documents"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    project_id = Column(UUID(as_uuid=True), ForeignKey("procurement_projects.id", ondelete="CASCADE"), nullable=False)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("procurement_projects.id", ondelete="CASCADE"), nullable=True)
+    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    is_standalone = Column(Boolean, default=False)
+    generation_context = Column(JSON, nullable=True)
     document_name = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     category = Column(String, default="General")
@@ -137,10 +140,16 @@ class ProjectDocument(Base):
     # Relationship to default approver user (for DEFAULT routing)
     default_approver = relationship("User", foreign_keys=[default_approver_id])
 
+    # Owner relationship (for standalone documents)
+    owner = relationship("User", foreign_keys=[owner_id])
+
     def to_dict(self):
         return {
             "id": str(self.id),
-            "project_id": str(self.project_id),
+            "project_id": str(self.project_id) if self.project_id else None,
+            "owner_id": str(self.owner_id) if self.owner_id else None,
+            "is_standalone": self.is_standalone or False,
+            "generation_context": self.generation_context,
             "document_name": self.document_name,
             "description": self.description,
             "category": self.category,

@@ -1,0 +1,96 @@
+{
+  "document_id": "DOC-019",
+  "title": "Quality Assurance Surveillance Plan (QASP)",
+  "regulatory_references": [
+    "FAR 37.604",
+    "FAR 46.4",
+    "DFARS 246.4"
+  ],
+  "required_when": "service_contracts",
+  "fields": {
+    "header": {
+      "contract_number": {
+        "type": "string",
+        "required": true
+      },
+      "contractor": {
+        "type": "string",
+        "required": true
+      },
+      "cor_name": {
+        "type": "string",
+        "required": true
+      },
+      "period_of_performance": {
+        "type": "string",
+        "required": true
+      }
+    },
+    "surveillance_matrix": {
+      "type": "array",
+      "required": true,
+      "item_type": "object",
+      "properties": {
+        "pws_paragraph": {
+          "type": "string",
+          "source": "DOC-006.tasks[].task_number"
+        },
+        "requirement": {
+          "type": "string"
+        },
+        "standard": {
+          "type": "string"
+        },
+        "method": {
+          "type": "enum",
+          "options": [
+            "100% Inspection",
+            "Random Sampling",
+            "Periodic Inspection",
+            "Customer Feedback",
+            "Validated Complaints"
+          ]
+        },
+        "frequency": {
+          "type": "enum",
+          "options": [
+            "Daily",
+            "Weekly",
+            "Monthly",
+            "Quarterly",
+            "Annually"
+          ]
+        },
+        "deduction_or_remedy": {
+          "type": "string"
+        }
+      }
+    },
+    "remedies": {
+      "performance_deductions": {
+        "type": "text"
+      },
+      "cure_notices": {
+        "type": "text"
+      },
+      "award_fee_criteria": {
+        "type": "text",
+        "required": false
+      },
+      "positive_incentives": {
+        "type": "text",
+        "required": false
+      }
+    }
+  },
+  "validation_rules": [
+    {
+      "rule": "Every PWS task should have at least one surveillance item",
+      "severity": "warning"
+    },
+    {
+      "rule": "Surveillance methods must match DOC-006 performance standards",
+      "severity": "error"
+    }
+  ]
+}

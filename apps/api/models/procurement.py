@@ -77,15 +77,17 @@ class ProcurementProject(Base):
     target_completion_date = Column(Date, nullable=True)
     actual_completion_date = Column(Date, nullable=True)
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relationships
     phases = relationship("ProcurementPhase", back_populates="project", cascade="all, delete-orphan")
     steps = relationship("ProcurementStep", back_populates="project", cascade="all, delete-orphan")
-    documents = relationship("ProjectDocument", back_populates="project", cascade="all, delete-orphan")
+    documents = relationship("ProjectDocument", back_populates="project", cascade="all", passive_deletes=True)
     permissions = relationship("ProjectPermission", back_populates="project", cascade="all, delete-orphan")
-    
+    organization = relationship("Organization", back_populates="projects")
+
     # User relationships for officer names - use foreign_keys to disambiguate multiple FKs to same table
     contracting_officer = relationship("User", foreign_keys=[contracting_officer_id])
     program_manager = relationship("User", foreign_keys=[program_manager_id])
@@ -115,6 +117,12 @@ class ProcurementProject(Base):
             "target_completion_date": self.target_completion_date.isoformat() if self.target_completion_date else None,
             "actual_completion_date": self.actual_completion_date.isoformat() if self.actual_completion_date else None,
             "created_by": str(self.created_by),
+            "organization_id": str(self.organization_id) if self.organization_id else None,
+            "organization": {
+                "id": str(self.organization.id),
+                "name": self.organization.name,
+                "slug": self.organization.slug,
+            } if self.organization else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -206,10 +214,13 @@ class ProjectPermission(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     project_id = Column(UUID(as_uuid=True), ForeignKey("procurement_projects.id", ondelete="CASCADE"), nullable=False)
     permission_level = Column(Enum(PermissionLevel), nullable=False)
+    granted_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
     project = relationship("ProcurementProject", back_populates="permissions")
+    user = relationship("User", foreign_keys=[user_id])
+    granted_by_user = relationship("User", foreign_keys=[granted_by])
 
     def to_dict(self):
         return {
@@ -217,7 +228,14 @@ class ProjectPermission(Base):
             "user_id": str(self.user_id),
             "project_id": str(self.project_id),
             "permission_level": self.permission_level.value,
+            "granted_by": str(self.granted_by) if self.granted_by else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
+            "user": {
+                "id": str(self.user.id),
+                "name": self.user.name,
+                "email": self.user.email,
+                "role": self.user.role.value,
+            } if self.user else None,
         }
 
 

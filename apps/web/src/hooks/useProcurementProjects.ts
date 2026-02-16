@@ -1,45 +1,44 @@
 /**
  * useProcurementProjects Hook
- * 
+ *
  * Manages procurement projects using React Query for:
  * - Automatic request deduplication (multiple components = 1 request)
  * - Smart caching with stale-while-revalidate
  * - Background refetching without blocking UI
  * - Automatic cache invalidation on mutations
- * 
+ * - Organization-scoped project filtering
+ *
  * Dependencies:
  * - @tanstack/react-query for data fetching and caching
  * - projectsApi from services/api for API calls
+ * - useAuth for active organization context
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { projectsApi, type Project } from '@/services/api';
-
-// Query key for projects - used for cache management and invalidation
-const PROJECTS_QUERY_KEY = ['projects'] as const;
+import { useAuth } from '@/contexts/AuthContext';
 
 export function useProcurementProjects() {
   const queryClient = useQueryClient();
+  const { activeOrgId } = useAuth();
 
-  // Fetch all projects using React Query
-  // - Automatically caches data
-  // - Deduplicates concurrent requests
-  // - Refetches based on QueryClient defaults (staleTime, refetchInterval)
+  // Include activeOrgId in query key so project list refetches when org changes
+  const queryKey = ['projects', activeOrgId] as const;
+
+  // Fetch projects scoped to active organization
   const {
     data,
     isLoading: loading,
     error,
     refetch,
   } = useQuery({
-    queryKey: PROJECTS_QUERY_KEY,
+    queryKey,
     queryFn: async () => {
-      const response = await projectsApi.list();
+      const response = await projectsApi.list(activeOrgId ?? undefined);
       return response.projects;
     },
   });
 
   // Create project mutation
-  // - Automatically invalidates projects cache on success
-  // - Returns the created project
   const createMutation = useMutation({
     mutationFn: async (projectData: {
       name: string;
@@ -47,13 +46,14 @@ export function useProcurementProjects() {
       project_type: string;
       estimated_value: number;
       contracting_officer_id?: string;
+      program_manager_id?: string;
+      organization_id?: string;
     }) => {
       const response = await projectsApi.create(projectData);
       return response.project;
     },
     onSuccess: () => {
-      // Invalidate and refetch projects list after successful creation
-      queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
     },
   });
 
@@ -63,7 +63,7 @@ export function useProcurementProjects() {
       await projectsApi.update(projectId, updates);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
     },
   });
 
@@ -73,7 +73,7 @@ export function useProcurementProjects() {
       await projectsApi.delete(projectId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
     },
   });
 
@@ -84,6 +84,8 @@ export function useProcurementProjects() {
     project_type: string;
     estimated_value: number;
     contracting_officer_id?: string;
+    program_manager_id?: string;
+    organization_id?: string;
   }) => {
     return createMutation.mutateAsync(projectData);
   };

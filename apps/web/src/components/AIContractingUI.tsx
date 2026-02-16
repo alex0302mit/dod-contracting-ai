@@ -28,6 +28,7 @@ import { AppShell } from "./layout/AppShell";
 import { AdminUserManagement } from "./admin/AdminUserManagement";
 import { AdminAuditLogs } from "./admin/AdminAuditLogs";
 import { AdminAnalytics } from "./admin/AdminAnalytics";
+import { OrgManagement } from "./admin/OrgManagement";
 
 // Import all screens
 import {
@@ -39,6 +40,8 @@ import {
   ApprovalsScreen,
   SourcesScreen,
   ExportScreen,
+  GenerateDocumentScreen,
+  MyDocumentsScreen,
 } from "./screens";
 
 import { ragApi } from "@/services/api";
@@ -277,6 +280,15 @@ function MainApp() {
 
       case 'ADMIN_AUDIT_LOGS':
         return <AdminAuditLogs />;
+
+      case 'ADMIN_ORGS':
+        return <OrgManagement />;
+
+      case 'GENERATE_DOCUMENT':
+        return <GenerateDocumentScreen />;
+
+      case 'MY_DOCUMENTS':
+        return <MyDocumentsScreen />;
 
       // Legacy routes for backwards compatibility
       case 'GENERATING' as any:

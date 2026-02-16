@@ -48,6 +48,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { NotificationCenter } from '@/components/procurement/NotificationCenter';
+import { OrgSwitcher } from '@/components/layout/OrgSwitcher';
 import { useProcurementProjects } from '@/hooks/useProcurementProjects';
 import { useUserStats } from '@/hooks/useUserStats';
 import { useAuth } from '@/contexts/AuthContext';
@@ -122,7 +123,15 @@ export function Header() {
           
           {/* Vertical separator */}
           <div className="h-6 w-px bg-border hidden lg:block" />
-          
+
+          {/* Organization Switcher */}
+          <div className="hidden lg:block">
+            <OrgSwitcher />
+          </div>
+
+          {/* Vertical separator */}
+          <div className="h-6 w-px bg-border hidden lg:block" />
+
           {/* Project Switcher */}
           <div className="hidden lg:block">
             <Select

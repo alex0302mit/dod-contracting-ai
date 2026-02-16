@@ -1,0 +1,108 @@
+{
+  "document_id": "DOC-018",
+  "title": "Contract Document (Uniform Contract Format)",
+  "regulatory_references": [
+    "FAR 14.201",
+    "FAR 15.204",
+    "DFARS 215.204"
+  ],
+  "required_when": "always",
+  "fields": {
+    "section_a": {
+      "contract_number": {
+        "type": "string",
+        "required": true
+      },
+      "award_date": {
+        "type": "date",
+        "required": true
+      },
+      "effective_date": {
+        "type": "date",
+        "required": true
+      },
+      "contractor": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "cage_code": {
+            "type": "string"
+          },
+          "uei": {
+            "type": "string"
+          }
+        }
+      },
+      "contract_type": {
+        "type": "string",
+        "required": true
+      },
+      "total_value": {
+        "type": "currency",
+        "required": true,
+        "source": "DOC-012.negotiated_price"
+      },
+      "obligation_amount": {
+        "type": "currency",
+        "required": true
+      }
+    },
+    "section_b_clins": {
+      "type": "array",
+      "required": true,
+      "source": "DOC-008.section_b_clins"
+    },
+    "sections_c_through_k": {
+      "section_c": {
+        "type": "reference",
+        "source": "DOC-006"
+      },
+      "section_d": {
+        "type": "text"
+      },
+      "section_e": {
+        "type": "text"
+      },
+      "section_f": {
+        "type": "text"
+      },
+      "section_g": {
+        "type": "text"
+      },
+      "section_h": {
+        "type": "text"
+      },
+      "section_i": {
+        "type": "reference",
+        "source": "DOC-008.section_i_clauses"
+      },
+      "section_j": {
+        "type": "array",
+        "description": "List of attachments including CDRLs, DD 254, etc."
+      },
+      "section_k": {
+        "type": "text"
+      }
+    }
+  },
+  "validation_rules": [
+    {
+      "rule": "Total value must match DOC-012 negotiated price",
+      "severity": "error"
+    },
+    {
+      "rule": "Obligation amount must not exceed certified funding from DOC-017",
+      "severity": "error"
+    },
+    {
+      "rule": "All mandatory FAR/DFARS clauses for contract type must be included",
+      "severity": "error"
+    }
+  ]
+}

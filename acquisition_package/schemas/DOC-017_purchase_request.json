@@ -1,0 +1,152 @@
+{
+  "document_id": "DOC-017",
+  "title": "Purchase Request (PR) / Funding Document",
+  "regulatory_references": [
+    "FAR 32.7",
+    "DFARS 232.7",
+    "DoD FMR 7000.14-R",
+    "31 U.S.C. 1341 (Anti-Deficiency Act)"
+  ],
+  "required_when": "always",
+  "fields": {
+    "request_info": {
+      "pr_number": {
+        "type": "string",
+        "required": true
+      },
+      "date_submitted": {
+        "type": "date",
+        "required": true
+      },
+      "requiring_activity": {
+        "type": "string",
+        "required": true
+      },
+      "requestor": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "email": {
+            "type": "email"
+          }
+        }
+      },
+      "priority": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "Routine",
+          "Urgent",
+          "Emergency"
+        ]
+      }
+    },
+    "requirement_details": {
+      "description": {
+        "type": "text",
+        "required": true
+      },
+      "justification": {
+        "type": "text",
+        "required": true
+      },
+      "quantity": {
+        "type": "string",
+        "required": true
+      },
+      "delivery_date": {
+        "type": "date",
+        "required": true
+      },
+      "suggested_sources": {
+        "type": "array",
+        "item_type": "string"
+      }
+    },
+    "funding": {
+      "appropriation": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "O&M",
+          "RDT&E",
+          "Procurement",
+          "MILCON",
+          "MILPERS",
+          "WCF"
+        ]
+      },
+      "fiscal_year": {
+        "type": "string",
+        "required": true,
+        "pattern": "^FY20\\d{2}$"
+      },
+      "fund_cite": {
+        "type": "string",
+        "required": true,
+        "description": "Full accounting classification string"
+      },
+      "amount": {
+        "type": "currency",
+        "required": true,
+        "cross_reference": "Should align with DOC-003 total"
+      },
+      "bona_fide_need_date": {
+        "type": "string",
+        "required": true
+      },
+      "cross_fiscal_year": {
+        "type": "object",
+        "properties": {
+          "applicable": {
+            "type": "boolean"
+          },
+          "explanation": {
+            "type": "text"
+          }
+        }
+      }
+    },
+    "certifications": {
+      "funds_certifier": {
+        "type": "signature_block",
+        "required": true
+      },
+      "budget_officer": {
+        "type": "signature_block",
+        "required": true
+      },
+      "comptroller": {
+        "type": "signature_block",
+        "required": true
+      },
+      "requiring_activity_approver": {
+        "type": "signature_block",
+        "required": true
+      }
+    }
+  },
+  "validation_rules": [
+    {
+      "rule": "Amount must not exceed available appropriation balance (Anti-Deficiency Act)",
+      "severity": "error"
+    },
+    {
+      "rule": "Appropriation type must match the nature of the requirement (e.g., services = O&M, development = RDT&E)",
+      "severity": "error"
+    },
+    {
+      "rule": "Funding amount should align with DOC-003 IGCE",
+      "severity": "warning"
+    }
+  ]
+}

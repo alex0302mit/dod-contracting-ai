@@ -1,0 +1,135 @@
+{
+  "document_id": "DOC-014",
+  "title": "DD Form 254 - Contract Security Classification Specification",
+  "regulatory_references": [
+    "NISPOM (32 CFR Part 117)",
+    "DFARS 204.4",
+    "DoD Manual 5220.22"
+  ],
+  "required_when": "contract involves classified information",
+  "fields": {
+    "contract_info": {
+      "contract_number": {
+        "type": "string",
+        "required": true
+      },
+      "contractor": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "cage_code": {
+            "type": "string"
+          }
+        }
+      },
+      "facility_clearance_level": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "Confidential",
+          "Secret",
+          "Top Secret"
+        ]
+      },
+      "performance_locations": {
+        "type": "array",
+        "required": true,
+        "item_type": "string"
+      }
+    },
+    "security_requirements": {
+      "highest_classification": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "Confidential",
+          "Secret",
+          "Top Secret",
+          "TS/SCI"
+        ]
+      },
+      "classified_access_categories": {
+        "type": "array",
+        "item_type": "enum",
+        "options": [
+          "NATO",
+          "COMSEC",
+          "SAP",
+          "SCI",
+          "CNWDI",
+          "RD",
+          "FRD"
+        ]
+      },
+      "safeguarding_requirements": {
+        "type": "text",
+        "required": true
+      },
+      "classification_guide_reference": {
+        "type": "string",
+        "required": true
+      },
+      "opsec_requirements": {
+        "type": "text"
+      },
+      "comsec_required": {
+        "type": "boolean"
+      },
+      "sap_access": {
+        "type": "object",
+        "properties": {
+          "required": {
+            "type": "boolean"
+          },
+          "programs": {
+            "type": "array",
+            "item_type": "string"
+          }
+        }
+      }
+    },
+    "personnel_security": {
+      "clearance_level_required": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "Secret",
+          "Top Secret",
+          "TS/SCI"
+        ]
+      },
+      "estimated_personnel_count": {
+        "type": "integer"
+      },
+      "visitor_control": {
+        "type": "text"
+      }
+    },
+    "signatures": {
+      "security_office": {
+        "type": "signature_block",
+        "required": true
+      },
+      "contracting_officer": {
+        "type": "signature_block",
+        "required": true
+      },
+      "contractor_fso": {
+        "type": "signature_block",
+        "required": true
+      }
+    }
+  },
+  "validation_rules": [
+    {
+      "rule": "Contractor facility clearance must be at or above highest_classification",
+      "severity": "error"
+    }
+  ]
+}

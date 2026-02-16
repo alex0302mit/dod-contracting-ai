@@ -1,0 +1,153 @@
+{
+  "document_id": "DOC-028",
+  "title": "Contract Administration Plan",
+  "regulatory_references": [
+    "FAR Part 42",
+    "DFARS 242",
+    "DoD Contract Administration Handbook"
+  ],
+  "required_when": "always",
+  "fields": {
+    "contract_summary": {
+      "contract_number": {
+        "type": "string",
+        "required": true
+      },
+      "contractor": {
+        "type": "string",
+        "required": true
+      },
+      "contract_type": {
+        "type": "string",
+        "required": true
+      },
+      "total_value": {
+        "type": "currency",
+        "required": true
+      },
+      "period_of_performance": {
+        "type": "string",
+        "required": true
+      },
+      "dcma_assignment": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "Assigned",
+          "Retained",
+          "N/A"
+        ]
+      }
+    },
+    "key_personnel": {
+      "contracting_officer": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "contact": {
+            "type": "string"
+          }
+        }
+      },
+      "cor": {
+        "type": "object",
+        "required": true,
+        "source": "DOC-020"
+      },
+      "program_manager": {
+        "type": "object",
+        "required": true
+      },
+      "dcma_aco": {
+        "type": "object",
+        "required": false
+      },
+      "dcaa_auditor": {
+        "type": "object",
+        "required": false
+      },
+      "contractor_pm": {
+        "type": "object",
+        "required": true
+      }
+    },
+    "procedures": {
+      "invoice_processing": {
+        "type": "text",
+        "required": true,
+        "default_note": "WAWF/iRAPT submission and approval chain"
+      },
+      "deliverable_acceptance": {
+        "type": "text",
+        "required": true
+      },
+      "modifications": {
+        "type": "text",
+        "required": true
+      },
+      "option_exercise": {
+        "type": "text",
+        "required": true,
+        "note": "Typically 60 days prior to option period start"
+      },
+      "performance_monitoring": {
+        "type": "text",
+        "required": true,
+        "source": "DOC-019"
+      },
+      "government_property": {
+        "type": "text",
+        "required": false
+      },
+      "security_administration": {
+        "type": "text",
+        "required": false,
+        "source": "DOC-014"
+      }
+    },
+    "closeout_checklist": {
+      "type": "array",
+      "required": true,
+      "item_type": "object",
+      "properties": {
+        "item": {
+          "type": "string"
+        },
+        "status": {
+          "type": "enum",
+          "options": [
+            "Pending",
+            "Complete",
+            "N/A"
+          ]
+        },
+        "date": {
+          "type": "date"
+        }
+      },
+      "default_items": [
+        "Final Invoice Received",
+        "Final Deliverables Accepted",
+        "Property Disposition Complete",
+        "Final CPARS Evaluation",
+        "Release of Claims",
+        "Excess Funds De-obligated",
+        "Contract Physically Complete",
+        "File Archived"
+      ]
+    }
+  },
+  "validation_rules": [
+    {
+      "rule": "Key personnel must match DOC-018 and DOC-020",
+      "severity": "error"
+    },
+    {
+      "rule": "If DCMA assigned, ACO contact must be included",
+      "severity": "error"
+    }
+  ]
+}

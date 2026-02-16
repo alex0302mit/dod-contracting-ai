@@ -1,0 +1,126 @@
+{
+  "document_id": "DOC-020",
+  "title": "COR Appointment Letter",
+  "regulatory_references": [
+    "FAR 1.602-2(d)",
+    "DFARS 201.602-2",
+    "DoD COR Handbook"
+  ],
+  "required_when": "service_contracts_and_complex_supply",
+  "fields": {
+    "appointment_info": {
+      "to_cor": {
+        "type": "string",
+        "required": true
+      },
+      "from_ko": {
+        "type": "string",
+        "required": true
+      },
+      "date": {
+        "type": "date",
+        "required": true
+      },
+      "contract_number": {
+        "type": "string",
+        "required": true,
+        "source": "DOC-018.contract_number"
+      },
+      "contractor": {
+        "type": "string",
+        "required": true,
+        "source": "DOC-018.contractor.name"
+      },
+      "contract_value": {
+        "type": "currency",
+        "required": true
+      },
+      "period_of_performance": {
+        "type": "string",
+        "required": true
+      },
+      "cor_certification_level": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "Level I",
+          "Level II",
+          "Level III"
+        ]
+      },
+      "training_completion_date": {
+        "type": "date",
+        "required": true
+      }
+    },
+    "responsibilities": {
+      "technical_oversight": {
+        "type": "text",
+        "required": true
+      },
+      "surveillance": {
+        "type": "text",
+        "required": true,
+        "source": "DOC-019"
+      },
+      "invoice_review": {
+        "type": "text",
+        "required": true
+      },
+      "deliverable_acceptance": {
+        "type": "text",
+        "required": true
+      },
+      "reporting": {
+        "type": "text",
+        "required": true
+      },
+      "documentation": {
+        "type": "text",
+        "required": true
+      }
+    },
+    "limitations": {
+      "cannot_direct_changes": {
+        "type": "text",
+        "required": true
+      },
+      "cannot_modify_contract": {
+        "type": "text",
+        "required": true
+      },
+      "cannot_obligate_funds": {
+        "type": "text",
+        "required": true
+      },
+      "cannot_issue_stop_work": {
+        "type": "text",
+        "required": true
+      }
+    },
+    "signatures": {
+      "contracting_officer": {
+        "type": "signature_block",
+        "required": true
+      },
+      "cor_acceptance": {
+        "type": "signature_block",
+        "required": true
+      },
+      "cor_supervisor": {
+        "type": "signature_block",
+        "required": true
+      }
+    }
+  },
+  "validation_rules": [
+    {
+      "rule": "COR certification level must match contract value and complexity",
+      "severity": "warning"
+    },
+    {
+      "rule": "COR training must be current (within 2 years)",
+      "severity": "error"
+    }
+  ]
+}

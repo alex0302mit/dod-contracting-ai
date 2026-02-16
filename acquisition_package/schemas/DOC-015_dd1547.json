@@ -1,0 +1,84 @@
+{
+  "document_id": "DOC-015",
+  "title": "DD Form 1547 - Record of Weighted Guidelines",
+  "regulatory_references": [
+    "FAR 15.404-4",
+    "DFARS 215.404-4",
+    "PGI 215.404-71"
+  ],
+  "required_when": "negotiated contracts requiring profit/fee negotiation with certified cost data",
+  "fields": {
+    "contract_info": {
+      "contractor": {
+        "type": "string",
+        "required": true
+      },
+      "contract_number": {
+        "type": "string",
+        "required": true
+      },
+      "description": {
+        "type": "string",
+        "required": true
+      },
+      "total_cost_excl_profit": {
+        "type": "currency",
+        "required": true
+      }
+    },
+    "profit_factors": {
+      "type": "array",
+      "required": true,
+      "item_type": "object",
+      "properties": {
+        "factor_name": {
+          "type": "enum",
+          "options": [
+            "Technical Risk",
+            "Management/Cost Control",
+            "Contract Type Risk",
+            "Capital Investment"
+          ]
+        },
+        "weight_range": {
+          "type": "string"
+        },
+        "assigned_weight_pct": {
+          "type": "number"
+        },
+        "profit_amount": {
+          "type": "currency",
+          "computed": true
+        }
+      }
+    },
+    "total_profit_objective": {
+      "type": "object",
+      "required": true,
+      "properties": {
+        "percentage": {
+          "type": "number"
+        },
+        "amount": {
+          "type": "currency"
+        }
+      }
+    },
+    "approval": {
+      "contracting_officer": {
+        "type": "signature_block",
+        "required": true
+      }
+    }
+  },
+  "validation_rules": [
+    {
+      "rule": "Total profit percentage should typically fall between 7-15%",
+      "severity": "warning"
+    },
+    {
+      "rule": "Profit objective feeds into DOC-012 PNM",
+      "severity": "info"
+    }
+  ]
+}

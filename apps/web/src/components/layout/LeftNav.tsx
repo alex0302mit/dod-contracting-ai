@@ -31,6 +31,9 @@ import {
   ChevronLeft,
   ChevronRight,
   BarChart3,
+  Building2,
+  FilePlus2,
+  FileStack,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -55,8 +58,10 @@ interface NavItem {
 // Main navigation items
 const navItems: NavItem[] = [
   { id: 'overview', label: 'Overview', icon: Home, route: 'OVERVIEW' },
+  { id: 'generate', label: 'Generate', icon: FilePlus2, route: 'GENERATE_DOCUMENT' },
   { id: 'quick-generate', label: 'Quick Generate', icon: Sparkles, route: 'QUICK_GENERATE' },
   { id: 'editor', label: 'Editor', icon: FileText, route: 'EDITOR' },
+  { id: 'my-documents', label: 'My Documents', icon: FileStack, route: 'MY_DOCUMENTS' },
   { id: 'documents', label: 'Documents', icon: FolderOpen, route: 'DOCUMENTS' },
   { id: 'tracker', label: 'Tracker', icon: TrendingUp, route: 'TRACKER' },
   { id: 'approvals', label: 'Approvals', icon: UserCheck, route: 'APPROVALS' },
@@ -66,6 +71,7 @@ const navItems: NavItem[] = [
 
 // Bottom navigation items (settings, admin)
 const bottomNavItems: NavItem[] = [
+  { id: 'organizations', label: 'Organizations', icon: Building2, route: 'ADMIN_ORGS', adminOnly: true },
   { id: 'analytics', label: 'Analytics', icon: BarChart3, route: 'ADMIN_ANALYTICS', adminOnly: true },
   { id: 'audit-logs', label: 'Audit Logs', icon: ScrollText, route: 'ADMIN_AUDIT_LOGS', adminOnly: true },
   { id: 'settings', label: 'Settings', icon: Settings, route: 'SETTINGS', adminOnly: true },

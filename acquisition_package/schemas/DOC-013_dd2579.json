@@ -1,0 +1,117 @@
+{
+  "document_id": "DOC-013",
+  "title": "Small Business Coordination Record (DD Form 2579)",
+  "regulatory_references": [
+    "FAR 19.2",
+    "DFARS 219.2"
+  ],
+  "required_when": "estimated_value > 250000",
+  "fields": {
+    "acquisition_info": {
+      "contracting_office": {
+        "type": "string",
+        "required": true
+      },
+      "solicitation_contract_number": {
+        "type": "string",
+        "required": true
+      },
+      "description": {
+        "type": "string",
+        "required": true
+      },
+      "estimated_value": {
+        "type": "currency",
+        "required": true
+      },
+      "naics_code": {
+        "type": "string",
+        "required": true
+      },
+      "size_standard": {
+        "type": "string",
+        "required": true
+      },
+      "procurement_method": {
+        "type": "string",
+        "required": true
+      }
+    },
+    "sb_review": {
+      "recommended_set_aside": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "Total SB",
+          "8(a)",
+          "HUBZone",
+          "SDVOSB",
+          "WOSB",
+          "EDWOSB",
+          "None"
+        ]
+      },
+      "sb_sources_identified": {
+        "type": "integer",
+        "required": true,
+        "source": "DOC-002.number_of_capable_sources"
+      },
+      "sba_pcr_coordination": {
+        "type": "object",
+        "properties": {
+          "coordinated": {
+            "type": "boolean"
+          },
+          "date": {
+            "type": "date"
+          }
+        }
+      },
+      "subcontracting_plan_required": {
+        "type": "boolean",
+        "required": true,
+        "rule": "True if value > 750000 and prime is not small business"
+      },
+      "small_business_goals": {
+        "type": "object",
+        "properties": {
+          "sb_pct": {
+            "type": "number"
+          },
+          "sdb_pct": {
+            "type": "number"
+          },
+          "wosb_pct": {
+            "type": "number"
+          },
+          "sdvosb_pct": {
+            "type": "number"
+          },
+          "hubzone_pct": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "signatures": {
+      "sb_professional": {
+        "type": "signature_block",
+        "required": true
+      },
+      "sb_director": {
+        "type": "signature_block",
+        "required": true
+      },
+      "contracting_officer": {
+        "type": "signature_block",
+        "required": true
+      }
+    }
+  },
+  "validation_rules": [
+    {
+      "rule": "If DOC-002 shows small business can perform and value supports set-aside, recommended_set_aside should not be 'None' without justification",
+      "severity": "warning"
+    }
+  ]
+}

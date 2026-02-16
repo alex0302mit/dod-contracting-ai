@@ -3,7 +3,8 @@
     "allow": [
       "Bash(sudo npm i -g @anthropic-ai/claude-code)",
       "Bash(ls:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(python tools/migrations/migrate_organizations.py:*)"
     ],
     "deny": [],
     "ask": []

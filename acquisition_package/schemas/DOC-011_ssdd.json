@@ -1,0 +1,89 @@
+{
+  "document_id": "DOC-011",
+  "title": "Source Selection Decision Document (SSDD)",
+  "regulatory_references": [
+    "FAR 15.308",
+    "DFARS 215.308",
+    "DoD Source Selection Procedures"
+  ],
+  "required_when": "competitive_negotiated_acquisition",
+  "requires_human_input": true,
+  "human_input_description": "SSA's comparative analysis and best value rationale",
+  "fields": {
+    "decision_summary": {
+      "solicitation_number": {
+        "type": "string",
+        "required": true
+      },
+      "program_name": {
+        "type": "string",
+        "required": true
+      },
+      "ssa_name_title": {
+        "type": "string",
+        "required": true
+      },
+      "selected_offeror": {
+        "type": "string",
+        "required": true
+      },
+      "contract_value": {
+        "type": "currency",
+        "required": true
+      },
+      "contract_type": {
+        "type": "string",
+        "required": true
+      }
+    },
+    "comparative_analysis": {
+      "technical_comparison": {
+        "type": "text",
+        "required": true
+      },
+      "past_performance_comparison": {
+        "type": "text",
+        "required": true
+      },
+      "cost_price_comparison": {
+        "type": "text",
+        "required": true
+      }
+    },
+    "best_value_determination": {
+      "tradeoff_rationale": {
+        "type": "text",
+        "required": true,
+        "min_length": 200
+      },
+      "risk_assessment": {
+        "type": "text",
+        "required": true
+      }
+    },
+    "decision": {
+      "award_statement": {
+        "type": "text",
+        "required": true
+      },
+      "ssa_signature": {
+        "type": "signature_block",
+        "required": true
+      }
+    }
+  },
+  "validation_rules": [
+    {
+      "rule": "Must reference SSEB findings from DOC-010",
+      "severity": "error"
+    },
+    {
+      "rule": "If lowest-priced offeror is NOT selected, tradeoff rationale is critical and must explicitly justify the premium",
+      "severity": "error"
+    },
+    {
+      "rule": "SSA decision must be independent - cannot simply adopt SSEB recommendation",
+      "severity": "info"
+    }
+  ]
+}

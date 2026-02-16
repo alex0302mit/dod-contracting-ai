@@ -1,0 +1,312 @@
+{
+  "document_id": "DOC-006",
+  "title": "Performance Work Statement / Statement of Work / Statement of Objectives",
+  "regulatory_references": [
+    "FAR 37.6",
+    "FAR 37.601",
+    "FAR 37.602",
+    "FAR 11.1",
+    "DFARS 211.1",
+    "DoD PBL Guidebook"
+  ],
+  "required_when": "always",
+  "fields": {
+    "header": {
+      "document_type": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          {
+            "value": "PWS",
+            "description": "Performance Work Statement - describes desired outcomes and performance standards (PREFERRED for services)"
+          },
+          {
+            "value": "SOW",
+            "description": "Statement of Work - prescribes specific tasks and methods"
+          },
+          {
+            "value": "SOO",
+            "description": "Statement of Objectives - provides high-level objectives for offeror to propose approach"
+          }
+        ]
+      },
+      "title": {
+        "type": "string",
+        "required": true
+      },
+      "date": {
+        "type": "date",
+        "required": true
+      },
+      "version": {
+        "type": "string",
+        "required": true,
+        "default": "1.0"
+      },
+      "classification": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "UNCLASSIFIED",
+          "CUI",
+          "SECRET",
+          "TOP SECRET"
+        ]
+      }
+    },
+    "scope": {
+      "background": {
+        "type": "text",
+        "required": true,
+        "min_length": 100,
+        "description": "Organizational mission and context for requirement"
+      },
+      "scope_of_work": {
+        "type": "text",
+        "required": true,
+        "description": "Define boundaries of included and excluded work"
+      },
+      "period_of_performance": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "base_period": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "date"
+              },
+              "end": {
+                "type": "date"
+              }
+            }
+          },
+          "options": {
+            "type": "array",
+            "item_type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "start": {
+                "type": "date"
+              },
+              "end": {
+                "type": "date"
+              }
+            }
+          }
+        }
+      },
+      "place_of_performance": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "primary": {
+            "type": "string"
+          },
+          "alternates": {
+            "type": "array",
+            "item_type": "string"
+          },
+          "telework_authorized": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "required": true,
+      "min_items": 1,
+      "item_type": "object",
+      "properties": {
+        "task_number": {
+          "type": "string"
+        },
+        "task_title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "text"
+        },
+        "deliverables": {
+          "type": "array",
+          "item_type": "string"
+        },
+        "performance_standard": {
+          "type": "text"
+        },
+        "acceptance_criteria": {
+          "type": "text"
+        }
+      }
+    },
+    "performance_standards": {
+      "type": "array",
+      "required": true,
+      "item_type": "object",
+      "properties": {
+        "requirement_reference": {
+          "type": "string"
+        },
+        "performance_standard": {
+          "type": "string"
+        },
+        "acceptable_quality_level": {
+          "type": "string"
+        },
+        "surveillance_method": {
+          "type": "enum",
+          "options": [
+            "100% Inspection",
+            "Random Sampling",
+            "Periodic Inspection",
+            "Customer Feedback",
+            "Validated Complaints"
+          ]
+        }
+      },
+      "cross_reference": "Feeds directly into DOC-019 (QASP)"
+    },
+    "deliverables": {
+      "type": "array",
+      "required": true,
+      "item_type": "object",
+      "properties": {
+        "deliverable_name": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string"
+        },
+        "frequency": {
+          "type": "enum",
+          "options": [
+            "One-time",
+            "Weekly",
+            "Bi-weekly",
+            "Monthly",
+            "Quarterly",
+            "Annually",
+            "As Required"
+          ]
+        },
+        "due_date_or_schedule": {
+          "type": "string"
+        },
+        "recipient": {
+          "type": "string"
+        },
+        "acceptance_criteria": {
+          "type": "text"
+        }
+      }
+    },
+    "government_furnished_resources": {
+      "gfe_gfi_gfp": {
+        "type": "array",
+        "required": false,
+        "item_type": "object",
+        "properties": {
+          "item": {
+            "type": "string"
+          },
+          "type": {
+            "type": "enum",
+            "options": [
+              "GFE",
+              "GFI",
+              "GFP"
+            ]
+          },
+          "description": {
+            "type": "text"
+          }
+        }
+      },
+      "government_poc": {
+        "type": "string",
+        "required": true
+      },
+      "facility_access": {
+        "type": "text",
+        "required": false
+      }
+    },
+    "security_requirements": {
+      "clearance_level": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "None",
+          "Confidential",
+          "Secret",
+          "Top Secret",
+          "TS/SCI"
+        ],
+        "cross_reference": "Drives requirement for DOC-014 (DD 254)"
+      },
+      "dd254_required": {
+        "type": "boolean",
+        "required": true
+      },
+      "opsec_requirements": {
+        "type": "text",
+        "required": false
+      },
+      "cui_handling": {
+        "type": "text",
+        "required": false
+      }
+    },
+    "labor_categories": {
+      "type": "array",
+      "required": false,
+      "item_type": "object",
+      "properties": {
+        "category_title": {
+          "type": "string"
+        },
+        "minimum_qualifications": {
+          "type": "text"
+        },
+        "education_requirement": {
+          "type": "string"
+        },
+        "experience_years": {
+          "type": "number"
+        },
+        "clearance_required": {
+          "type": "string"
+        },
+        "number_of_fte": {
+          "type": "number"
+        }
+      },
+      "cross_reference": "Feeds DOC-003 (IGCE) labor detail"
+    }
+  },
+  "validation_rules": [
+    {
+      "rule": "If document_type is PWS, tasks should be outcome-based not prescriptive",
+      "severity": "warning"
+    },
+    {
+      "rule": "Every task must have at least one deliverable",
+      "severity": "warning"
+    },
+    {
+      "rule": "If clearance_level != 'None', dd254_required must be True",
+      "severity": "error"
+    },
+    {
+      "rule": "Period of performance must be specified with exact dates",
+      "severity": "error"
+    },
+    {
+      "rule": "Performance standards should be measurable and objective",
+      "severity": "warning"
+    }
+  ]
+}

@@ -1,0 +1,135 @@
+{
+  "description": "Directed Acyclic Graph (DAG) defining document dependencies for topological execution ordering. Each node is a document; edges represent data flow dependencies.",
+  "usage": "The orchestrator agent uses this graph to determine execution order. Documents with no dependencies execute first. Documents only execute after ALL dependencies are satisfied.",
+  
+  "nodes": {
+    "DOC-006": {"name": "PWS/SOW/SOO", "depends_on": [], "execution_tier": 1, "parallel_group": "A"},
+    "DOC-017": {"name": "Purchase Request", "depends_on": ["DOC-006", "DOC-003"], "execution_tier": 3, "parallel_group": "C"},
+    "DOC-002": {"name": "Market Research", "depends_on": ["DOC-006"], "execution_tier": 2, "parallel_group": "B"},
+    "DOC-003": {"name": "IGCE", "depends_on": ["DOC-002", "DOC-006"], "execution_tier": 2, "parallel_group": "B"},
+    "DOC-001": {"name": "Acquisition Strategy", "depends_on": ["DOC-002", "DOC-003", "DOC-006"], "execution_tier": 3, "parallel_group": "C"},
+    "DOC-004": {"name": "J&A", "depends_on": ["DOC-001", "DOC-002", "DOC-003", "DOC-006"], "execution_tier": 4, "parallel_group": "D", "conditional": true, "trigger": "competition_strategy != 'Full and Open'"},
+    "DOC-005": {"name": "D&F", "depends_on": ["DOC-001", "DOC-006"], "execution_tier": 4, "parallel_group": "D", "conditional": true, "trigger": "contract_type in ['T&M', 'LH'] OR other_conditions"},
+    "DOC-013": {"name": "DD 2579", "depends_on": ["DOC-002", "DOC-006"], "execution_tier": 3, "parallel_group": "C", "conditional": true, "trigger": "estimated_value > 250000"},
+    "DOC-014": {"name": "DD 254", "depends_on": ["DOC-006"], "execution_tier": 2, "parallel_group": "B", "conditional": true, "trigger": "security_level != 'UNCLASSIFIED'"},
+    "DOC-023": {"name": "OCI Determination", "depends_on": ["DOC-001", "DOC-006"], "execution_tier": 4, "parallel_group": "D"},
+    "DOC-016": {"name": "Legal Review", "depends_on": ["DOC-001", "DOC-004", "DOC-005", "DOC-006", "DOC-008", "DOC-012"], "execution_tier": 7, "parallel_group": "G"},
+    "DOC-007": {"name": "Source Selection Plan", "depends_on": ["DOC-001", "DOC-006"], "execution_tier": 4, "parallel_group": "D", "conditional": true, "trigger": "competition_strategy == 'Full and Open' AND procurement_method == 'negotiated'"},
+    "DOC-009": {"name": "Evaluation Criteria", "depends_on": ["DOC-006", "DOC-007"], "execution_tier": 5, "parallel_group": "E"},
+    "DOC-019": {"name": "QASP", "depends_on": ["DOC-006"], "execution_tier": 2, "parallel_group": "B"},
+    "DOC-008": {"name": "Solicitation (RFP)", "depends_on": ["DOC-001", "DOC-003", "DOC-004", "DOC-005", "DOC-006", "DOC-007", "DOC-009", "DOC-013", "DOC-014"], "execution_tier": 6, "parallel_group": "F"},
+    "DOC-010": {"name": "SSEB Report", "depends_on": ["DOC-007", "DOC-008", "DOC-009"], "execution_tier": 7, "parallel_group": "G", "requires_human_input": true},
+    "DOC-011": {"name": "SSDD", "depends_on": ["DOC-007", "DOC-009", "DOC-010"], "execution_tier": 8, "parallel_group": "H", "requires_human_input": true},
+    "DOC-015": {"name": "DD 1547", "depends_on": ["DOC-003"], "execution_tier": 3, "parallel_group": "C", "conditional": true, "trigger": "contract_type in ['CPFF','CPAF','CPIF','FPI']"},
+    "DOC-012": {"name": "PNM/BCM", "depends_on": ["DOC-003", "DOC-010", "DOC-015"], "execution_tier": 8, "parallel_group": "H"},
+    "DOC-022": {"name": "Responsibility Determination", "depends_on": ["DOC-010"], "execution_tier": 8, "parallel_group": "H"},
+    "DOC-018": {"name": "Contract (UCF)", "depends_on": ["DOC-001", "DOC-006", "DOC-008", "DOC-011", "DOC-012", "DOC-014", "DOC-017"], "execution_tier": 9, "parallel_group": "I"},
+    "DOC-020": {"name": "COR Appointment", "depends_on": ["DOC-018", "DOC-019"], "execution_tier": 10, "parallel_group": "J"},
+    "DOC-024": {"name": "SB Subcontracting Plan", "depends_on": ["DOC-013", "DOC-018"], "execution_tier": 10, "parallel_group": "J", "conditional": true, "trigger": "estimated_value > 750000 AND prime_business_size != 'small'"},
+    "DOC-025": {"name": "Distribution List", "depends_on": ["DOC-018", "DOC-020"], "execution_tier": 11, "parallel_group": "K"},
+    "DOC-026": {"name": "Debriefing", "depends_on": ["DOC-009", "DOC-010", "DOC-011"], "execution_tier": 9, "parallel_group": "I", "conditional": true, "trigger": "debriefing_requested == true"},
+    "DOC-027": {"name": "Award Notice", "depends_on": ["DOC-018"], "execution_tier": 10, "parallel_group": "J"},
+    "DOC-028": {"name": "Admin Plan", "depends_on": ["DOC-014", "DOC-018", "DOC-019", "DOC-020"], "execution_tier": 11, "parallel_group": "K"},
+    "DOC-021": {"name": "CPARS Evaluation", "depends_on": ["DOC-018", "DOC-019"], "execution_tier": 12, "parallel_group": "L", "requires_human_input": true, "note": "Generated during contract performance, not at award"}
+  },
+
+  "topological_execution_order": [
+    {"tier": 1, "documents": ["DOC-006"], "description": "Requirements Definition - no dependencies, start here"},
+    {"tier": 2, "documents": ["DOC-002", "DOC-014", "DOC-019"], "description": "Market research, security spec, QASP - all depend only on DOC-006, run in parallel"},
+    {"tier": 3, "documents": ["DOC-003", "DOC-001", "DOC-013", "DOC-015", "DOC-017"], "description": "Cost estimate, strategy, SB coordination, weighted guidelines, funding - run after tier 2"},
+    {"tier": 4, "documents": ["DOC-004", "DOC-005", "DOC-007", "DOC-023"], "description": "Conditional approvals and source selection planning - run after strategy is set"},
+    {"tier": 5, "documents": ["DOC-009"], "description": "Evaluation criteria - needs SSP and PWS"},
+    {"tier": 6, "documents": ["DOC-008"], "description": "Solicitation - the big assembly document, needs everything from tiers 1-5"},
+    {"tier": 7, "documents": ["DOC-010", "DOC-016"], "description": "SSEB evaluation and legal review - HUMAN GATE: proposals must be received and evaluated"},
+    {"tier": 8, "documents": ["DOC-011", "DOC-012", "DOC-022"], "description": "Award decision, negotiation memo, responsibility check"},
+    {"tier": 9, "documents": ["DOC-018", "DOC-026"], "description": "Contract execution and debriefing preparation"},
+    {"tier": 10, "documents": ["DOC-020", "DOC-024", "DOC-027"], "description": "Post-award: COR appointment, SB subcontracting plan, SAM.gov notice"},
+    {"tier": 11, "documents": ["DOC-025", "DOC-028"], "description": "Distribution and administration plan"},
+    {"tier": 12, "documents": ["DOC-021"], "description": "CPARS - ongoing during contract performance"}
+  ],
+
+  "human_gates": {
+    "description": "Points where the automated pipeline MUST pause for human input before proceeding",
+    "gates": [
+      {
+        "gate_id": "GATE-1",
+        "location": "Between Tier 6 and Tier 7",
+        "reason": "Solicitation must be issued, proposals received, and evaluators must assess proposals",
+        "affected_documents": ["DOC-010"],
+        "human_actions_required": ["Issue solicitation", "Receive proposals", "Assign evaluators", "Conduct evaluations"]
+      },
+      {
+        "gate_id": "GATE-2",
+        "location": "Between Tier 7 and Tier 8",
+        "reason": "SSA must make independent award decision based on SSEB findings",
+        "affected_documents": ["DOC-011"],
+        "human_actions_required": ["SSA reviews SSEB report", "SSA makes best value determination"]
+      },
+      {
+        "gate_id": "GATE-3",
+        "location": "Tier 12 (ongoing)",
+        "reason": "COR/PM must provide actual performance observations for CPARS",
+        "affected_documents": ["DOC-021"],
+        "human_actions_required": ["COR documents performance", "PM provides input", "Contractor reviews/comments"]
+      }
+    ]
+  },
+
+  "conditional_document_rules": {
+    "description": "Logic for determining which conditional documents are needed based on acquisition parameters",
+    "rules": [
+      {
+        "document": "DOC-004",
+        "condition": "acquisition_params.competition_strategy != 'Full and Open'",
+        "if_true": "REQUIRED - generate J&A",
+        "if_false": "SKIP - not needed for full and open competition"
+      },
+      {
+        "document": "DOC-005",
+        "conditions": [
+          "acquisition_params.contract_type in ['T&M', 'LH']",
+          "acquisition_params.contract_financing == true",
+          "acquisition_params.progress_payments == true"
+        ],
+        "logic": "ANY condition true → REQUIRED",
+        "if_false": "SKIP"
+      },
+      {
+        "document": "DOC-007",
+        "condition": "acquisition_params.competition_strategy == 'Full and Open' AND acquisition_params.procurement_method == 'negotiated'",
+        "if_true": "REQUIRED",
+        "if_false": "SKIP for sealed bidding, SAP, or sole source"
+      },
+      {
+        "document": "DOC-013",
+        "condition": "acquisition_params.estimated_value > 250000",
+        "if_true": "REQUIRED",
+        "if_false": "SKIP"
+      },
+      {
+        "document": "DOC-014",
+        "condition": "acquisition_params.security_level not in ['UNCLASSIFIED', 'None']",
+        "if_true": "REQUIRED",
+        "if_false": "SKIP"
+      },
+      {
+        "document": "DOC-015",
+        "condition": "acquisition_params.contract_type in ['CPFF','CPAF','CPIF','FPI'] OR (acquisition_params.contract_type == 'FFP' AND acquisition_params.certified_cost_data == true)",
+        "if_true": "REQUIRED",
+        "if_false": "SKIP"
+      },
+      {
+        "document": "DOC-024",
+        "condition": "acquisition_params.estimated_value > 750000 AND acquisition_params.prime_business_size != 'small'",
+        "if_true": "REQUIRED",
+        "if_false": "SKIP"
+      },
+      {
+        "document": "DOC-026",
+        "condition": "acquisition_params.debriefing_requested == true",
+        "if_true": "REQUIRED",
+        "if_false": "SKIP - generate template only if requested"
+      }
+    ]
+  }
+}

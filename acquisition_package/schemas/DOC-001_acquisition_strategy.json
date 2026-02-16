@@ -1,0 +1,319 @@
+{
+  "document_id": "DOC-001",
+  "title": "Acquisition Strategy / Acquisition Plan",
+  "regulatory_references": [
+    "FAR 7.103",
+    "FAR 7.105",
+    "DFARS 207.103",
+    "NMCARS 5207",
+    "AFFARS 5307"
+  ],
+  "required_when": "always",
+  "fields": {
+    "header": {
+      "document_title": {
+        "type": "string",
+        "required": true,
+        "default_template": "Acquisition Strategy for {program_name}"
+      },
+      "preparing_organization": {
+        "type": "string",
+        "required": true,
+        "description": "Command or organization name preparing this document"
+      },
+      "date": {
+        "type": "date",
+        "required": true,
+        "format": "DD MMM YYYY"
+      },
+      "milestone_decision_authority": {
+        "type": "string",
+        "required": true,
+        "description": "Name and title of MDA"
+      },
+      "acat_level": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "ACAT I",
+          "ACAT II",
+          "ACAT III",
+          "ACAT IV",
+          "Below ACAT",
+          "N/A"
+        ]
+      },
+      "classification": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "UNCLASSIFIED",
+          "CUI",
+          "SECRET",
+          "TOP SECRET"
+        ],
+        "default": "UNCLASSIFIED"
+      }
+    },
+    "program_summary": {
+      "program_description": {
+        "type": "text",
+        "required": true,
+        "description": "Describe the capability being acquired, mission need, and background",
+        "min_length": 100
+      },
+      "capability_gap": {
+        "type": "text",
+        "required": true,
+        "description": "Describe the operational gap this acquisition addresses"
+      },
+      "estimated_total_program_cost": {
+        "type": "currency",
+        "required": true,
+        "format": "USD"
+      },
+      "period_of_performance": {
+        "type": "string",
+        "required": true,
+        "description": "Base period plus option years"
+      },
+      "naics_code": {
+        "type": "string",
+        "required": true,
+        "pattern": "^\\d{6}$",
+        "description": "6-digit NAICS code"
+      },
+      "product_service_code": {
+        "type": "string",
+        "required": true,
+        "pattern": "^[A-Z0-9]{4}$",
+        "description": "4-character PSC"
+      }
+    },
+    "acquisition_approach": {
+      "competition_strategy": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "Full and Open",
+          "Full and Open After Exclusion of Sources",
+          "Other Than Full and Open",
+          "Sole Source"
+        ],
+        "cross_reference": "Drives requirement for DOC-004 (J&A) if not Full and Open"
+      },
+      "contract_type": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "FFP",
+          "FPIF",
+          "FP-EPA",
+          "CPFF",
+          "CPIF",
+          "CPAF",
+          "T&M",
+          "LH",
+          "IDIQ-FFP",
+          "IDIQ-CPFF",
+          "IDIQ-T&M",
+          "BPA",
+          "BOA"
+        ],
+        "cross_reference": "Drives requirement for DOC-005 (D&F) if T&M or LH"
+      },
+      "contract_vehicle": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "New Award",
+          "Task Order",
+          "Delivery Order",
+          "BPA Call",
+          "GSA Schedule",
+          "GWACs",
+          "Other"
+        ]
+      },
+      "number_of_awards": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "Single Award",
+          "Multiple Award"
+        ]
+      },
+      "set_aside_determination": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "Unrestricted",
+          "Total Small Business",
+          "Partial Small Business",
+          "8(a)",
+          "HUBZone",
+          "SDVOSB",
+          "WOSB",
+          "EDWOSB"
+        ],
+        "cross_reference": "Coordinates with DOC-013 (DD 2579)"
+      },
+      "solicitation_method": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "RFP",
+          "RFQ",
+          "IFB",
+          "BAA",
+          "CSO",
+          "SBIR/STTR",
+          "Combined Synopsis/Solicitation"
+        ]
+      }
+    },
+    "source_selection": {
+      "methodology": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "Best Value Tradeoff",
+          "LPTA",
+          "Value Adjusted Total Evaluated Price (VATEP)",
+          "Lowest Risk",
+          "Highest Technically Rated with Fair and Reasonable Price"
+        ],
+        "cross_reference": "Feeds into DOC-007 (SSP) and DOC-009 (Eval Criteria)"
+      },
+      "evaluation_factors": {
+        "type": "array",
+        "required": true,
+        "item_type": "string",
+        "description": "Ordered list of evaluation factors",
+        "example": [
+          "Technical Approach",
+          "Past Performance",
+          "Cost/Price"
+        ]
+      },
+      "source_selection_authority": {
+        "type": "string",
+        "required": true
+      }
+    },
+    "risk_assessment": {
+      "technical_risk": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "level": {
+            "type": "enum",
+            "options": [
+              "Low",
+              "Medium",
+              "High"
+            ]
+          },
+          "description": {
+            "type": "text"
+          }
+        }
+      },
+      "schedule_risk": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "level": {
+            "type": "enum",
+            "options": [
+              "Low",
+              "Medium",
+              "High"
+            ]
+          },
+          "description": {
+            "type": "text"
+          }
+        }
+      },
+      "cost_risk": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "level": {
+            "type": "enum",
+            "options": [
+              "Low",
+              "Medium",
+              "High"
+            ]
+          },
+          "description": {
+            "type": "text"
+          }
+        }
+      },
+      "programmatic_risk": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "level": {
+            "type": "enum",
+            "options": [
+              "Low",
+              "Medium",
+              "High"
+            ]
+          },
+          "description": {
+            "type": "text"
+          }
+        }
+      },
+      "mitigation_strategies": {
+        "type": "text",
+        "required": true
+      }
+    },
+    "approval_signatures": {
+      "program_manager": {
+        "type": "signature_block",
+        "required": true
+      },
+      "contracting_officer": {
+        "type": "signature_block",
+        "required": true
+      },
+      "legal_counsel": {
+        "type": "signature_block",
+        "required": true
+      },
+      "milestone_decision_authority": {
+        "type": "signature_block",
+        "required": true
+      }
+    }
+  },
+  "validation_rules": [
+    {
+      "rule": "If competition_strategy != 'Full and Open', DOC-004 (J&A) is REQUIRED",
+      "severity": "error"
+    },
+    {
+      "rule": "If contract_type in ['T&M', 'LH'], DOC-005 (D&F) is REQUIRED",
+      "severity": "error"
+    },
+    {
+      "rule": "estimated_total_program_cost must match DOC-003 total_estimated_cost",
+      "severity": "warning"
+    },
+    {
+      "rule": "If estimated_total_program_cost > 50000000, full AP per FAR 7.105 required",
+      "severity": "error"
+    },
+    {
+      "rule": "naics_code must be valid per census.gov NAICS database",
+      "severity": "error"
+    }
+  ]
+}

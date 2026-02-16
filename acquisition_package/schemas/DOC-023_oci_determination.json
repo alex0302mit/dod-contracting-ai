@@ -1,0 +1,115 @@
+{
+  "document_id": "DOC-023",
+  "title": "Organizational Conflict of Interest (OCI) Determination",
+  "regulatory_references": [
+    "FAR 9.5",
+    "DFARS 209.5"
+  ],
+  "required_when": "analysis_always_required",
+  "fields": {
+    "acquisition_info": {
+      "program": {
+        "type": "string",
+        "required": true
+      },
+      "solicitation_contract_number": {
+        "type": "string",
+        "required": true
+      },
+      "prospective_contractors": {
+        "type": "array",
+        "required": true,
+        "item_type": "string"
+      },
+      "estimated_value": {
+        "type": "currency",
+        "required": true
+      }
+    },
+    "oci_analysis": {
+      "unequal_access": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "risk_identified": {
+            "type": "boolean"
+          },
+          "analysis": {
+            "type": "text"
+          }
+        }
+      },
+      "biased_ground_rules": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "risk_identified": {
+            "type": "boolean"
+          },
+          "analysis": {
+            "type": "text"
+          }
+        }
+      },
+      "impaired_objectivity": {
+        "type": "object",
+        "required": true,
+        "properties": {
+          "risk_identified": {
+            "type": "boolean"
+          },
+          "analysis": {
+            "type": "text"
+          }
+        }
+      }
+    },
+    "mitigation": {
+      "type_identified": {
+        "type": "enum",
+        "options": [
+          "None",
+          "Unequal Access",
+          "Biased Ground Rules",
+          "Impaired Objectivity",
+          "Multiple"
+        ]
+      },
+      "mitigation_measures": {
+        "type": "text"
+      },
+      "contractor_disclosure": {
+        "type": "text"
+      },
+      "contract_clause": {
+        "type": "text"
+      }
+    },
+    "determination": {
+      "statement": {
+        "type": "enum",
+        "required": true,
+        "options": [
+          "No OCI exists",
+          "OCI adequately mitigated",
+          "Waiver requested",
+          "Contractor excluded"
+        ]
+      },
+      "contracting_officer": {
+        "type": "signature_block",
+        "required": true
+      },
+      "legal_review": {
+        "type": "signature_block",
+        "required": true
+      }
+    }
+  },
+  "validation_rules": [
+    {
+      "rule": "All three OCI types must be analyzed",
+      "severity": "error"
+    }
+  ]
+}
