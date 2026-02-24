@@ -96,7 +96,7 @@ echo ""
 echo -e "${YELLOW}[4/7] Checking environment variables...${NC}"
 if [ -z "$ANTHROPIC_API_KEY" ]; then
     echo -e "${YELLOW}⚠  ANTHROPIC_API_KEY not set${NC}"
-    echo "   Set it with: export ANTHROPIC_API_KEY=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"
+    echo "   Set it with: export ANTHROPIC_API_KEY=your api key"
     echo "   (AI features will not work without this)"
 else
     echo -e "${GREEN}✓ ANTHROPIC_API_KEY is set${NC}"
